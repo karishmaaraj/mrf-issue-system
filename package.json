@@ -1,0 +1,25 @@
+{
+  "name": "mrf-issue-system",
+  "version": "1.0.0",
+  "description": "MRF Campus Maintenance & Issue Management System",
+  "private": true,
+  "scripts": {
+    "install:all": "cd issue-portal && npm install && cd ../admin-portal && npm install",
+    "dev:server": "cd issue-portal && node server.js",
+    "dev:issue": "cd issue-portal && npm run dev",
+    "dev:admin": "cd admin-portal && npm run dev",
+    "build:issue": "cd issue-portal && npm run build",
+    "build:admin": "cd admin-portal && npm run build"
+  },
+  "keywords": [
+    "campus-management",
+    "issue-tracker",
+    "maintenance-portal",
+    "react",
+    "vite",
+    "tailwindcss",
+    "kanban"
+  ],
+  "author": "",
+  "license": "MIT"
+}
