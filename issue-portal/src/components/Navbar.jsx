@@ -32,14 +32,6 @@ export default function Navbar() {
               <span className="hidden sm:inline">Home</span>
             </Link>
           )}
-
-          <Link
-            to="/super-admin"
-            className="flex items-center gap-1.5 text-xs text-amber-800 hover:text-amber-950 font-bold px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-300 transition"
-            title="Super Admin Master Control"
-          >
-            <span>👑 Super Admin</span>
-          </Link>
         </div>
       </div>
     </nav>
