@@ -40,6 +40,24 @@ export const AIDED_UG_DEPARTMENTS = [
   'B. Sc. Zoology',
 ];
 
+export const AIDED_PG_DEPARTMENTS = [
+  'M. A. English Language and Literature',
+  'M. A. Tamil Literature',
+  'M. A. History',
+  'M. A. Political Science',
+  'M. A. Public Administration',
+  'M. A. Economics',
+  'M. A. Philosophy',
+  'M. Com. – Commerce',
+  'M. S. W. (Community Development & Medical Psychiatry)',
+  'M. Sc. Mathematics',
+  'M. Sc. Statistics',
+  'M. Sc. Physics',
+  'M. Sc. Chemistry',
+  'M. Sc. Plant Biology and Plant Biotechnology',
+  'M. Sc. Zoology',
+];
+
 const DEPARTMENTS = [
   'Computer Science', 'Electronics & Communication', 'Mechanical Engineering',
   'Civil Engineering', 'Electrical Engineering', 'Commerce', 'Management Studies',
@@ -416,6 +434,8 @@ export default function UserForm() {
                   options={
                     form.userType === 'Student' && form.studentStream === 'Aided' && form.studentLevel === 'UG'
                       ? AIDED_UG_DEPARTMENTS
+                      : form.userType === 'Student' && form.studentStream === 'Aided' && form.studentLevel === 'PG'
+                      ? AIDED_PG_DEPARTMENTS
                       : DEPARTMENTS
                   }
                   placeholder="Select department" icon={Building2} error={errors.department}
