@@ -275,15 +275,6 @@ export default function AdminDashboard() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            <Link
-              to="/super-admin"
-              title="Open Super Admin Master Control"
-              className="px-3.5 py-2 rounded-xl text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 transition-all duration-200 flex items-center gap-1.5 text-xs font-black active:scale-95 shadow-2xs cursor-pointer"
-            >
-              <Crown size={14} className="text-amber-600" />
-              <span className="hidden sm:inline">Super Admin</span>
-            </Link>
-
             <button
               onClick={() => refreshTickets(true)}
               disabled={isRefreshing}
