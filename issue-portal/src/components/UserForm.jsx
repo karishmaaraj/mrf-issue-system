@@ -58,6 +58,37 @@ export const AIDED_PG_DEPARTMENTS = [
   'M. Sc. Zoology',
 ];
 
+export const SFS_UG_DEPARTMENTS = [
+  'B. A. English Language and Literature',
+  'B. A. Journalism',
+  'B. A. History (Vocational)– (Archeology and Museology) – (Shift I)',
+  'B. S. W. Social Work',
+  'B. Com. – Commerce',
+  'B. Com. Accounting and Finance',
+  'B. Com. Professional Accounting',
+  'B. B. A. Business Administration',
+  'B. Sc. Geography, Tourism and Travel Management',
+  'B. Sc. Hospitality and Tourism',
+  'B. Sc. Mathematics',
+  'B. Sc. Physics',
+  'B. Sc. Microbiology',
+  'B. C. A. Computer Application',
+  'B. Sc. Computer Science',
+  'B. Sc. Visual Communication',
+  'B. Sc. Physical Education, Health Education and Sports',
+  'B. Sc. Psychology',
+];
+
+export const SFS_PG_DEPARTMENTS = [
+  'M. S. W. Social Work (Human Resource Management)',
+  'M. Com. Computer-Oriented Business Application',
+  'M. A. Communication',
+  'M. Sc. Chemistry',
+  'M. Sc. Applied Microbiology',
+  'M. C. A. Computer Application',
+  'M. Sc. Data Science',
+];
+
 const DEPARTMENTS = [
   'Computer Science', 'Electronics & Communication', 'Mechanical Engineering',
   'Civil Engineering', 'Electrical Engineering', 'Commerce', 'Management Studies',
@@ -436,6 +467,10 @@ export default function UserForm() {
                       ? AIDED_UG_DEPARTMENTS
                       : form.userType === 'Student' && form.studentStream === 'Aided' && form.studentLevel === 'PG'
                       ? AIDED_PG_DEPARTMENTS
+                      : form.userType === 'Student' && form.studentStream === 'SFS' && form.studentLevel === 'UG'
+                      ? SFS_UG_DEPARTMENTS
+                      : form.userType === 'Student' && form.studentStream === 'SFS' && form.studentLevel === 'PG'
+                      ? SFS_PG_DEPARTMENTS
                       : DEPARTMENTS
                   }
                   placeholder="Select department" icon={Building2} error={errors.department}
