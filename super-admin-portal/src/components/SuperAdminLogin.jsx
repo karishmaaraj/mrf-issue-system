@@ -55,8 +55,10 @@ export default function SuperAdminLogin({ onLogin }) {
       <div className="absolute inset-0 bg-[radial-gradient(#f59e0b15_1px,transparent_1px)] [background-size:32px_32px] pointer-events-none" />
 
       {/* Header */}
-      <div className="flex items-center gap-3 text-white mb-8 relative z-10 animate-fade-in">
-        <CollegeLogo className="h-14 w-auto drop-shadow-[0_4px_12px_rgba(245,158,11,0.35)]" />
+      <div className="flex items-center gap-3.5 text-white mb-8 relative z-10 animate-fade-in">
+        <div className="p-2 bg-white rounded-2xl shadow-lg border border-white/90 shrink-0 flex items-center justify-center">
+          <CollegeLogo className="h-12 w-auto" />
+        </div>
         <div>
           <div className="flex items-center gap-2">
             <span className="text-2xl font-black tracking-tight block text-white">MRF Super Admin</span>

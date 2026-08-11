@@ -3,7 +3,9 @@
  * Features zero-leak caching, deep comparison checks, and lightweight localStorage persistence.
  */
 
-const SERVER_URL = 'http://localhost:5000/api/tickets';
+const SERVER_URL = typeof window !== 'undefined' && (window.location.port === '' || window.location.port === '80')
+  ? '/api/tickets'
+  : 'http://localhost:5000/api/tickets';
 const TICKETS_KEY = 'mrf_tickets';
 
 let cachedTickets = [];

@@ -4,7 +4,9 @@
  */
 
 const CONFIG_KEY = 'mrf_system_config';
-const SYNC_URL = 'http://localhost:5000/api/system-config';
+const SYNC_URL = typeof window !== 'undefined' && (window.location.port === '' || window.location.port === '80')
+  ? '/api/system-config'
+  : 'http://localhost:5000/api/system-config';
 
 export const INITIAL_WORKERS = [
   { id: 'w1', name: 'Rajan Kumar', role: 'Electrical Lead', email: 'rajan.electrical@mrf.edu', icon: '💡', active: true, phone: '+91 98401 12345' },

@@ -30,7 +30,7 @@ function ScrollToTop() {
  */
 export default function App() {
   return (
-    <Router>
+    <Router basename="/issue">
       <ScrollToTop />
       <Routes>
         <Route path="/" element={<LandingPage />} />

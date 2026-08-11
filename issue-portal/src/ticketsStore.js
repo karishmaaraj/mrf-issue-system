@@ -4,7 +4,9 @@
  * Keeps Student Portal (port 5174) and Admin Portal (port 5175) 100% synchronized in real time!
  */
 
-const SERVER_URL = 'http://localhost:5000/api/tickets';
+const SERVER_URL = typeof window !== 'undefined' && (window.location.port === '' || window.location.port === '80')
+  ? '/api/tickets'
+  : 'http://localhost:5000/api/tickets';
 const TICKETS_KEY = 'mrf_tickets';
 const COUNTER_KEY = 'mrf_ticket_counter';
 

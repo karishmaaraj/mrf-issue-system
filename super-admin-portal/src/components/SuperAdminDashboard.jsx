@@ -252,7 +252,9 @@ export default function SuperAdminDashboard() {
       {/* Top Super Admin Master Navbar */}
       <header className="bg-slate-900/90 backdrop-blur-xl border-b border-amber-500/30 sticky top-0 z-40 px-6 py-3.5 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <CollegeLogo className="h-10 w-auto filter drop-shadow-[0_2px_8px_rgba(245,158,11,0.4)]" />
+          <div className="p-1.5 bg-white rounded-xl shadow-md border border-white/90 shrink-0 flex items-center justify-center">
+            <CollegeLogo className="h-9 w-auto" />
+          </div>
           <div>
             <div className="flex items-center gap-2">
               <span className="font-black text-lg text-white tracking-tight">MRF Super Admin</span>
@@ -268,7 +270,7 @@ export default function SuperAdminDashboard() {
         {/* Global Links & Switcher */}
         <div className="flex items-center gap-2.5">
           <a
-            href="http://localhost:5174/"
+            href="/issue/"
             target="_blank"
             rel="noreferrer"
             className="text-xs font-bold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5"
@@ -278,7 +280,7 @@ export default function SuperAdminDashboard() {
           </a>
 
           <a
-            href="http://localhost:5175/"
+            href="/admin/"
             target="_blank"
             rel="noreferrer"
             className="text-xs font-bold text-blue-300 hover:text-white bg-blue-950/80 hover:bg-blue-900 border border-blue-500/40 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5"

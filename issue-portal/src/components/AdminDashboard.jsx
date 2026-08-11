@@ -3,6 +3,7 @@
  * Features rich micro-interactions, animated live radar indicators, interactive worker dispatch, and fluid transitions.
  */
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import AdminLogin from './AdminLogin.jsx';
 import StatsBar from './StatsBar.jsx';
 import KanbanBoard from './KanbanBoard.jsx';
@@ -13,10 +14,12 @@ import WorkHistoryView from './WorkHistoryView.jsx';
 import WorkTimelineModal from './WorkTimelineModal.jsx';
 import { getTickets, updateTicket, fetchTicketsFromServer } from '../ticketsStore.js';
 import { sendCompletionEmail, sendWorkerAssignmentEmail } from '../emailService.js';
+import { getSystemConfig, fetchSystemConfigFromServer } from '../systemConfigStore.js';
 import CollegeLogo from './CollegeLogo.jsx';
 import {
   LogOut, RefreshCw, Search, LayoutDashboard, Filter,
-  SlidersHorizontal, Shield, CheckCircle2, Users, Activity, Download, Wrench, Send, Sparkles, Mail, History
+  SlidersHorizontal, Shield, CheckCircle2, Users, Activity, Download, Wrench, Send, Sparkles, Mail, History,
+  Crown, Megaphone
 } from 'lucide-react';
 
 import { WORKERS } from '../constants.js';
@@ -24,6 +27,7 @@ import { WORKERS } from '../constants.js';
 export default function AdminDashboard() {
   const [authed, setAuthed] = useState(false);
   const [tickets, setTickets] = useState(() => getTickets());
+  const [systemConfig, setSystemConfig] = useState(() => getSystemConfig());
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [timelineTicket, setTimelineTicket] = useState(null);
   const [historyViewMode, setHistoryViewMode] = useState(null); // 'TOTAL' | 'PENDING' | 'URGENT' | 'COMPLETED' | null
@@ -39,16 +43,24 @@ export default function AdminDashboard() {
 
   const refreshTickets = useCallback(async (manual = false) => {
     if (manual) setIsRefreshing(true);
-    const fresh = await fetchTicketsFromServer();
+    const [fresh, freshCfg] = await Promise.all([
+      fetchTicketsFromServer(),
+      fetchSystemConfigFromServer(),
+    ]);
     setTickets(prev => {
       if (prev === fresh) return prev;
       return fresh;
     });
+    if (freshCfg) setSystemConfig(freshCfg);
     if (manual) {
       setTimeout(() => setIsRefreshing(false), 400);
       showToast('Dashboard refreshed with latest complaints & staff updates!');
     }
   }, []);
+
+  const dynamicWorkers = useMemo(() => {
+    return (systemConfig.workers || WORKERS).filter(w => w.active !== false);
+  }, [systemConfig]);
 
   // Poll server safely when visible and sync instantly via BroadcastChannel
   useEffect(() => {
@@ -116,7 +128,7 @@ export default function AdminDashboard() {
     const current = tickets.find(t => t.ticketNo === ticketNo);
     if (!current) return;
 
-    const workerObj = WORKERS.find(w => w.name === workerName) || { name: workerName, role: 'Maintenance Staff', email: '' };
+    const workerObj = dynamicWorkers.find(w => w.name === workerName) || { name: workerName, role: 'Maintenance Staff', email: '' };
 
     const updates = {
       assignedWorker: workerName,
@@ -293,6 +305,23 @@ export default function AdminDashboard() {
         </div>
       </nav>
 
+      {/* Broadcast Banner Live Notice from Super Admin */}
+      {systemConfig.announcement?.enabled && systemConfig.announcement?.message && (
+        <div className={`px-6 py-2.5 text-xs font-bold flex items-center justify-between border-b ${
+          systemConfig.announcement.type === 'alert'
+            ? 'bg-red-950 text-red-100 border-red-500/40'
+            : systemConfig.announcement.type === 'warning'
+            ? 'bg-amber-950 text-amber-100 border-amber-500/40'
+            : 'bg-blue-950 text-blue-100 border-blue-500/40'
+        }`}>
+          <div className="max-w-7xl mx-auto w-full flex items-center gap-2">
+            <Megaphone size={15} className="shrink-0 animate-bounce text-amber-400" />
+            <span className="uppercase text-[10px] font-black tracking-wider px-1.5 py-0.5 bg-black/40 rounded">Super Admin Broadcast</span>
+            <span className="truncate">{systemConfig.announcement.message}</span>
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
       <div className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-slide-up">
@@ -354,12 +383,12 @@ export default function AdminDashboard() {
                 </div>
                 <span className="text-xs font-black text-blue-700 bg-blue-50 border border-blue-200 px-3.5 py-1.5 rounded-full shrink-0 flex items-center gap-1.5 self-start sm:self-auto shadow-2xs">
                   <Users size={14} className="text-blue-600 animate-pulse" />
-                  5 Maintenance Staff Active
+                  {dynamicWorkers.length} Maintenance Staff Active
                 </span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
-                {WORKERS.map(w => {
+                {dynamicWorkers.map(w => {
                   const assignedTickets = tickets.filter(t => t.assignedWorker === w.name && t.status !== 'Completed');
                   const isBusy = assignedTickets.length > 0;
                   const pendingUnassigned = tickets.filter(t => t.status === 'Unsolved' || !t.assignedWorker);
@@ -479,7 +508,7 @@ export default function AdminDashboard() {
                     </div>
                   ) : (
                     tickets.filter(t => t.assignedWorker && t.status !== 'Completed').map(t => {
-                      const workerObj = WORKERS.find(w => w.name === t.assignedWorker);
+                      const workerObj = dynamicWorkers.find(w => w.name === t.assignedWorker);
                       return (
                         <div key={t.ticketNo} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-blue-50/40 rounded-2xl px-3 transition-all duration-200 group">
                           <div className="flex items-center gap-3.5">

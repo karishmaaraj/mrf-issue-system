@@ -7,7 +7,7 @@ import SuperAdminDashboard from './components/SuperAdminDashboard.jsx';
  */
 export default function App() {
   return (
-    <Router>
+    <Router basename="/superadmin">
       <Routes>
         <Route path="/" element={<SuperAdminDashboard />} />
         <Route path="/super-admin" element={<SuperAdminDashboard />} />
