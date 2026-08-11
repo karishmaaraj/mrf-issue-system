@@ -15,13 +15,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from './Navbar.jsx';
 import { createTicket } from '../ticketsStore.js';
+import { getSystemConfig, fetchSystemConfigFromServer } from '../systemConfigStore.js';
 import {
   ClipboardList, Upload, CheckCircle, ArrowRight, Phone,
   User, Mail, Building2, Layers, FileText, Camera,
   ChevronDown, LayoutDashboard, X, AlertCircle, Hash,
   Clock, Wrench, Info, MapPin, GraduationCap, BadgeCheck,
   SendHorizonal, PhoneCall, HelpCircle, ChevronRight,
-  CalendarDays, Shield, ArrowLeft, Droplets
+  CalendarDays, Shield, ArrowLeft, Droplets, Megaphone
 } from 'lucide-react';
 
 export const AIDED_UG_DEPARTMENTS = [
@@ -171,9 +172,25 @@ function InputField({ label, id, type = 'text', value, onChange, placeholder, ic
 }
 
 export default function UserForm() {
+  const [systemConfig, setSystemConfig] = useState(() => getSystemConfig());
+
   useEffect(() => {
     window.scrollTo(0, 0);
+    fetchSystemConfigFromServer().then(cfg => {
+      if (cfg) setSystemConfig(cfg);
+    });
+    const handleStorage = (e) => {
+      if (e.key === 'mrf_system_config') {
+        setSystemConfig(getSystemConfig());
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
+
+  const dynamicCategories = React.useMemo(() => {
+    return (systemConfig.categories || ISSUE_CATEGORIES).filter(c => c.active !== false);
+  }, [systemConfig]);
 
   const [form, setForm] = useState({
     name: '', email: '', phone: '', department: '', userType: '',
@@ -342,6 +359,23 @@ export default function UserForm() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col selection:bg-blue-500 selection:text-white">
       <Navbar />
+
+      {/* Broadcast Banner Live Notice from Super Admin */}
+      {systemConfig.announcement?.enabled && systemConfig.announcement?.message && (
+        <div className={`px-6 py-2.5 text-xs font-bold flex items-center justify-between border-b ${
+          systemConfig.announcement.type === 'alert'
+            ? 'bg-red-50 text-red-800 border-red-200'
+            : systemConfig.announcement.type === 'warning'
+            ? 'bg-amber-50 text-amber-800 border-amber-200'
+            : 'bg-blue-50 text-blue-800 border-blue-200'
+        }`}>
+          <div className="max-w-4xl mx-auto w-full flex items-center gap-2">
+            <Megaphone size={15} className="shrink-0 animate-bounce" />
+            <span className="uppercase text-[10px] font-black tracking-wider px-1.5 py-0.5 bg-black/10 rounded">Notice</span>
+            <span className="truncate">{systemConfig.announcement.message}</span>
+          </div>
+        </div>
+      )}
 
       {/* Page Header */}
       <div className="bg-white border-b border-slate-200/80 px-6 py-8 shadow-xs">
@@ -518,7 +552,7 @@ export default function UserForm() {
                     <span className="text-red-500 font-extrabold ml-0.5">*</span>
                   </label>
                   <div className="flex flex-wrap gap-2">
-                    {ISSUE_CATEGORIES.map(({ label, prefix }) => (
+                    {dynamicCategories.map(({ label, prefix }) => (
                       <button
                         key={label}
                         type="button"

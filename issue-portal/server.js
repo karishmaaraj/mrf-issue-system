@@ -201,6 +201,52 @@ function readData() {
   }
 }
 
+const CONFIG_FILE = path.join(__dirname, 'config.json');
+
+const DEFAULT_CONFIG_DATA = {
+  workers: [
+    { id: 'w1', name: 'Rajan Kumar', role: 'Electrical Lead', email: 'rajan.electrical@mrf.edu', icon: '💡', active: true, phone: '+91 98401 12345' },
+    { id: 'w2', name: 'Suresh Menon', role: 'Plumbing Specialist', email: 'suresh.plumbing@mrf.edu', icon: '🚰', active: true, phone: '+91 98402 23456' },
+    { id: 'w3', name: 'Priya Nair', role: 'IT & Infrastructure', email: 'priya.it@mrf.edu', icon: '🖥️', active: true, phone: '+91 98403 34567' },
+    { id: 'w4', name: 'Anitha Pillai', role: 'Civil Maintenance', email: 'anitha.civil@mrf.edu', icon: '🪟', active: true, phone: '+91 98404 45678' },
+    { id: 'w5', name: 'Biju Thomas', role: 'Sanitation Lead', email: 'biju.sanitation@mrf.edu', icon: '🧹', active: true, phone: '+91 98405 56789' },
+  ],
+  categories: [
+    { id: 'cat1', label: '💡 Electrical', prefix: 'Electrical issue: ', active: true, color: 'amber' },
+    { id: 'cat2', label: '🚰 Plumbing', prefix: 'Plumbing issue: ', active: true, color: 'cyan' },
+    { id: 'cat3', label: '🖥️ IT / Network', prefix: 'IT/Network issue: ', active: true, color: 'indigo' },
+    { id: 'cat4', label: '🪟 Civil / Infra', prefix: 'Civil/Infrastructure issue: ', active: true, color: 'orange' },
+    { id: 'cat5', label: '🧹 Sanitation', prefix: 'Sanitation issue: ', active: true, color: 'emerald' },
+    { id: 'cat6', label: '♿ Accessibility', prefix: 'Accessibility issue: ', active: true, color: 'sky' },
+    { id: 'cat7', label: '📌 Others', prefix: 'Other issue: ', active: true, color: 'rose' },
+  ],
+  announcement: {
+    enabled: true,
+    message: '⚡ Campus Facilities Notice: Centralized 24/7 maintenance reporting is active across all blocks.',
+    type: 'info',
+    lastUpdated: new Date().toISOString(),
+  },
+  slaTargetHours: 24,
+  autoEmailAlerts: true,
+};
+
+function readConfig() {
+  try {
+    if (!fs.existsSync(CONFIG_FILE)) {
+      fs.writeFileSync(CONFIG_FILE, JSON.stringify(DEFAULT_CONFIG_DATA, null, 2));
+      return DEFAULT_CONFIG_DATA;
+    }
+    const raw = fs.readFileSync(CONFIG_FILE, 'utf-8');
+    return JSON.parse(raw);
+  } catch {
+    return DEFAULT_CONFIG_DATA;
+  }
+}
+
+function saveConfig(cfg) {
+  fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2));
+}
+
 function saveData(data) {
   fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 }
@@ -218,6 +264,51 @@ const server = http.createServer((req, res) => {
   }
 
   const urlParts = req.url.split('?')[0];
+
+  // GET /api/system-config -> returns system config
+  if (req.method === 'GET' && urlParts === '/api/system-config') {
+    const cfg = readConfig();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(cfg));
+    return;
+  }
+
+  // POST /api/system-config -> updates system config
+  if (req.method === 'POST' && urlParts === '/api/system-config') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => {
+      try {
+        const newCfg = JSON.parse(body);
+        saveConfig(newCfg);
+        console.log(`[Config Updated] System configuration updated by Super Admin.`);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(newCfg));
+      } catch (err) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // DELETE /api/tickets/:ticketNo -> delete ticket for Super Admin
+  if (req.method === 'DELETE' && urlParts.startsWith('/api/tickets/')) {
+    const ticketNo = decodeURIComponent(urlParts.replace('/api/tickets/', ''));
+    const data = readData();
+    const idx = data.tickets.findIndex(t => t.ticketNo === ticketNo);
+    if (idx === -1) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Ticket not found' }));
+      return;
+    }
+    const deleted = data.tickets.splice(idx, 1)[0];
+    saveData(data);
+    console.log(`[Super Admin Delete] Ticket ${ticketNo} deleted permanently.`);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ success: true, deleted }));
+    return;
+  }
 
   // GET /api/tickets -> return all tickets
   if (req.method === 'GET' && urlParts === '/api/tickets') {

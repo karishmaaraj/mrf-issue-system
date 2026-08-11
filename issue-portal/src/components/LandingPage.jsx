@@ -1,13 +1,14 @@
 /**
  * LandingPage.jsx — Premium Hero & Landing Page with Glassmorphism, Floating Particles & Mesh Gradients
  */
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from './Navbar.jsx';
+import { getSystemConfig, fetchSystemConfigFromServer } from '../systemConfigStore.js';
 import {
   ClipboardList, PlusCircle, Shield, Clock, BadgeCheck, Mail,
   Wrench, AlertCircle, PhoneCall, ChevronRight,
-  Sparkles, TrendingUp, CheckCircle2, Building2
+  Sparkles, TrendingUp, CheckCircle2, Building2, Megaphone, Crown
 } from 'lucide-react';
 
 const HOW_STEPS = [
@@ -50,6 +51,21 @@ const HOW_STEPS = [
 ];
 
 export default function LandingPage() {
+  const [systemConfig, setSystemConfig] = useState(() => getSystemConfig());
+
+  useEffect(() => {
+    fetchSystemConfigFromServer().then(cfg => {
+      if (cfg) setSystemConfig(cfg);
+    });
+    const handleStorage = (e) => {
+      if (e.key === 'mrf_system_config') {
+        setSystemConfig(getSystemConfig());
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col selection:bg-blue-500 selection:text-white">
       
@@ -82,6 +98,23 @@ export default function LandingPage() {
 
       {/* Translucent Glassmorphic Navbar */}
       <Navbar />
+
+      {/* Broadcast Banner Live Notice from Super Admin */}
+      {systemConfig.announcement?.enabled && systemConfig.announcement?.message && (
+        <div className={`px-6 py-2.5 text-xs font-bold flex items-center justify-between border-b ${
+          systemConfig.announcement.type === 'alert'
+            ? 'bg-red-500 text-white border-red-600'
+            : systemConfig.announcement.type === 'warning'
+            ? 'bg-amber-500 text-slate-950 border-amber-600'
+            : 'bg-blue-600 text-white border-blue-700'
+        }`}>
+          <div className="max-w-6xl mx-auto w-full flex items-center gap-2">
+            <Megaphone size={15} className="shrink-0 animate-bounce" />
+            <span className="uppercase text-[10px] font-black tracking-wider px-1.5 py-0.5 bg-black/20 rounded">Campus Notice</span>
+            <span className="truncate">{systemConfig.announcement.message}</span>
+          </div>
+        </div>
+      )}
 
       {/* Hero Banner with Rich SaaS Design, Glassmorphism & Mesh Background */}
       <div className="relative bg-[#0F172A] text-white overflow-hidden py-16 md:py-24 border-b border-slate-800">
