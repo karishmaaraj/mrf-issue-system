@@ -11,7 +11,7 @@
  *  • Photo upload with preview
  *  • Instant Ticket ID (#001) confirmation modal/screen
  */
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from './Navbar.jsx';
 import { createTicket } from '../ticketsStore.js';
@@ -188,7 +188,7 @@ export default function UserForm() {
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
-  const dynamicCategories = React.useMemo(() => {
+  const dynamicCategories = useMemo(() => {
     return (systemConfig.categories || ISSUE_CATEGORIES).filter(c => c.active !== false);
   }, [systemConfig]);
 

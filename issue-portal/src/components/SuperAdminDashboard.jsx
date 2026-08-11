@@ -6,7 +6,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import SuperAdminLogin from './SuperAdminLogin.jsx';
 import CollegeLogo from './CollegeLogo.jsx';
 import {
-  getTickets, updateTicket, fetchTicketsFromServer, deleteTicketOnServer
+  getTickets, updateTicket, fetchTicketsFromServer
 } from '../ticketsStore.js';
 import {
   getSystemConfig, saveSystemConfig, fetchSystemConfigFromServer, DEFAULT_CONFIG
