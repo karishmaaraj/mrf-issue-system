@@ -24,6 +24,22 @@ import {
   CalendarDays, Shield, ArrowLeft, Droplets
 } from 'lucide-react';
 
+export const AIDED_UG_DEPARTMENTS = [
+  'B. A. English Language and Literature',
+  'B. A. Tamil Literature',
+  'B. A. History',
+  'B. A. Political Science',
+  'B. A. Economics',
+  'B. A. Philosophy',
+  'B. Com. – Commerce',
+  'B. Sc. Mathematics',
+  'B. Sc. Statistics',
+  'B. Sc. Physics',
+  'B. Sc. Chemistry',
+  'B. Sc. Plant Biology and Plant Biotechnology',
+  'B. Sc. Zoology',
+];
+
 const DEPARTMENTS = [
   'Computer Science', 'Electronics & Communication', 'Mechanical Engineering',
   'Civil Engineering', 'Electrical Engineering', 'Commerce', 'Management Studies',
@@ -396,7 +412,12 @@ export default function UserForm() {
 
                 <SelectField
                   label="Department" id="department" value={form.department}
-                  onChange={handleChange('department')} options={DEPARTMENTS}
+                  onChange={handleChange('department')}
+                  options={
+                    form.userType === 'Student' && form.studentStream === 'Aided' && form.studentLevel === 'UG'
+                      ? AIDED_UG_DEPARTMENTS
+                      : DEPARTMENTS
+                  }
                   placeholder="Select department" icon={Building2} error={errors.department}
                 />
               </div>
