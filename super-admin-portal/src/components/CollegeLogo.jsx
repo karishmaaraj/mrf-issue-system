@@ -1,5 +1,5 @@
 import React from 'react';
-import mccLogo from '/image.png';
+import mccLogo from '../assets/mcc.png';
 
 export default function CollegeLogo({ className = "h-16 w-auto" }) {
   return (
@@ -7,7 +7,11 @@ export default function CollegeLogo({ className = "h-16 w-auto" }) {
       src={mccLogo}
       alt="MCC Crest Logo"
       className={`${className} object-contain shrink-0`}
+      loading="eager"
+      onError={(e) => {
+        e.currentTarget.onerror = null;
+        e.currentTarget.src = '/mcc.png';
+      }}
     />
   );
 }
-
