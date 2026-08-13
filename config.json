@@ -1,0 +1,116 @@
+{
+  "workers": [
+    {
+      "id": "w1",
+      "name": "Rajan Kumar",
+      "phone": "+91 98401 12345",
+      "icon": "💡",
+      "email": "karishmaa24raj@gmail.com",
+      "role": "Electrical Lead",
+      "active": true
+    },
+    {
+      "id": "w2",
+      "name": "Suresh Menon",
+      "phone": "+91 98402 23456",
+      "icon": "🚰",
+      "email": "rajanubama23@gmail.com",
+      "role": "Plumbing Specialist",
+      "active": true
+    },
+    {
+      "id": "w3",
+      "name": "Priya Nair",
+      "phone": "+91 98403 34567",
+      "icon": "🖥️",
+      "email": "balap4496@gmail.com",
+      "role": "IT & Infrastructure",
+      "active": true
+    },
+    {
+      "id": "w4",
+      "name": "Anitha Pillai",
+      "phone": "+91 98404 45678",
+      "icon": "🪟",
+      "email": "enaveen508@gmail.com",
+      "role": "Civil Maintenance",
+      "active": true
+    },
+    {
+      "id": "w5",
+      "name": "Biju Thomas",
+      "phone": "+91 98405 56789",
+      "icon": "🧹",
+      "email": "lalitharasi496@gmail.com",
+      "role": "Sanitation Lead",
+      "active": true
+    }
+  ],
+  "categories": [
+    {
+      "label": "?? Electrical",
+      "active": true,
+      "id": "cat1",
+      "color": "amber",
+      "prefix": "Electrical issue: "
+    },
+    {
+      "label": "?? Plumbing",
+      "active": true,
+      "id": "cat2",
+      "color": "cyan",
+      "prefix": "Plumbing issue: "
+    },
+    {
+      "label": "??? IT / Network",
+      "active": true,
+      "id": "cat3",
+      "color": "indigo",
+      "prefix": "IT/Network issue: "
+    },
+    {
+      "label": "?? Civil / Infra",
+      "active": true,
+      "id": "cat4",
+      "color": "orange",
+      "prefix": "Civil/Infrastructure issue: "
+    },
+    {
+      "label": "?? Sanitation",
+      "active": true,
+      "id": "cat5",
+      "color": "emerald",
+      "prefix": "Sanitation issue: "
+    },
+    {
+      "label": "? Accessibility",
+      "active": true,
+      "id": "cat6",
+      "color": "sky",
+      "prefix": "Accessibility issue: "
+    },
+    {
+      "label": "?? Others",
+      "active": true,
+      "id": "cat7",
+      "color": "rose",
+      "prefix": "Other issue: "
+    }
+  ],
+  "announcement": {
+    "message": "? Campus Facilities Notice: Centralized 24/7 maintenance reporting is active across all blocks.",
+    "lastUpdated": "2026-08-13T11:49:09.7700819+05:30",
+    "type": "info",
+    "enabled": true
+  },
+  "slaTargetHours": 24,
+  "autoEmailAlerts": true,
+  "portalActive": true,
+  "submissionsEnabled": true,
+  "portalNotice": {
+    "message": "",
+    "lastUpdated": "2026-08-13T11:49:09.9828183+05:30",
+    "type": "info",
+    "enabled": false
+  }
+}

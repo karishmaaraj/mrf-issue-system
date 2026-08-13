@@ -22,7 +22,7 @@ import {
   ChevronDown, LayoutDashboard, X, AlertCircle, Hash,
   Clock, Wrench, Info, MapPin, GraduationCap, BadgeCheck,
   SendHorizonal, PhoneCall, HelpCircle, ChevronRight,
-  CalendarDays, Shield, ArrowLeft, Droplets, Megaphone
+  CalendarDays, Shield, ArrowLeft, Droplets, Megaphone, Lock
 } from 'lucide-react';
 
 export const AIDED_UG_DEPARTMENTS = [
@@ -185,7 +185,16 @@ export default function UserForm() {
       }
     };
     window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
+    // Poll every 3s so UserForm stays in real-time sync with Super Admin changes
+    const pollTimer = setInterval(() => {
+      fetchSystemConfigFromServer().then(cfg => {
+        if (cfg) setSystemConfig(cfg);
+      });
+    }, 3000);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      clearInterval(pollTimer);
+    };
   }, []);
 
   const dynamicCategories = useMemo(() => {
@@ -347,6 +356,47 @@ export default function UserForm() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // PORTAL CLOSED GATE (Super Admin: portalActive = false)
+  // ─────────────────────────────────────────────────────────────
+  if (systemConfig.portalActive === false) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex flex-col selection:bg-blue-500 selection:text-white">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="max-w-md w-full text-center space-y-6">
+            <div className="w-20 h-20 rounded-3xl bg-slate-100 border border-slate-200 flex items-center justify-center mx-auto">
+              <Lock size={36} className="text-slate-400" />
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">Portal Temporarily Closed</h1>
+              <p className="text-sm text-slate-500 font-medium leading-relaxed">
+                The MRF Issue Portal is currently offline for maintenance or scheduled downtime.<br />
+                Please check back shortly or contact the Facilities Office directly.
+              </p>
+            </div>
+            {systemConfig.portalNotice?.enabled && systemConfig.portalNotice?.message && (
+              <div className={`text-xs font-semibold px-4 py-3 rounded-2xl border text-left ${
+                systemConfig.portalNotice.type === 'alert' ? 'bg-red-50 text-red-800 border-red-200'
+                : systemConfig.portalNotice.type === 'warning' ? 'bg-amber-50 text-amber-800 border-amber-200'
+                : 'bg-blue-50 text-blue-800 border-blue-200'
+              }`}>
+                <Megaphone size={13} className="inline mr-1.5" />
+                {systemConfig.portalNotice.message}
+              </div>
+            )}
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold px-6 py-3 rounded-2xl text-sm transition"
+            >
+              <ArrowLeft size={15} /> Back to Home
+            </Link>
           </div>
         </div>
       </div>
@@ -705,17 +755,30 @@ export default function UserForm() {
               <span>Your submission will be logged under ticket sequence and assigned to the facilities supervisor for review.</span>
             </div>
 
+            {/* Submissions Disabled Warning (Super Admin: submissionsEnabled = false) */}
+            {systemConfig.submissionsEnabled === false && (
+              <div className="flex items-start gap-3 bg-amber-50 border border-amber-300 rounded-2xl px-4 py-3.5 text-xs text-amber-900 font-semibold">
+                <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-black block">Submissions Temporarily Disabled</span>
+                  <span className="font-medium text-amber-800">The portal is visible but new complaint submissions have been paused by the administrator. Please try again later.</span>
+                </div>
+              </div>
+            )}
+
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={submitting}
-              className="w-full bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black py-4 rounded-2xl shadow-xl shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-200 flex items-center justify-center gap-2.5 text-base hover:scale-[1.01] active:scale-98 cursor-pointer disabled:opacity-60"
+              disabled={submitting || systemConfig.submissionsEnabled === false}
+              className="w-full bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black py-4 rounded-2xl shadow-xl shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-200 flex items-center justify-center gap-2.5 text-base hover:scale-[1.01] active:scale-98 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {submitting ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   <span>Submitting Ticket...</span>
                 </>
+              ) : systemConfig.submissionsEnabled === false ? (
+                <><Lock size={17}/> Submissions Paused</>
               ) : (
                 <><SendHorizonal size={17}/> Submit Complaint</>
               )}

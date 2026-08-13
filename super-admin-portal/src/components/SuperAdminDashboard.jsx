@@ -16,7 +16,8 @@ import {
   Plus, Trash2, Edit2, CheckCircle2, AlertTriangle, RefreshCw,
   LogOut, Download, Search, Filter, Wrench, Building2, Bell,
   Flame, Clock, ChevronRight, Check, X, ShieldAlert, Sparkles,
-  ArrowUpRight, BarChart3, Database, Save, Lock
+  ArrowUpRight, BarChart3, Database, Save, Lock, Unlock,
+  Globe, ToggleLeft, ToggleRight, ExternalLink, Monitor, Eye
 } from 'lucide-react';
 
 export default function SuperAdminDashboard() {
@@ -269,18 +270,31 @@ export default function SuperAdminDashboard() {
 
         {/* Global Links & Switcher */}
         <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => setActiveTab('userportal')}
+            className={`text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 ${
+              activeTab === 'userportal'
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                : 'text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700'
+            }`}
+          >
+            <Monitor size={13} />
+            <span>User Portal</span>
+          </button>
+
           <a
-            href="/issue/"
+            href="http://localhost/issue/"
             target="_blank"
             rel="noreferrer"
-            className="text-xs font-bold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5"
+            className="text-xs font-bold text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-700 border border-slate-700/60 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5"
+            title="Open the live User Issue Portal"
           >
-            <span>User Portal</span>
-            <ArrowUpRight size={13} className="text-slate-400" />
+            <ExternalLink size={12} />
+            <span className="hidden sm:inline">Live Portal</span>
           </a>
 
           <a
-            href="/admin/"
+            href="http://localhost/admin/"
             target="_blank"
             rel="noreferrer"
             className="text-xs font-bold text-blue-300 hover:text-white bg-blue-950/80 hover:bg-blue-900 border border-blue-500/40 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5"
@@ -785,6 +799,275 @@ export default function SuperAdminDashboard() {
             </div>
           </div>
         )}
+
+        {/* ── TAB 6: USER PORTAL CONTROL ─────────────────────────── */}
+        {activeTab === 'userportal' && (
+          <div className="space-y-6 animate-fade-in">
+
+            {/* Header */}
+            <div className="bg-slate-900/80 p-5 rounded-3xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-black text-white flex items-center gap-2">
+                  <Monitor size={18} className="text-emerald-400" />
+                  <span>User Portal Control</span>
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Manage Issue Portal availability, notices, and configuration. Changes reflect immediately in the live User Portal.
+                </p>
+              </div>
+              <a
+                href="http://localhost/issue/"
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black px-4 py-2.5 rounded-2xl text-xs shadow-lg shadow-emerald-500/20 transition shrink-0"
+              >
+                <ExternalLink size={14} />
+                <span>Open Live User Portal</span>
+              </a>
+            </div>
+
+            {/* ─── Section 1: Portal Status ─────────────────────── */}
+            <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 space-y-5">
+              <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
+                <Globe size={15} className="text-emerald-400" />
+                <h3 className="text-sm font-black text-white">Portal Status & Availability</h3>
+                <span className="ml-auto text-[10px] font-bold text-slate-500 uppercase tracking-wider">Live — changes apply instantly</span>
+              </div>
+
+              {/* portalActive toggle */}
+              <div className="flex items-start justify-between gap-4 p-4 bg-slate-950/60 rounded-2xl border border-slate-800">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    {config.portalActive !== false
+                      ? <Unlock size={15} className="text-emerald-400" />
+                      : <Lock size={15} className="text-red-400" />
+                    }
+                    <span className="text-sm font-black text-white">Portal Active</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                      config.portalActive !== false
+                        ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/40'
+                        : 'bg-red-950 text-red-400 border border-red-500/40'
+                    }`}>
+                      {config.portalActive !== false ? 'Online' : 'Closed'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    When disabled, the Complaint Form shows a <strong className="text-slate-300">"Portal Temporarily Closed"</strong> screen to all users.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    const updated = { ...config, portalActive: config.portalActive === false ? true : false };
+                    setConfig(updated);
+                    saveSystemConfig(updated);
+                    showToastMsg(updated.portalActive ? 'Issue Portal is now ONLINE.' : 'Issue Portal is now CLOSED.');
+                  }}
+                  className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer ${
+                    config.portalActive !== false
+                      ? 'bg-emerald-950 hover:bg-red-950 text-emerald-400 hover:text-red-400 border border-emerald-500/40 hover:border-red-500/40'
+                      : 'bg-red-950 hover:bg-emerald-950 text-red-400 hover:text-emerald-400 border border-red-500/40 hover:border-emerald-500/40'
+                  }`}
+                >
+                  {config.portalActive !== false
+                    ? <><ToggleRight size={16} /> Disable Portal</>
+                    : <><ToggleLeft size={16} /> Enable Portal</>
+                  }
+                </button>
+              </div>
+
+              {/* submissionsEnabled toggle */}
+              <div className="flex items-start justify-between gap-4 p-4 bg-slate-950/60 rounded-2xl border border-slate-800">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    {config.submissionsEnabled !== false
+                      ? <CheckCircle2 size={15} className="text-blue-400" />
+                      : <AlertTriangle size={15} className="text-amber-400" />
+                    }
+                    <span className="text-sm font-black text-white">New Submissions</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                      config.submissionsEnabled !== false
+                        ? 'bg-blue-950 text-blue-400 border border-blue-500/40'
+                        : 'bg-amber-950 text-amber-400 border border-amber-500/40'
+                    }`}>
+                      {config.submissionsEnabled !== false ? 'Enabled' : 'Paused'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    When paused, the portal is still visible but the Submit button is disabled with a <strong className="text-slate-300">warning notice</strong>.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    const updated = { ...config, submissionsEnabled: config.submissionsEnabled === false ? true : false };
+                    setConfig(updated);
+                    saveSystemConfig(updated);
+                    showToastMsg(updated.submissionsEnabled ? 'Submissions re-enabled.' : 'Submissions paused.');
+                  }}
+                  className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer ${
+                    config.submissionsEnabled !== false
+                      ? 'bg-blue-950 hover:bg-amber-950 text-blue-400 hover:text-amber-400 border border-blue-500/40 hover:border-amber-500/40'
+                      : 'bg-amber-950 hover:bg-blue-950 text-amber-400 hover:text-blue-400 border border-amber-500/40 hover:border-blue-500/40'
+                  }`}
+                >
+                  {config.submissionsEnabled !== false
+                    ? <><ToggleRight size={16} /> Pause Submissions</>
+                    : <><ToggleLeft size={16} /> Enable Submissions</>
+                  }
+                </button>
+              </div>
+            </div>
+
+            {/* ─── Section 2: Portal Notice (Landing Page Banner) ─── */}
+            <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 space-y-5">
+              <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
+                <Bell size={15} className="text-indigo-400" />
+                <h3 className="text-sm font-black text-white">Portal Notice</h3>
+                <span className="text-[10px] text-slate-500 font-semibold ml-1">Shown on Landing Page</span>
+              </div>
+              <p className="text-xs text-slate-400">
+                This notice appears as a banner on the <strong className="text-slate-300">Landing Page</strong> of the Issue Portal. It is separate from the Broadcast Alert (which appears in the Complaint Form).
+              </p>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const fm = e.target;
+                  const updated = {
+                    ...config,
+                    portalNotice: {
+                      enabled: fm.noticeEnabled.checked,
+                      message: fm.noticeMessage.value.trim(),
+                      type: fm.noticeType.value,
+                      lastUpdated: new Date().toISOString(),
+                    },
+                  };
+                  setConfig(updated);
+                  saveSystemConfig(updated);
+                  showToastMsg('Portal Notice updated on Landing Page!');
+                }}
+                className="space-y-4"
+              >
+                <div className="flex items-center gap-3 bg-slate-950/60 p-4 rounded-2xl border border-slate-800">
+                  <input
+                    id="noticeEnabled"
+                    name="noticeEnabled"
+                    type="checkbox"
+                    defaultChecked={config.portalNotice?.enabled}
+                    key={`notice-enabled-${config.portalNotice?.lastUpdated}`}
+                    className="w-4 h-4 rounded text-indigo-500 focus:ring-indigo-500/20"
+                  />
+                  <label htmlFor="noticeEnabled" className="text-xs font-bold text-white cursor-pointer">
+                    Enable Portal Notice on Landing Page
+                  </label>
+                </div>
+
+                <div>
+                  <label className="text-slate-400 text-xs font-bold uppercase mb-1.5 block">Notice Severity</label>
+                  <select
+                    name="noticeType"
+                    defaultValue={config.portalNotice?.type || 'info'}
+                    key={`notice-type-${config.portalNotice?.lastUpdated}`}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 bg-slate-950 text-white text-xs focus:ring-2 focus:ring-indigo-500/20"
+                  >
+                    <option value="info">🔵 Information / General Notice</option>
+                    <option value="warning">🟡 Caution / Maintenance Warning</option>
+                    <option value="alert">🔴 Urgent Alert</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-slate-400 text-xs font-bold uppercase mb-1.5 block">Notice Message</label>
+                  <textarea
+                    name="noticeMessage"
+                    rows={2}
+                    defaultValue={config.portalNotice?.message || ''}
+                    key={`notice-msg-${config.portalNotice?.lastUpdated}`}
+                    placeholder="e.g. Portal will undergo scheduled maintenance on Saturday, 9 AM–12 PM."
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 bg-slate-950 text-white text-xs resize-none focus:ring-2 focus:ring-indigo-500/20"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black py-3 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 cursor-pointer transition"
+                >
+                  <Save size={14} /> Publish Portal Notice to Landing Page
+                </button>
+              </form>
+            </div>
+
+            {/* ─── Section 3: Live Previews ─────────────────────── */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+              {/* Issue Categories live preview */}
+              <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Layers size={14} className="text-blue-400" />
+                    <h3 className="text-sm font-black text-white">Issue Category Chips</h3>
+                  </div>
+                  <button
+                    onClick={() => setActiveTab('categories')}
+                    className="text-xs font-bold text-amber-400 hover:underline flex items-center gap-1"
+                  >
+                    Manage <ChevronRight size={12} />
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-500">These chips appear as quick-select buttons in the User Complaint Form.</p>
+                <div className="flex flex-wrap gap-2">
+                  {(config.categories || []).map(cat => (
+                    <span
+                      key={cat.id}
+                      className={`text-[11px] px-3 py-1.5 rounded-xl font-bold border ${
+                        cat.active !== false
+                          ? 'bg-slate-800 text-slate-200 border-slate-700'
+                          : 'bg-slate-900/40 text-slate-600 border-slate-800/50 line-through'
+                      }`}
+                    >
+                      {cat.label}
+                      {cat.active === false && <span className="ml-1 text-[9px] text-red-400 font-black not-italic"> OFF</span>}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Announcement live preview */}
+              <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Megaphone size={14} className="text-amber-400" />
+                    <h3 className="text-sm font-black text-white">Broadcast Alert Banner</h3>
+                  </div>
+                  <button
+                    onClick={() => setActiveTab('announcement')}
+                    className="text-xs font-bold text-amber-400 hover:underline flex items-center gap-1"
+                  >
+                    Edit <ChevronRight size={12} />
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-500">Appears at the top of the Complaint Form when enabled.</p>
+                {config.announcement?.enabled && config.announcement?.message ? (
+                  <div className={`text-xs px-3.5 py-2.5 rounded-xl font-semibold border ${
+                    config.announcement.type === 'alert'
+                      ? 'bg-red-950/80 text-red-300 border-red-500/40'
+                      : config.announcement.type === 'warning'
+                      ? 'bg-amber-950/80 text-amber-300 border-amber-500/40'
+                      : 'bg-blue-950/80 text-blue-300 border-blue-500/40'
+                  }`}>
+                    <Megaphone size={12} className="inline mr-1.5" />
+                    {config.announcement.message}
+                  </div>
+                ) : (
+                  <div className="text-xs text-slate-600 italic px-3 py-2 bg-slate-950/40 rounded-xl border border-slate-800">
+                    No active broadcast alert.
+                  </div>
+                )}
+              </div>
+            </div>
+
+          </div>
+        )}
+
       </div>
 
       {/* ── MODAL: Add Worker ─────────────────────────────────────── */}

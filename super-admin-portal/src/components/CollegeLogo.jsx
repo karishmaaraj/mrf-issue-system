@@ -1,5 +1,5 @@
 import React from 'react';
-import mccLogo from '../assets/mcc.png';
+import mccLogo from '../assets/image.png';
 
 export default function CollegeLogo({ className = "h-16 w-auto" }) {
   return (

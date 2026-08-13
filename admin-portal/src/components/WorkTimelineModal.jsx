@@ -32,6 +32,8 @@ function getEventIcon(type) {
   switch (type) {
     case 'CREATED':
       return { icon: Tag, color: 'bg-blue-600 text-white shadow-blue-500/30' };
+    case 'ADMIN_NOTIFIED':
+      return { icon: Mail, color: 'bg-amber-600 text-white shadow-amber-500/30' };
     case 'ASSIGNED':
       return { icon: Wrench, color: 'bg-indigo-600 text-white shadow-indigo-500/30' };
     case 'DISPATCHED':

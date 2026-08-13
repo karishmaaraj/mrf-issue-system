@@ -4,49 +4,70 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from './Navbar.jsx';
+import campusBg from '../assets/campus_bg.png';
+import campusIllustration from '../assets/campus_illustration.png';
 import { getSystemConfig, fetchSystemConfigFromServer } from '../systemConfigStore.js';
 import {
   ClipboardList, PlusCircle, Shield, Clock, BadgeCheck, Mail,
   Wrench, AlertCircle, PhoneCall, ChevronRight,
-  Sparkles, TrendingUp, CheckCircle2, Building2, Megaphone, Crown
+  Sparkles, TrendingUp, CheckCircle2, Building2, Megaphone, Crown,
+  Search, Users, BarChart2, Zap, Rocket, Plus, Check, Send, ArrowRight
 } from 'lucide-react';
 
 const HOW_STEPS = [
   {
     stepNum: '01',
     badge: 'STEP 01',
-    tag: '⚡ Quick Submission',
-    icon: ClipboardList,
-    gradient: 'from-blue-600 to-indigo-600',
-    topBar: 'bg-gradient-to-r from-blue-500 to-indigo-600',
-    iconBg: 'bg-blue-50 text-blue-600 border border-blue-200/80 shadow-blue-500/10',
-    hoverBorder: 'hover:border-blue-300 hover:shadow-blue-500/10',
+    badgeBg: 'bg-blue-600',
+    topBar: 'bg-blue-600',
+    topWash: 'bg-gradient-to-b from-blue-50/60 to-transparent',
+    hoverBorder: 'hover:border-blue-300 hover:shadow-blue-500/15',
     title: 'File Complaint Form',
-    desc: 'Select department, block, category, or water leakage sub-types with photo evidence.',
+    desc: 'Select department, block, category, or write a detailed issue description with photos or location.',
+    iconType: 'clipboard',
+    tagIcon: Zap,
+    tagTitle: 'Quick Submission',
+    tagSubtitle: 'Easy • Simple • Fast',
+    tagBg: 'bg-[#FFFBEB] border-amber-200/80',
+    tagIconColor: 'text-amber-500',
+    arrowBg: 'bg-blue-100 text-blue-600 group-hover:bg-blue-600 group-hover:text-white',
+    accentColor: 'blue',
   },
   {
     stepNum: '02',
     badge: 'STEP 02',
-    tag: '📌 Live Tracker',
-    icon: BadgeCheck,
-    gradient: 'from-indigo-600 to-purple-600',
-    topBar: 'bg-gradient-to-r from-indigo-500 to-purple-600',
-    iconBg: 'bg-indigo-50 text-indigo-600 border border-indigo-200/80 shadow-indigo-500/10',
-    hoverBorder: 'hover:border-indigo-300 hover:shadow-indigo-500/10',
+    badgeBg: 'bg-indigo-600',
+    topBar: 'bg-gradient-to-r from-indigo-500 via-purple-600 to-purple-700',
+    topWash: 'bg-gradient-to-b from-purple-50/60 to-transparent',
+    hoverBorder: 'hover:border-purple-300 hover:shadow-purple-500/15',
     title: 'Track via Ticket ID',
     desc: 'Receive an auto-generated ticket ID (#003) to monitor real-time multi-stage status.',
+    iconType: 'ticket',
+    tagIcon: Rocket,
+    tagTitle: 'Live Tracker',
+    tagSubtitle: 'Real-time updates at your fingertips.',
+    tagBg: 'bg-[#FAF5FF] border-purple-200/80',
+    tagIconColor: 'text-purple-500',
+    arrowBg: 'bg-purple-100 text-purple-600 group-hover:bg-purple-600 group-hover:text-white',
+    accentColor: 'purple',
   },
   {
     stepNum: '03',
     badge: 'STEP 03',
-    tag: '✉️ Email Dispatched',
-    icon: Wrench,
-    gradient: 'from-emerald-500 to-teal-600',
-    topBar: 'bg-gradient-to-r from-emerald-500 to-teal-600',
-    iconBg: 'bg-emerald-50 text-emerald-600 border border-emerald-200/80 shadow-emerald-500/10',
-    hoverBorder: 'hover:border-emerald-300 hover:shadow-emerald-500/10',
+    badgeBg: 'bg-emerald-600',
+    topBar: 'bg-gradient-to-r from-emerald-500 to-teal-500',
+    topWash: 'bg-gradient-to-b from-emerald-50/60 to-transparent',
+    hoverBorder: 'hover:border-emerald-300 hover:shadow-emerald-500/15',
     title: 'Rapid Resolution',
     desc: 'Facility workers resolve the issue and dispatch automated email notifications to submitters.',
+    iconType: 'wrench',
+    tagIcon: Mail,
+    tagTitle: 'Email Dispatched',
+    tagSubtitle: 'Stay informed every step of the way.',
+    tagBg: 'bg-[#F0FDF4] border-emerald-200/80',
+    tagIconColor: 'text-emerald-500',
+    arrowBg: 'bg-emerald-100 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white',
+    accentColor: 'green',
   },
 ];
 
@@ -63,12 +84,21 @@ export default function LandingPage() {
       }
     };
     window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
+    // Poll every 4s so LandingPage stays in sync with Super Admin changes
+    const pollTimer = setInterval(() => {
+      fetchSystemConfigFromServer().then(cfg => {
+        if (cfg) setSystemConfig(cfg);
+      });
+    }, 4000);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      clearInterval(pollTimer);
+    };
   }, []);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col selection:bg-blue-500 selection:text-white">
-      
+
       {/* Hero Section Custom Animations */}
       <style>{`
         @keyframes float-card-1 {
@@ -101,13 +131,12 @@ export default function LandingPage() {
 
       {/* Broadcast Banner Live Notice from Super Admin */}
       {systemConfig.announcement?.enabled && systemConfig.announcement?.message && (
-        <div className={`px-6 py-2.5 text-xs font-bold flex items-center justify-between border-b ${
-          systemConfig.announcement.type === 'alert'
-            ? 'bg-red-500 text-white border-red-600'
-            : systemConfig.announcement.type === 'warning'
+        <div className={`px-6 py-2.5 text-xs font-bold flex items-center justify-between border-b ${systemConfig.announcement.type === 'alert'
+          ? 'bg-red-500 text-white border-red-600'
+          : systemConfig.announcement.type === 'warning'
             ? 'bg-amber-500 text-slate-950 border-amber-600'
             : 'bg-blue-600 text-white border-blue-700'
-        }`}>
+          }`}>
           <div className="max-w-6xl mx-auto w-full flex items-center gap-2">
             <Megaphone size={15} className="shrink-0 animate-bounce" />
             <span className="uppercase text-[10px] font-black tracking-wider px-1.5 py-0.5 bg-black/20 rounded">Campus Notice</span>
@@ -116,83 +145,145 @@ export default function LandingPage() {
         </div>
       )}
 
-      {/* Hero Banner with Rich SaaS Design, Glassmorphism & Mesh Background */}
-      <div className="relative bg-[#0F172A] text-white overflow-hidden py-16 md:py-24 border-b border-slate-800">
-        
-        {/* Dynamic Gradient Mesh Orbs with Continuous Floating Glow */}
-        <div className="absolute -top-24 -left-20 w-96 h-96 bg-blue-600/35 rounded-full blur-[110px] pointer-events-none animate-orb-mesh" />
-        <div className="absolute top-1/2 -right-20 w-[30rem] h-[30rem] bg-indigo-600/30 rounded-full blur-[130px] pointer-events-none animate-orb-mesh" style={{ animationDelay: '-4s' }} />
-        <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-emerald-500/20 rounded-full blur-[100px] pointer-events-none animate-orb-mesh" style={{ animationDelay: '-2s' }} />
+      {/* Portal Notice Banner (Super Admin: portalNotice) — shown on Landing Page */}
+      {systemConfig.portalNotice?.enabled && systemConfig.portalNotice?.message && (
+        <div className={`px-6 py-2.5 text-xs font-bold flex items-center border-b ${
+          systemConfig.portalNotice.type === 'alert'
+            ? 'bg-red-50 text-red-800 border-red-200'
+            : systemConfig.portalNotice.type === 'warning'
+            ? 'bg-amber-50 text-amber-800 border-amber-200'
+            : 'bg-indigo-50 text-indigo-800 border-indigo-200'
+        }`}>
+          <div className="max-w-6xl mx-auto w-full flex items-center gap-2">
+            <Megaphone size={14} className="shrink-0" />
+            <span className="uppercase text-[10px] font-black tracking-wider px-1.5 py-0.5 bg-black/10 rounded">Portal Notice</span>
+            <span>{systemConfig.portalNotice.message}</span>
+          </div>
+        </div>
+      )}
 
-        {/* Subtle Background Grid Lines */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b15_1px,transparent_1px),linear-gradient(to_bottom,#1e293b15_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
+      {/* Hero Banner matched to reference image */}
+      <div className="relative overflow-hidden py-16 md:py-24 border-b border-slate-800/60 min-h-[580px] flex items-center bg-slate-950">
 
-        <div className="max-w-6xl mx-auto px-6 relative z-10 flex flex-col md:flex-row items-center gap-12">
-          
-          {/* Left Column: Headline & Action Badges */}
-          <div className="flex-1 text-center md:text-left space-y-6">
-            
+        {/* Full Natural Campus Photograph */}
+        <img
+          src={campusBg}
+          alt="MCC MRF Innovation Park"
+          className="absolute inset-0 w-full h-full object-cover object-center"
+        />
+
+        {/* Left Horizontal Dark Gradient Vignette for Text Contrast */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/75 via-40% to-transparent pointer-events-none" />
+        <div className="absolute bottom-0 inset-x-0 h-16 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
+
+        <div className="max-w-6xl mx-auto px-6 relative z-10 w-full flex flex-col md:flex-row items-center justify-between gap-10">
+
+          {/* Left Column: Typography, Badges & Action Buttons */}
+          <div className="flex-1 space-y-6 text-left max-w-xl">
+
             {/* Pill Badge */}
-            <div className="inline-flex items-center gap-2 text-xs font-extrabold text-blue-300 bg-blue-950/80 backdrop-blur-md border border-blue-500/40 px-4 py-1.5 rounded-full shadow-lg shadow-blue-500/10 hover:border-blue-400 transition-all duration-300">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500"></span>
+            <div className="inline-flex items-center gap-2 text-xs font-bold text-slate-800 bg-white px-3.5 py-1.5 rounded-full shadow-lg border border-slate-100">
+              <div className="flex items-center justify-center w-4 h-4 rounded-full bg-red-600 text-white">
+                <Shield size={10} className="fill-white" />
+              </div>
+              <span className="tracking-widest uppercase text-[11px] font-bold text-slate-700">
+                OFFICIAL <span className="text-slate-950 font-black">MCC</span> PORTAL
               </span>
-              <Shield size={14} className="text-blue-400" />
-              <span>Official MCC Campus Maintenance Portal</span>
             </div>
 
-            {/* Glowing Main Heading */}
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-black leading-[1.15] tracking-tight text-white">
-              Campus Maintenance <br />
-              <span className="bg-gradient-to-r from-sky-400 via-blue-300 to-emerald-400 bg-clip-text text-transparent drop-shadow-sm font-extrabold inline-block pb-1">
-                & Issue Resolution
-              </span>
-            </h1>
+            {/* Main Heading & Subtitle */}
+            <div className="space-y-2">
+              <h1 className="text-5xl sm:text-6xl md:text-7xl font-black leading-[1.05] tracking-tight text-white drop-shadow-md">
+                Campus <br />
+                <span className="text-[#DC2626] font-black inline-block">
+                  Maintenance
+                </span>
+              </h1>
+              <p className="text-xl sm:text-2xl font-bold text-white tracking-wide drop-shadow-sm pt-1">
+                Report<span className="text-red-500">.</span> Track<span className="text-red-500">.</span> Resolve<span className="text-red-500">.</span>
+              </p>
+            </div>
 
-            <p className="text-slate-300 text-sm md:text-base max-w-xl leading-relaxed font-medium">
-              Report maintenance issues for classrooms, labs, hostels, water coolers, and campus infrastructure.
-              Track resolution progress in real-time with automatic email alerts to admins and workers.
-            </p>
+            {/* Description Text */}
+            <div className="space-y-1 text-slate-300 text-sm md:text-base leading-relaxed font-normal">
+              <p>
+                Report maintenance issues across classrooms, labs, hostels, water coolers, and campus infrastructure<span className="text-red-500">.</span>
+              </p>
+              <p>
+                Track resolution progress in real-time with automatic email alerts to admins and workers<span className="text-red-500">.</span>
+              </p>
+            </div>
 
-            {/* Feature Badges */}
-            <div className="flex flex-wrap gap-4 pt-4 justify-center md:justify-start">
-              {[
-                { icon: Clock, text: '24h Target Response' },
-                { icon: BadgeCheck, text: 'Auto Ticket ID (#003)' },
-                { icon: Mail, text: 'Email Resolution Alert' },
-              ].map(({ icon: Icon, text }) => (
-                <div
-                  key={text}
-                  className="flex items-center gap-2 text-xs text-slate-300 font-semibold bg-slate-800/80 backdrop-blur-md border border-slate-700/80 px-4 py-2 rounded-xl shadow-md hover:border-blue-500/50 hover:text-white hover:scale-105 transition-all duration-300 group cursor-default"
-                >
-                  <Icon size={14} className="text-blue-400 group-hover:rotate-12 transition-transform" />
-                  <span>{text}</span>
-                </div>
-              ))}
+            {/* Call To Action Buttons */}
+            <div className="flex flex-wrap items-center gap-4 pt-2">
+              <Link
+                to="/complaint"
+                className="inline-flex items-center gap-2.5 bg-[#B91C1C] hover:bg-[#991B1B] text-white font-bold text-sm px-6 py-3.5 rounded-xl shadow-lg shadow-red-950/40 hover:shadow-red-900/60 hover:scale-105 active:scale-95 transition-all duration-200"
+              >
+                <Wrench size={16} className="text-white" />
+                <span>Report an Issue</span>
+              </Link>
+
+              <a
+                href="#workflow-section"
+                className="inline-flex items-center gap-2.5 bg-black/40 hover:bg-black/60 text-white font-bold text-sm px-6 py-3.5 rounded-xl border border-white/25 backdrop-blur-md hover:border-white/50 hover:scale-105 active:scale-95 transition-all duration-200"
+              >
+                <Search size={16} className="text-slate-300" />
+                <span>Track My Issue</span>
+              </a>
             </div>
           </div>
 
-          {/* Right Column: Animated Floating Modern Glassmorphism KPI Dashboard Cards */}
-          <div className="grid grid-cols-2 gap-4 shrink-0 w-full md:w-auto">
+          {/* Right Column: 4 Frosted Glass KPI Cards in 2x2 Grid */}
+          <div className="grid grid-cols-2 gap-4 shrink-0 w-full md:w-[380px]">
             {[
-              { value: '100+', label: 'Issues Solved', icon: CheckCircle2, color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/25', anim: 'animate-float-1' },
-              { value: '24h', label: 'Response SLA', icon: Clock, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/25', anim: 'animate-float-2' },
-              { value: '14+', label: 'Departments', icon: Building2, color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/25', anim: 'animate-float-3' },
-              { value: '100%', label: 'Tracked & Logged', icon: TrendingUp, color: 'text-indigo-400', bg: 'bg-indigo-500/10 border-indigo-500/25', anim: 'animate-float-4' },
-            ].map(({ value, label, icon: Icon, color, bg, anim }) => (
+              {
+                value: '100+',
+                label: 'Issues Resolved',
+                desc: 'Successfully resolved maintenance requests',
+                icon: CheckCircle2,
+                iconColor: 'text-emerald-400',
+                labelColor: 'text-emerald-400',
+                borderHover: 'hover:border-emerald-500/50',
+              },
+              {
+                value: '24h',
+                label: 'Response SLA',
+                desc: 'Average target response time',
+                icon: Clock,
+                iconColor: 'text-amber-400',
+                labelColor: 'text-amber-400',
+                borderHover: 'hover:border-amber-500/50',
+              },
+              {
+                value: '14+',
+                label: 'Departments',
+                desc: 'Working together for a better campus',
+                icon: Users,
+                iconColor: 'text-sky-400',
+                labelColor: 'text-sky-400',
+                borderHover: 'hover:border-sky-500/50',
+              },
+              {
+                value: '100%',
+                label: 'Tracked & Logged',
+                desc: 'Every request is tracked transparently',
+                icon: BarChart2,
+                iconColor: 'text-purple-400',
+                labelColor: 'text-purple-400',
+                borderHover: 'hover:border-purple-500/50',
+              },
+            ].map(({ value, label, desc, icon: Icon, iconColor, labelColor, borderHover }) => (
               <div
                 key={label}
-                className={`${anim} backdrop-blur-2xl bg-slate-800/50 border ${bg} rounded-3xl p-6 min-w-[145px] text-center hover:scale-110 hover:bg-slate-800/80 hover:border-slate-600 transition-all duration-300 shadow-2xl group relative overflow-hidden`}
+                className={`bg-black/40 backdrop-blur-md border border-white/20 rounded-2xl p-5 text-center shadow-xl hover:bg-black/50 ${borderHover} hover:scale-[1.03] transition-all duration-300 flex flex-col items-center justify-center`}
               >
-                {/* Glow Background Pulse */}
-                <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-
-                <div className="flex justify-center mb-2.5 relative">
-                  <Icon size={24} className={`${color} group-hover:scale-125 transition-transform duration-300`} />
+                <div className="mb-2">
+                  <Icon size={24} className={iconColor} />
                 </div>
-                <p className="text-3xl md:text-4xl font-black text-white tracking-tight group-hover:text-blue-200 transition-colors">{value}</p>
-                <p className="text-[11px] font-extrabold text-slate-400 mt-1 uppercase tracking-wider">{label}</p>
+                <p className="text-3xl sm:text-4xl font-black text-white tracking-tight">{value}</p>
+                <p className={`text-xs font-bold ${labelColor} mt-1`}>{label}</p>
+                <p className="text-[10px] text-slate-300 font-medium mt-1 leading-tight">{desc}</p>
               </div>
             ))}
           </div>
@@ -200,102 +291,200 @@ export default function LandingPage() {
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <div className="max-w-6xl mx-auto px-6 py-16 space-y-16 flex-1 w-full">
-        
-        {/* Section 1: Workflow Overview Cards */}
-        <section className="space-y-10">
-          <div className="text-center max-w-2xl mx-auto space-y-2">
-            <div className="inline-flex items-center gap-2 text-xs font-extrabold text-blue-600 bg-blue-50 border border-blue-200/80 px-4 py-1.5 rounded-full shadow-sm">
-              <Sparkles size={14} className="text-blue-500" />
-              <span>TRANSPARENT CAMPUS WORKFLOW</span>
+      {/* Section 1: Workflow Overview Cards (Proportionally Scaled Down Compact Version) */}
+      <section id="workflow-section" className="w-full bg-[#F8FAFC] py-12 sm:py-16 relative overflow-hidden scroll-mt-10">
+
+        {/* Background Atmospheric Layers & Shapes */}
+        {/* 1. Visible Top-Left Dot Matrix (6 rows x 4 cols) */}
+        <div className="absolute top-8 left-6 sm:left-10 grid grid-cols-4 gap-3 pointer-events-none -z-10">
+          {Array.from({ length: 24 }).map((_, i) => (
+            <span key={i} className="w-1.5 h-1.5 rounded-full bg-[#BFDBFE]" />
+          ))}
+        </div>
+
+        {/* 2. Far-Left Smooth Sky-Blue Cloud Wave */}
+        <div className="absolute top-8 -left-24 w-80 h-[400px] bg-[#E0EEFE] rounded-full blur-2xl opacity-90 pointer-events-none -z-10" />
+
+        {/* 3. Far-Right Smooth Lavender/Sky Cloud Wave */}
+        <div className="absolute top-6 -right-24 w-80 h-[400px] bg-[#E8EEFF] rounded-full blur-2xl opacity-90 pointer-events-none -z-10" />
+
+        {/* Center Content Container */}
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 relative z-10 space-y-8 sm:space-y-10">
+
+          {/* Section Header */}
+          <div className="text-center max-w-xl mx-auto space-y-2 relative z-10">
+            <div className="inline-flex items-center gap-1.5 text-[10px] font-bold text-indigo-600 bg-indigo-50/90 border border-indigo-200/80 px-3 py-1 rounded-full shadow-xs">
+              <Sparkles size={11} className="text-indigo-500" />
+              <span className="tracking-wider uppercase font-extrabold">TRANSPARENT CAMPUS WORKFLOW</span>
             </div>
-            <h3 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">How Complaints Get Solved</h3>
-            <p className="text-xs sm:text-sm text-slate-500 font-medium max-w-lg mx-auto">Clear 3-stage process from ticket submission to full resolution.</p>
+
+            <h2 className="text-2xl sm:text-3xl md:text-[32px] font-black text-slate-900 tracking-tight leading-tight">
+              How Complaints <span className="text-[#DC2626]">Get Solved</span>
+            </h2>
+
+            <p className="text-xs sm:text-sm text-slate-500 font-medium max-w-md mx-auto">
+              Clear 3-stage process from ticket submission to full resolution.
+            </p>
+
+            {/* Slider Dot Indicator */}
+            <div className="flex items-center justify-center gap-1.5 pt-0.5">
+              <span className="w-6 h-0.5 bg-slate-300 rounded-full" />
+              <span className="w-2 h-2 bg-[#DC2626] rounded-full shadow-xs" />
+              <span className="w-6 h-0.5 bg-slate-300 rounded-full" />
+            </div>
           </div>
 
-          <div className="relative space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
-              {HOW_STEPS.map((step, idx) => {
-                const Icon = step.icon;
-                return (
+          {/* 3 Step Workflow Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 lg:gap-6 relative z-10 pt-1 pb-1">
+            {HOW_STEPS.map((step, idx) => {
+              const TagIcon = step.tagIcon;
+              return (
+                <div key={step.title} className="relative flex flex-col">
+                  {/* The Card */}
                   <div
-                    key={step.title}
                     className={`
                       relative overflow-hidden bg-white
-                      rounded-tl-[48px] rounded-br-[48px] rounded-tr-2xl rounded-bl-2xl
-                      border border-slate-200/90 shadow-[0_10px_35px_-8px_rgba(0,0,0,0.06)]
-                      hover:shadow-[0_28px_60px_-15px_rgba(37,99,235,0.18)]
-                      hover:-translate-y-3.5 hover:scale-[1.02]
-                      transition-all duration-300 flex flex-col justify-between group
+                      rounded-[26px] border border-slate-200/80 shadow-[0_12px_36px_-8px_rgba(0,0,0,0.06)]
+                      hover:shadow-[0_20px_48px_-12px_rgba(37,99,235,0.12)] ${step.hoverBorder}
+                      hover:-translate-y-2 transition-all duration-300
+                      flex flex-col justify-between group p-5 sm:p-5.5 flex-1
                     `}
                   >
-                    {/* Interactive reflective light shine sweep */}
-                    <div className="card-shine-effect" />
+                    {/* Top Curved Accent Cap */}
+                    <div className={`absolute top-0 inset-x-0 h-1.5 rounded-t-[26px] ${step.topBar}`} />
 
-                    {/* Top Asymmetrical Curved Gradient Canopy */}
-                    <div className={`h-3.5 w-full bg-gradient-to-r ${step.gradient} shadow-sm group-hover:h-5 transition-all duration-300`} />
+                    {/* Top Subtle Gradient Wash */}
+                    <div className={`absolute top-1.5 inset-x-0 h-24 ${step.topWash} pointer-events-none`} />
 
-                    {/* Background Soft Colored Ambient Flare */}
-                    <div className="absolute -top-12 -left-12 w-40 h-40 bg-gradient-to-br from-blue-100/50 to-indigo-100/20 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-
-                    <div className="p-8 space-y-6 flex-1 relative z-10">
-                      {/* Top Header: Floating Step Badge & Giant Watermark */}
+                    {/* Card Content Top */}
+                    <div className="pt-1 relative z-10">
+                      {/* Header: Step Pill & Circular 3D Icon with Floating Specks */}
                       <div className="flex items-center justify-between">
-                        <span className={`inline-flex items-center gap-2 text-xs font-black px-4 py-1.5 rounded-full text-white bg-gradient-to-r ${step.gradient} shadow-md tracking-wider uppercase transform group-hover:scale-105 transition-transform`}>
-                          <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+                        <span className={`inline-flex items-center text-[10px] font-extrabold px-3 py-1 rounded-full text-white ${step.badgeBg} shadow-xs tracking-wider uppercase`}>
                           {step.badge}
                         </span>
 
-                        <span className="text-5xl font-black text-slate-100/90 group-hover:text-slate-200 group-hover:scale-115 transition-all duration-300 select-none font-mono tracking-tighter">
-                          {step.stepNum}
-                        </span>
+                        {/* 3D Styled Step Icon Badge with Floating Specks */}
+                        {step.iconType === 'clipboard' && (
+                          <div className="relative">
+                            <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200/80 flex items-center justify-center relative shadow-xs group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
+                              <ClipboardList size={24} className="text-blue-600" />
+                              <span className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-xs border-2 border-white">
+                                <Plus size={11} strokeWidth={3} />
+                              </span>
+                            </div>
+                            <span className="absolute -top-1 -left-1 w-1 h-1 rounded-full bg-blue-400 opacity-70" />
+                            <span className="absolute -bottom-1 -left-1.5 w-1 h-1 rounded-full bg-blue-300 opacity-60" />
+                          </div>
+                        )}
+
+                        {step.iconType === 'ticket' && (
+                          <div className="relative">
+                            <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200/80 flex items-center justify-center relative shadow-xs group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-300">
+                              <div className="px-2 py-0.5 rounded-md bg-purple-100 border-2 border-purple-400 text-purple-700 shadow-2xs flex items-center justify-center">
+                                <span className="text-[11px] font-black tracking-tight font-mono">#003</span>
+                              </div>
+                            </div>
+                            <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-purple-400 animate-ping opacity-75" />
+                            <span className="absolute -bottom-0.5 -left-1 w-1 h-1 rounded-full bg-purple-500 opacity-80" />
+                            <span className="absolute top-1/2 -right-1.5 w-1 h-1 rounded-full bg-purple-400 opacity-70" />
+                          </div>
+                        )}
+
+                        {step.iconType === 'wrench' && (
+                          <div className="relative">
+                            <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-emerald-50 to-emerald-100 border border-emerald-200/80 flex items-center justify-center relative shadow-xs group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
+                              <Wrench size={24} className="text-emerald-600" />
+                              <span className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-xs border-2 border-white">
+                                <Check size={11} strokeWidth={3} />
+                              </span>
+                            </div>
+                            <span className="absolute -top-1 -left-1 w-1 h-1 rounded-full bg-emerald-400 opacity-70" />
+                            <span className="absolute bottom-1 -left-1.5 w-1 h-1 rounded-full bg-emerald-300 opacity-60" />
+                          </div>
+                        )}
                       </div>
 
-                      {/* Orbital Floating Icon Sphere with Concentric Ring */}
-                      <div className="flex items-center gap-4">
-                        <div className={`w-18 h-18 rounded-[26px] ${step.iconBg} flex items-center justify-center shadow-xl ring-8 ring-slate-50/80 group-hover:ring-blue-100/80 group-hover:scale-115 group-hover:rotate-6 transition-all duration-300`}>
-                          <Icon size={30} className="transform transition-transform group-hover:scale-110" />
-                        </div>
-                      </div>
-
-                      {/* Step Title & Description with Tinted Underline Accent */}
-                      <div className="space-y-2.5">
-                        <h4 className="font-black text-slate-900 text-xl tracking-tight group-hover:text-blue-600 transition-colors">
+                      {/* Step Title & Description */}
+                      <div className="mt-4 space-y-1.5 text-left">
+                        <h3 className="font-black text-slate-900 text-base sm:text-lg tracking-tight leading-snug group-hover:text-slate-950 transition-colors">
                           {step.title}
-                        </h4>
-                        <p className="text-xs sm:text-sm text-slate-500 leading-relaxed font-normal">
+                        </h3>
+                        <p className="text-xs sm:text-[13px] text-slate-500 leading-relaxed font-normal min-h-[44px]">
                           {step.desc}
                         </p>
                       </div>
                     </div>
 
-                    {/* Sculpted Bottom Pill Bar */}
-                    <div className="px-8 pb-8 pt-3 border-t border-slate-100 bg-slate-50/70 flex items-center justify-between relative z-10">
-                      <span className="text-xs font-black text-slate-700 bg-white border border-slate-200/90 px-4 py-1.5 rounded-xl shadow-2xs group-hover:border-blue-300 group-hover:text-blue-600 transition-all">
-                        {step.tag}
-                      </span>
-                      <div className="w-9 h-9 rounded-2xl bg-white border border-slate-200/90 flex items-center justify-center text-slate-400 group-hover:text-white group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-indigo-600 group-hover:border-blue-600 group-hover:scale-110 transition-all duration-300 shadow-2xs">
-                        <ChevronRight size={18} className="group-hover:translate-x-0.5 transition-transform" />
+                    {/* Bottom Highlight Action Box */}
+                    <Link
+                      to="/complaint"
+                      className={`w-full ${step.tagBg} border rounded-xl p-2.5 sm:p-3 flex items-center justify-between transition-all duration-300 hover:scale-[1.02] shadow-2xs group/tag cursor-pointer mt-4 relative z-10`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className={`p-1.5 rounded-lg bg-white shadow-2xs ${step.tagIconColor}`}>
+                          <TagIcon size={15} />
+                        </div>
+                        <div className="text-left">
+                          <p className="text-xs sm:text-[13px] font-black text-slate-900 leading-snug">
+                            {step.tagTitle}
+                          </p>
+                          <p className="text-[10px] text-slate-500 font-medium">
+                            {step.tagSubtitle}
+                          </p>
+                        </div>
                       </div>
-                    </div>
+
+                      <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full ${step.arrowBg} flex items-center justify-center transition-all duration-300 shadow-2xs shrink-0`}>
+                        <ArrowRight size={14} className="group-hover/tag:translate-x-0.5 transition-transform" />
+                      </div>
+                    </Link>
                   </div>
-                );
-              })}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Bottom Area: Left Signature in Circle area, Center CTA, Right Building Sketch in Box area */}
+          <div className="relative pt-4 pb-1 min-h-[110px] flex items-center justify-center">
+
+            {/* Left: Signature Watermark (in the circle area below Card 1) */}
+            <div className="hidden lg:flex flex-col items-start absolute left-0 sm:left-2 bottom-1 select-none pointer-events-none z-10 opacity-95">
+              <p className="font-serif italic text-slate-700 text-xl font-black leading-tight tracking-wide" style={{ fontFamily: "'Caveat', 'Segoe Script', cursive, serif" }}>
+                Together<br />
+                <span className="text-base font-extrabold text-slate-600">for a better campus</span>
+              </p>
+              <div className="w-28 h-1 bg-[#DC2626] rounded-full -rotate-2 mt-1 ml-0.5 shadow-2xs" />
             </div>
 
-            {/* Action Button below How Complaints Get Solved Section */}
-            <div className="flex justify-center pt-2">
+            {/* Center: CTA Button */}
+            <div className="flex flex-col items-center justify-center space-y-2.5 relative z-20">
               <Link
                 to="/complaint"
-                className="w-full sm:w-auto bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black px-9 py-4 rounded-2xl shadow-xl shadow-blue-600/30 hover:shadow-blue-500/50 transition-all duration-300 flex items-center justify-center gap-3 text-sm sm:text-base hover:scale-[1.03] active:scale-95 group"
+                className="inline-flex items-center gap-2.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-black text-xs sm:text-sm px-7 py-3 rounded-full shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:scale-105 active:scale-95 transition-all duration-300 group"
               >
-                <PlusCircle size={22} className="group-hover:rotate-90 transition-transform duration-300" />
-                <span>Submit Complaint Now</span>
+                <Send size={15} className="text-white -rotate-12 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                <span>Submit a Complaint Now</span>
+                <ArrowRight size={15} className="text-white/80 group-hover:text-white group-hover:translate-x-1 transition-transform" />
               </Link>
+
+              <div className="flex items-center justify-center gap-2.5 text-[11px] sm:text-xs text-slate-400 font-medium">
+                <span className="w-10 h-px bg-slate-200"></span>
+                <span>A better campus starts with your voice.</span>
+                <span className="w-10 h-px bg-slate-200"></span>
+              </div>
+            </div>
+
+            {/* Right: Building Sketch (in the right box area below Card 3) */}
+            <div className="hidden md:block absolute right-0 sm:right-1 -bottom-3 w-[290px] sm:w-[340px] pointer-events-none select-none z-10 opacity-95 mix-blend-multiply filter contrast-125 brightness-90">
+              <img src={campusIllustration} alt="Campus Building Sketch" className="w-full object-contain object-bottom" />
             </div>
           </div>
-        </section>
+        </div>
+      </section>
+
+      {/* Main Content Area (Subsequent Sections) */}
+      <div className="max-w-6xl mx-auto px-6 py-16 space-y-16 flex-1 w-full">
 
         {/* Section 2: Contact & Emergency Support Cards */}
         <section className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
