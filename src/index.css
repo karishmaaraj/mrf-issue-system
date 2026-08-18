@@ -1,0 +1,533 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ────────────────────────────────────────────────────────────
+   Global base styles — Slate Glass & Royal Blue Theme
+──────────────────────────────────────────────────────────── */
+@layer base {
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: #F8FAFC;
+    @apply text-slate-800 min-h-screen selection:bg-blue-500 selection:text-white;
+  }
+}
+
+/* ────────────────────────────────────────────────────────────
+   Custom Scrollbar
+──────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: #F1F5F9;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #CBD5E1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #94A3B8;
+}
+
+/* ────────────────────────────────────────────────────────────
+   Modern Animations & Micro-Interactions Keyframes
+──────────────────────────────────────────────────────────── */
+@keyframes floatGentle {
+
+  0%,
+  100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+
+  50% {
+    transform: translateY(-6px) rotate(0.8deg);
+  }
+}
+
+@keyframes pulseGlow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+  }
+
+  50% {
+    box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+  }
+}
+
+@keyframes urgentBorderPulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 1.5px rgba(239, 68, 68, 0.6), 0 8px 24px -4px rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.7);
+  }
+
+  50% {
+    box-shadow: 0 0 0 2.5px rgba(239, 68, 68, 0.9), 0 16px 36px -4px rgba(239, 68, 68, 0.35);
+    border-color: rgba(239, 68, 68, 1);
+  }
+}
+
+@keyframes ongoingBorderGlow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.3), 0 4px 16px -2px rgba(245, 158, 11, 0.1);
+  }
+
+  50% {
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.6), 0 8px 24px -2px rgba(245, 158, 11, 0.22);
+  }
+}
+
+@keyframes shimmerSlide {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes gradientFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes scaleInSubtle {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes popBadge {
+  0% {
+    transform: scale(0.85);
+  }
+
+  50% {
+    transform: scale(1.12);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes subtleWiggle {
+
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+
+  25% {
+    transform: rotate(-8deg);
+  }
+
+  75% {
+    transform: rotate(8deg);
+  }
+}
+
+@keyframes radarPing {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.9;
+  }
+
+  80%,
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+/* ────────────────────────────────────────────────────────────
+   Sculpted SaaS Card Styles & Hover Effects
+──────────────────────────────────────────────────────────── */
+.sculpted-card {
+  border-radius: 1.5rem;
+  /* 24px rounded */
+  background: #FFFFFF;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 4px 14px -3px rgba(15, 23, 42, 0.04), 0 2px 6px -2px rgba(15, 23, 42, 0.02);
+}
+
+.sculpted-card:hover {
+  transform: translateY(-5px) scale(1.01);
+  box-shadow: 0 20px 38px -12px rgba(15, 23, 42, 0.09), 0 8px 18px -4px rgba(37, 99, 235, 0.07);
+  border-color: rgba(147, 197, 253, 0.85);
+}
+
+/* Light reflective shine sweep across card on hover */
+.card-shine-effect {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 1;
+}
+
+.card-shine-effect::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(60deg,
+      transparent 35%,
+      rgba(255, 255, 255, 0.55) 50%,
+      transparent 65%);
+  transform: translateX(-100%) rotate(35deg);
+  transition: transform 0.75s ease-out;
+}
+
+.sculpted-card:hover .card-shine-effect::after {
+  transform: translateX(100%) rotate(35deg);
+}
+
+/* Helper Animation Utility Classes */
+.animate-float-gentle {
+  animation: floatGentle 5s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 2.5s ease-in-out infinite;
+}
+
+.animate-urgent-glow {
+  animation: urgentBorderPulse 2.2s ease-in-out infinite;
+}
+
+.animate-ongoing-glow {
+  animation: ongoingBorderGlow 3s ease-in-out infinite;
+}
+
+.card-shimmer-bar {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.6) 50%, rgba(255, 255, 255, 0) 100%);
+  background-size: 200% 100%;
+  animation: shimmerSlide 2.5s infinite;
+}
+
+.animate-gradient-flow {
+  background-size: 200% 200%;
+  animation: gradientFlow 4s ease infinite;
+}
+
+.animate-slide-up {
+  animation: slideInUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-scale-in {
+  animation: scaleInSubtle 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-pop-badge {
+  animation: popBadge 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.group:hover .group-hover-wiggle {
+  animation: subtleWiggle 0.4s ease-in-out;
+}
+
+/* ────────────────────────────────────────────────────────────
+   Glassmorphism Panel
+──────────────────────────────────────────────────────────── */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+/* ────────────────────────────────────────────────────────────
+   Kanban Drag highlights & 3D Tilt
+──────────────────────────────────────────────────────────── */
+.kanban-col-dragging-over {
+  @apply ring-2 ring-inset ring-blue-500 bg-blue-50/70;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ticket-card-dragging {
+  @apply shadow-2xl rotate-2 opacity-95 scale-[1.04] ring-4 ring-blue-500/40;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+/* ────────────────────────────────────────────────────────────
+   Status Washes (Soft fills with vibrant text)
+──────────────────────────────────────────────────────────── */
+.badge-unsolved {
+  background-color: #FEF2F2;
+  color: #EF4444;
+  border: 1px solid rgba(252, 165, 165, 0.7);
+}
+
+.badge-ongoing {
+  background-color: #FFFBEB;
+  color: #D97706;
+  border: 1px solid rgba(252, 211, 77, 0.7);
+}
+
+.badge-completed {
+  background-color: #ECFDF5;
+  color: #10B981;
+  border: 1px solid rgba(110, 231, 183, 0.7);
+}
+
+/* ────────────────────────────────────────────────────────────
+   Form Field Inputs
+──────────────────────────────────────────────────────────── */
+.input-field {
+  @apply w-full px-4 py-2.5 rounded-2xl border border-slate-200 bg-slate-50/60 text-sm text-slate-800 placeholder:text-slate-400 hover:bg-white focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/15 focus:border-blue-500 transition duration-200;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+}
+
+.input-label {
+  @apply flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5;
+}
+
+/* ────────────────────────────────────────────────────────────
+   Abstract 3D SaaS Environment (Linear / Stripe / Raycast)
+──────────────────────────────────────────────────────────── */
+@keyframes floatShape1 {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(-8deg);
+  }
+  50% {
+    transform: translate3d(18px, -24px, 0) rotate(-4deg);
+  }
+  100% {
+    transform: translate3d(-14px, 16px, 0) rotate(-10deg);
+  }
+}
+
+@keyframes floatShape2 {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(12deg);
+  }
+  50% {
+    transform: translate3d(-22px, 20px, 0) rotate(8deg);
+  }
+  100% {
+    transform: translate3d(16px, -18px, 0) rotate(15deg);
+  }
+}
+
+@keyframes floatShape3 {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(-15deg);
+  }
+  50% {
+    transform: translate3d(14px, -18px, 0) rotate(-10deg);
+  }
+  100% {
+    transform: translate3d(-10px, 12px, 0) rotate(-18deg);
+  }
+}
+
+@keyframes floatShape4 {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(6deg);
+  }
+  50% {
+    transform: translate3d(-16px, -20px, 0) rotate(2deg);
+  }
+  100% {
+    transform: translate3d(12px, 15px, 0) rotate(9deg);
+  }
+}
+
+@keyframes floatShape5 {
+  0% {
+    transform: translate3d(-50%, 0, 0) rotate(-2deg);
+  }
+  50% {
+    transform: translate3d(-50%, -20px, 0) rotate(1deg);
+  }
+  100% {
+    transform: translate3d(-50%, 15px, 0) rotate(-3deg);
+  }
+}
+
+.saas-3d-bg {
+  background-color: #F6F8FC;
+  background-image: 
+    radial-gradient(120% 90% at 50% 10%, #FFFFFF 0%, #F6F8FC 55%, #EEF2F9 100%);
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* 1. TOP-LEFT: Large Translucent Blue Rounded Capsule */
+.saas-shape-top-left {
+  position: absolute;
+  top: -60px;
+  left: -80px;
+  width: 480px;
+  height: 380px;
+  border-radius: 90px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.45) 0%, rgba(59, 130, 246, 0.28) 50%, rgba(147, 197, 253, 0.12) 100%);
+  border: 1.5px solid rgba(255, 255, 255, 0.65);
+  box-shadow: 
+    inset 0 2px 6px rgba(255, 255, 255, 0.7),
+    0 25px 50px -12px rgba(37, 99, 235, 0.25);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  animation: floatShape1 22s ease-in-out infinite alternate;
+  will-change: transform;
+  pointer-events: none;
+}
+
+/* 2. TOP-RIGHT: Large Translucent Indigo Curved Glass Tile */
+.saas-shape-top-right {
+  position: absolute;
+  top: -40px;
+  right: -90px;
+  width: 520px;
+  height: 420px;
+  border-radius: 110px;
+  background: linear-gradient(225deg, rgba(79, 70, 229, 0.42) 0%, rgba(99, 102, 241, 0.26) 50%, rgba(199, 210, 254, 0.14) 100%);
+  border: 1.5px solid rgba(255, 255, 255, 0.65);
+  box-shadow: 
+    inset 0 2px 6px rgba(255, 255, 255, 0.7),
+    0 30px 60px -15px rgba(79, 70, 229, 0.24);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  animation: floatShape2 26s ease-in-out infinite alternate;
+  will-change: transform;
+  pointer-events: none;
+}
+
+/* 3. LEFT EDGE: Floating Translucent Pill Shape */
+.saas-shape-left-edge {
+  position: absolute;
+  top: 48%;
+  left: -120px;
+  width: 440px;
+  height: 220px;
+  border-radius: 9999px;
+  background: linear-gradient(110deg, rgba(56, 189, 248, 0.40) 0%, rgba(99, 102, 241, 0.22) 60%, rgba(224, 231, 255, 0.10) 100%);
+  border: 1.5px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 
+    inset 0 2px 5px rgba(255, 255, 255, 0.65),
+    0 20px 45px -10px rgba(56, 189, 248, 0.22);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  animation: floatShape3 24s ease-in-out infinite alternate;
+  will-change: transform;
+  pointer-events: none;
+}
+
+/* 4. RIGHT EDGE: Partial Cyan/Indigo Geometric Rounded Shape */
+.saas-shape-right-edge {
+  position: absolute;
+  top: 52%;
+  right: -130px;
+  width: 460px;
+  height: 260px;
+  border-radius: 80px;
+  background: linear-gradient(290deg, rgba(6, 182, 212, 0.42) 0%, rgba(37, 99, 235, 0.24) 60%, rgba(207, 250, 254, 0.12) 100%);
+  border: 1.5px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 
+    inset 0 2px 5px rgba(255, 255, 255, 0.65),
+    0 22px 50px -12px rgba(6, 182, 212, 0.22);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  animation: floatShape4 28s ease-in-out infinite alternate;
+  will-change: transform;
+  pointer-events: none;
+}
+
+/* 5. BOTTOM: Soft Overlapping Horizon Pill / Arc */
+.saas-shape-bottom {
+  position: absolute;
+  bottom: -80px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 700px;
+  height: 240px;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.25) 0%, rgba(6, 182, 212, 0.20) 50%, rgba(241, 245, 249, 0.05) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 
+    inset 0 2px 4px rgba(255, 255, 255, 0.5),
+    0 25px 60px -15px rgba(37, 99, 235, 0.18);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  animation: floatShape5 20s ease-in-out infinite alternate;
+  will-change: transform;
+  pointer-events: none;
+}
+
+/* Ambient Radial Softness Underlay */
+.saas-ambient-glow {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    radial-gradient(circle at 10% 20%, rgba(37, 99, 235, 0.14) 0%, transparent 45%),
+    radial-gradient(circle at 90% 20%, rgba(79, 70, 229, 0.12) 0%, transparent 45%),
+    radial-gradient(circle at 50% 90%, rgba(6, 182, 212, 0.10) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .saas-shape-top-left,
+  .saas-shape-top-right,
+  .saas-shape-left-edge,
+  .saas-shape-right-edge,
+  .saas-shape-bottom {
+    animation: none !important;
+  }
+}
