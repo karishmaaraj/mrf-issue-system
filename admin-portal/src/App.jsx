@@ -4,7 +4,7 @@ import AdminDashboard from './components/AdminDashboard.jsx';
 import SuperAdminDashboard from './components/SuperAdminDashboard.jsx';
 
 /**
- * MRF Admin Portal App Router
+ * MCC Admin Portal App Router
  */
 export default function App() {
   return (

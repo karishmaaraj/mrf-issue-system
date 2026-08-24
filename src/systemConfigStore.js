@@ -1,10 +1,10 @@
 /**
- * systemConfigStore.js — Central Master Configuration Store for MRF Issue System
+ * systemConfigStore.js — Central Master Configuration Store for MCC Issue System
  * Unified single source of truth across User Portal, Admin Portal, and Super Admin Command Center.
  * Persists to backend server (http://localhost:5000/api/system-config) with localStorage cache and BroadcastChannel sync.
  */
 
-const CONFIG_KEY = 'mrf_system_config';
+const CONFIG_KEY = 'mcc_system_config';
 const SYNC_URL = typeof window !== 'undefined' && (window.location.port === '' || window.location.port === '80')
   ? '/api/system-config'
   : 'http://localhost:5000/api/system-config';
@@ -34,7 +34,7 @@ export const DEFAULT_CONFIG = {
 
   // 1. BRANDING
   branding: {
-    portalName: 'MRF Issue Portal',
+    portalName: 'MCC Issue Portal',
     portalSubtitle: 'Campus Maintenance Tracking System',
     organizationName: 'Madras Christian College',
     shortOrgName: 'MCC',
@@ -76,6 +76,8 @@ export const DEFAULT_CONFIG = {
       description1: 'Report maintenance issues across classrooms, labs, hostels, water coolers, and campus infrastructure.',
       description2: 'Track resolution progress in real-time with automatic email alerts to admins and workers.',
       backgroundImage: '/campus_bg.png',
+      desktopBackgroundImage: '/campus_bg.png',
+      mobileBackgroundImage: '',
       enableKenBurns: true,
       overlayOpacity: 0.85,
     },
@@ -94,6 +96,20 @@ export const DEFAULT_CONFIG = {
       heading: 'How Complaints Get Solved',
       subtitle: 'Clear 3-stage process from ticket submission to full resolution.'
     }
+  },
+
+  // 4b. FACILITIES CONTACT & EMERGENCY INFORMATION
+  facilitiesContact: {
+    title: 'Facilities Contact & Support',
+    description: 'If you have urgent inquiries regarding a previously submitted complaint, contact the campus facilities helpdesk.',
+    office: 'Campus Maintenance Office, Ground Floor, Admin Block',
+    email: 'mcc-support@campus.edu',
+    hours: 'Monday – Saturday (8:30 AM – 5:00 PM)'
+  },
+  emergencyHazards: {
+    title: 'Emergency Hazards',
+    description: 'For critical emergencies such as active electrical fires, major gas leaks, structural collapse, or severe flooding, please contact security immediately.',
+    helpline: '+91 0000-00000'
   },
 
   // 5. COMPLAINT FORM CONTROLS
@@ -124,7 +140,7 @@ export const DEFAULT_CONFIG = {
       },
       location: {
         label: 'Campus Block & Room',
-        blocks: ['A', 'B', 'C', 'D', 'Main Building', 'Science Block', 'MRF Innovation Park', 'Hostels'],
+        blocks: ['A', 'B', 'C', 'D', 'Main Building', 'Science Block', 'MCC Innovation Park', 'Hostels'],
         required: true,
         visible: true
       },
@@ -182,10 +198,10 @@ export const DEFAULT_CONFIG = {
 
   // 11. EMAIL NOTIFICATION TEMPLATES (No SMTP credentials exposed!)
   emailTemplates: {
-    adminNotificationSubject: '[MRF Ticket {{ticketNo}}] {{isUrgentTag}}{{issueCategory}} - {{name}}',
+    adminNotificationSubject: '[MCC Ticket {{ticketNo}}] {{isUrgentTag}}{{issueCategory}} - {{name}}',
     workerDispatchSubject: 'Work Order Dispatched: {{ticketNo}} [{{issueCategory}}]',
     resolutionSubject: 'Resolved: Your Ticket {{ticketNo}} has been Solved',
-    footerText: 'MRF Issue Resolution System • Automated Campus Notification'
+    footerText: 'MCC Issue Resolution System • Automated Campus Notification'
   },
 
   // 12. FEATURE SWITCHBOARD
@@ -217,7 +233,7 @@ export const DEFAULT_CONFIG = {
 function deepMerge(target, source) {
   if (!source || typeof source !== 'object') return target;
   const output = Array.isArray(target) ? [...target] : { ...target };
-  
+
   for (const key of Object.keys(source)) {
     if (source[key] instanceof Object && key in target && target[key] instanceof Object && !Array.isArray(source[key])) {
       output[key] = deepMerge(target[key], source[key]);
@@ -271,7 +287,7 @@ export function getSystemConfig() {
 }
 
 const configSyncChannel = typeof window !== 'undefined' && 'BroadcastChannel' in window
-  ? new BroadcastChannel('mrf_config_sync_channel')
+  ? new BroadcastChannel('mcc_config_sync_channel')
   : null;
 
 if (configSyncChannel) {
@@ -281,7 +297,7 @@ if (configSyncChannel) {
         localStorage.setItem(CONFIG_KEY, JSON.stringify(e.data.config));
         applyThemeTokens(e.data.config.theme);
         window.dispatchEvent(new StorageEvent('storage', { key: CONFIG_KEY, newValue: JSON.stringify(e.data.config) }));
-      } catch {}
+      } catch { }
     }
   };
 }
@@ -294,7 +310,7 @@ export async function saveSystemConfig(newConfig) {
     const current = getSystemConfig();
     const merged = deepMerge(current, newConfig);
     merged.lastPublished = new Date().toISOString();
-    
+
     // Sync legacy top-level keys if nested objects changed
     if (merged.userPortal) {
       if (merged.userPortal.portalActive !== undefined) merged.portalActive = merged.userPortal.portalActive;

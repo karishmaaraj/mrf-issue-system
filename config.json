@@ -118,15 +118,15 @@
   "submissionsEnabled": true,
   "portalNotice": {
     "enabled": false,
-    "message": "",
     "type": "info",
+    "message": "",
     "lastUpdated": "2026-08-14T09:45:13.935Z"
   },
   "version": "2.0.0",
-  "lastPublished": "2026-08-17T06:36:49.032Z",
+  "lastPublished": "2026-08-20T07:28:22.052Z",
   "publishedBy": "Super Admin",
   "branding": {
-    "portalName": "MRF Issue Portal",
+    "portalName": "MCC Issue Portal",
     "portalSubtitle": "MCC Unified Central Campus Maintenance System",
     "organizationName": "Madras Christian College",
     "shortOrgName": "MCC",
@@ -179,7 +179,7 @@
       "tagline": "Report. Track. Resolve.",
       "description1": "Report maintenance issues across classrooms, labs, hostels, water coolers, and campus infrastructure.",
       "description2": "Track resolution progress in real-time with automatic email alerts to admins and workers.",
-      "backgroundImage": "/campus_bg.png",
+      "backgroundImage": "",
       "enableKenBurns": true,
       "overlayOpacity": 0.85
     },
@@ -285,7 +285,7 @@
           "D",
           "Main Building",
           "Science Block",
-          "MRF Innovation Park",
+          "MCC Innovation Park",
           "Hostels"
         ],
         "required": true,
@@ -363,10 +363,10 @@
     "enableDirectSolve": true
   },
   "emailTemplates": {
-    "adminNotificationSubject": "[MRF Ticket {{ticketNo}}] {{isUrgentTag}}{{issueCategory}} - {{name}}",
+    "adminNotificationSubject": "[MCC Ticket {{ticketNo}}] {{isUrgentTag}}{{issueCategory}} - {{name}}",
     "workerDispatchSubject": "Work Order Dispatched: {{ticketNo}} [{{issueCategory}}]",
     "resolutionSubject": "Resolved: Your Ticket {{ticketNo}} has been Solved",
-    "footerText": "MRF Issue Resolution System • Automated Campus Notification"
+    "footerText": "MCC Issue Resolution System • Automated Campus Notification"
   },
   "features": {
     "allowPhotoUpload": true,

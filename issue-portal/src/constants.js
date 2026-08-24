@@ -4,6 +4,7 @@ export const WORKERS = [
   { id: 'w3', name: 'Priya Nair', role: 'IT & Infrastructure', email: import.meta.env.VITE_WORKER_PRIYA_EMAIL || 'balap4496@gmail.com', icon: '🖥️' },
   { id: 'w4', name: 'Anitha Pillai', role: 'Civil Maintenance', email: import.meta.env.VITE_WORKER_ANITHA_EMAIL || 'enaveen508@gmail.com', icon: '🪟' },
   { id: 'w5', name: 'Biju Thomas', role: 'Sanitation Lead', email: import.meta.env.VITE_WORKER_BIJU_EMAIL || 'lalitharasi496@gmail.com', icon: '🧹' },
+  { id: 'w6', name: 'Deva Kumar', role: 'Solar & Power Systems', email: 'deva.solar@mcc.edu.in', icon: '⚡' },
 ];
 
 export const WORKER_LIST = [

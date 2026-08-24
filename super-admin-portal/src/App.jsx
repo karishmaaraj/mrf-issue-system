@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import SuperAdminDashboard from './components/SuperAdminDashboard.jsx';
 
 /**
- * MRF Super Admin Dedicated Master Portal (Runs on http://localhost:5177/)
+ * MCC Super Admin Dedicated Master Portal (Runs on http://localhost:5177/)
  */
 export default function App() {
   return (

@@ -128,7 +128,7 @@ export default function WorkTimelineModal({ ticket, onClose }) {
                 </span>
               </div>
               <p className="text-xs text-slate-300 font-medium mt-0.5">
-                {ticket.issueCategory} • {ticket.block || 'Campus'} (Room ${ticket.roomNo || 'N/A'})
+                {ticket.issueCategory} • {ticket.block || 'Campus'} (Room {ticket.roomNo || 'N/A'})
               </p>
             </div>
           </div>

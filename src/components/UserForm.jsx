@@ -24,7 +24,7 @@ import {
   SendHorizonal, PhoneCall, HelpCircle, ChevronRight,
   CalendarDays, Shield, ArrowLeft, Droplets, Megaphone, Lock,
   Zap, Monitor, Trash2, Accessibility, MoreHorizontal, CloudRain,
-  Plus, Sparkles, Check
+  Plus, Sparkles, Check, Home
 } from 'lucide-react';
 
 export const AIDED_UG_DEPARTMENTS = [
@@ -214,37 +214,17 @@ function getCleanCategoryLabel(label) {
 function Abstract3DSaasBackdrop() {
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden z-0" aria-hidden="true">
-      {/* ── 1. Base Cool-Gray Canvas ── */}
-      <div className="absolute inset-0 bg-[#F6F8FC]" />
-      <div className="absolute inset-0 bg-[radial-gradient(120%_90%_at_50%_10%,#FFFFFF_0%,#F6F8FC_55%,#EEF2F9_100%)]" />
-
-      {/* ── 2. Ambient Color Glow Underlay ── */}
-      <div className="saas-ambient-glow" />
-
-      {/* ── 3. Abstract 3D Geometric Shapes Floating in Space ── */}
-      {/* Top-Left Blue Rounded Capsule */}
-      <div className="saas-shape-top-left" />
-
-      {/* Top-Right Indigo Curved Tile */}
-      <div className="saas-shape-top-right" />
-
-      {/* Left-Edge Sky-Blue Floating Pill */}
-      <div className="saas-shape-left-edge" />
-
-      {/* Right-Edge Cyan/Blue Geometric Tile */}
-      <div className="saas-shape-right-edge" />
-
-      {/* Bottom Soft Horizon Pill */}
-      <div className="saas-shape-bottom" />
+      {/* ── 1. Base Canvas ── */}
+      <div className="absolute inset-0 bg-[#F7F7F7]" />
+      <div className="absolute inset-0 bg-[radial-gradient(120%_90%_at_50%_10%,#FFFFFF_0%,#F7F7F7_60%,#F4E8EA_100%)]" />
     </div>
   );
 }
 
-function SelectField({ label, id, value, onChange, options, placeholder, icon: Icon, error }) {
+function SelectField({ label, id, value, onChange, options, placeholder, error }) {
   return (
     <div>
-      <label htmlFor={id} className="input-label flex items-center gap-1.5">
-        {Icon && <Icon size={14} className="text-slate-400 shrink-0" />}
+      <label htmlFor={id} className="input-label flex items-center gap-1 font-bold text-[#171717]">
         <span>{label}</span>
         <span className="text-red-500 font-extrabold ml-0.5">*</span>
       </label>
@@ -269,13 +249,12 @@ function SelectField({ label, id, value, onChange, options, placeholder, icon: I
   );
 }
 
-function InputField({ label, id, type = 'text', value, onChange, placeholder, icon: Icon, required, error }) {
+function InputField({ label, id, type = 'text', value, onChange, placeholder, required, error }) {
   return (
     <div>
-      <label htmlFor={id} className="input-label flex items-center gap-1.5">
-        {Icon && <Icon size={14} className="text-slate-400 shrink-0" />}
+      <label htmlFor={id} className="input-label flex items-center gap-1 font-bold text-[#171717]">
         <span>{label}</span>
-        <span className="text-red-500 font-extrabold ml-0.5">*</span>
+        {required && <span className="text-red-500 font-extrabold ml-0.5">*</span>}
       </label>
       <input
         id={id}
@@ -296,11 +275,12 @@ export default function UserForm() {
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    document.title = 'MCC Issue Portal — Campus Facilities';
     fetchSystemConfigFromServer().then(cfg => {
       if (cfg) setSystemConfig(cfg);
     });
     const handleStorage = (e) => {
-      if (e.key === 'mrf_system_config') {
+      if (e.key === 'mcc_system_config') {
         setSystemConfig(getSystemConfig());
       }
     };
@@ -430,17 +410,17 @@ export default function UserForm() {
                 </div>
 
                 <div className="p-6 space-y-5">
-                  <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-2xl px-5 py-4">
+                  <div className="flex items-center justify-between bg-[#F4E8EA] border border-[#E5E5E5] rounded-2xl px-5 py-4">
                     <div>
-                      <p className="text-xs font-semibold text-blue-500 uppercase tracking-widest">Assigned Ticket Number</p>
-                      <p className="text-3xl font-extrabold text-blue-700 tracking-tight mt-0.5">{createdTicket.ticketNo}</p>
+                      <p className="text-xs font-semibold text-[#800000] uppercase tracking-widest">Assigned Ticket Number</p>
+                      <p className="text-3xl font-extrabold text-[#800000] tracking-tight mt-0.5">{createdTicket.ticketNo}</p>
                     </div>
-                    <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
-                      <Hash size={22} className="text-blue-600" />
+                    <div className="w-12 h-12 rounded-xl bg-white border border-[#E5E5E5] flex items-center justify-center">
+                      <Hash size={22} className="text-[#800000]" />
                     </div>
                   </div>
 
-                  <div className="space-y-0 divide-y divide-slate-100 rounded-2xl border border-slate-200 overflow-hidden text-xs">
+                  <div className="space-y-0 divide-y divide-[#E5E5E5] rounded-2xl border border-[#E5E5E5] overflow-hidden text-xs">
                     {[
                       { icon: User, label: 'Name', value: createdTicket.name },
                       { icon: Mail, label: 'Email', value: createdTicket.email },
@@ -458,9 +438,9 @@ export default function UserForm() {
                       { icon: CalendarDays, label: 'Submitted', value: submittedAt },
                     ].map(({ icon: Icon, label, value }) => (
                       <div key={label} className="flex items-center gap-3 px-4 py-3 bg-white">
-                        <Icon size={14} className="text-slate-400 shrink-0" />
-                        <span className="text-slate-500 w-24 shrink-0 font-medium">{label}</span>
-                        <span className="font-semibold text-slate-700 truncate">{value}</span>
+                        <Icon size={14} className="text-[#6B6B6B] shrink-0" />
+                        <span className="text-[#6B6B6B] w-24 shrink-0 font-medium">{label}</span>
+                        <span className="font-semibold text-[#171717] truncate">{value}</span>
                       </div>
                     ))}
                   </div>
@@ -468,13 +448,13 @@ export default function UserForm() {
                   <div className="flex gap-3 pt-2">
                     <button
                       onClick={handleNewTicket}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl py-3 transition flex items-center justify-center gap-2 text-sm shadow"
+                      className="flex-1 bg-[#800000] hover:bg-[#9A1B2F] text-white font-semibold rounded-xl py-3 transition flex items-center justify-center gap-2 text-sm shadow"
                     >
                       <SendHorizonal size={15} /> File Another Issue
                     </button>
                     <Link
                       to="/"
-                      className="px-4 py-3 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-sm font-medium transition flex items-center gap-1.5"
+                      className="px-4 py-3 rounded-xl border border-[#E5E5E5] text-[#171717] hover:bg-[#F7F7F7] text-sm font-medium transition flex items-center gap-1.5"
                     >
                       <ArrowLeft size={15} /> Home
                     </Link>
@@ -508,7 +488,7 @@ export default function UserForm() {
                   {systemConfig.userPortal?.closedNotice?.title || 'Portal Temporarily Closed'}
                 </h1>
                 <p className="text-sm text-slate-500 font-medium leading-relaxed">
-                  {systemConfig.userPortal?.closedNotice?.message || 'The MRF Issue Portal is currently offline for maintenance or scheduled downtime. Please check back shortly or contact the Facilities Office directly.'}
+                  {systemConfig.userPortal?.closedNotice?.message || 'The MCC Issue Portal is currently offline for maintenance or scheduled downtime. Please check back shortly or contact the Facilities Office directly.'}
                 </p>
               </div>
               {systemConfig.portalNotice?.enabled && systemConfig.portalNotice?.message && (
@@ -537,55 +517,40 @@ export default function UserForm() {
   // COMPLAINT FORM PAGE
   // ─────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen flex flex-col relative selection:bg-blue-500 selection:text-white saas-3d-bg">
+    <div className="min-h-screen flex flex-col relative selection:bg-[#800000] selection:text-white bg-[#F7F7F7]">
       <Abstract3DSaasBackdrop />
 
       <div className="relative z-10 flex flex-col min-h-screen">
         <Navbar />
 
-        {/* Broadcast Banner Live Notice from Super Admin */}
-        {systemConfig.announcement?.enabled && systemConfig.announcement?.message && (
-          <div className={`px-6 py-2.5 text-xs font-bold flex items-center justify-between border-b ${systemConfig.announcement.type === 'alert'
-            ? 'bg-red-50/95 text-red-800 border-red-200'
-            : systemConfig.announcement.type === 'warning'
-              ? 'bg-amber-50/95 text-amber-800 border-amber-200'
-              : 'bg-blue-50/95 text-blue-800 border-blue-200'
-            } backdrop-blur-xs`}>
-            <div className="max-w-4xl mx-auto w-full flex items-center gap-2">
-              <Megaphone size={15} className="shrink-0 animate-bounce" />
-              <span className="uppercase text-[10px] font-black tracking-wider px-1.5 py-0.5 bg-black/10 rounded">Notice</span>
-              <span className="truncate">{systemConfig.announcement.message}</span>
-            </div>
-          </div>
-        )}
-
         {/* Page Header */}
-        <div className="bg-white border-b border-slate-200/80 px-6 py-7 shadow-xs">
-          <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
-                <Link to="/" className="hover:text-blue-600 transition">Home</Link>
-                <span>/</span>
-                <span className="font-bold text-blue-600">Complaint Form</span>
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-sm shrink-0">
-                  <ClipboardList size={22} />
-                </div>
-                <span>Submit Maintenance Complaint</span>
+        <div className="bg-white border-b border-[#E5E5E5] px-6 py-7 shadow-xs">
+          <div className="max-w-4xl mx-auto space-y-1.5">
+            <div className="flex items-center gap-2 text-xs font-semibold mb-2">
+              <Link
+                to="/"
+                className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-[#800000]/30 text-[#800000] hover:border-[#800000]/60 hover:bg-[#F4E8EA] transition-all duration-150 shadow-2xs font-medium"
+              >
+                <Home size={13} className="text-[#800000]" />
+                <span>Home</span>
+              </Link>
+
+              <span className="text-[#9E9E9E] font-medium text-xs px-0.5 select-none">/</span>
+
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#F4E8EA] border border-[#800000]/30 text-[#800000] font-bold shadow-2xs">
+                <FileText size={13} className="text-[#800000]" />
+                <span>Complaint Form</span>
+              </span>
+            </div>
+
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-black text-[#171717] tracking-tight">
+                Submit Maintenance Complaint
               </h1>
-              <p className="text-xs text-slate-500 font-medium">
+              <p className="text-xs text-[#6B6B6B] font-medium mt-1">
                 Fill out the form below to report campus infrastructure or facility issues.
               </p>
             </div>
-
-            <Link
-              to="/"
-              className="text-xs text-slate-600 hover:text-blue-600 font-bold flex items-center gap-2 bg-slate-100 hover:bg-slate-200/80 border border-slate-200 px-4 py-2.5 rounded-xl transition shadow-xs"
-            >
-              <ArrowLeft size={15} />
-              <span>Back to Overview</span>
-            </Link>
           </div>
         </div>
 
@@ -594,58 +559,52 @@ export default function UserForm() {
           <form
             onSubmit={handleSubmit}
             noValidate
-            className="bg-white rounded-2xl shadow-[0_25px_60px_-15px_rgba(15,23,42,0.12),0_10px_30px_-5px_rgba(37,99,235,0.08),0_0_0_1px_rgba(226,232,240,0.9)] border border-slate-200/90 overflow-hidden ring-1 ring-blue-500/10 animate-slide-up"
+            className="bg-white rounded-2xl shadow-[0_25px_60px_-15px_rgba(23,23,23,0.08),0_0_0_1px_rgba(229,229,229,0.9)] border border-[#E5E5E5] overflow-hidden ring-1 ring-[#800000]/10 animate-slide-up"
           >
-            {/* Top Gradient Accent Line */}
-            <div className="h-1.5 w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500" />
+            {/* Top Accent Line */}
+            <div className="h-1.5 w-full bg-[#800000]" />
 
             <div className="p-6 md:p-10 space-y-10">
 
               {/* ── Section 1: Personal Info ────────────────────── */}
               <section className="space-y-4">
-                <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                  <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs">
-                    <User size={15} />
-                  </div>
-                  <h2 className="text-xs font-black uppercase tracking-wider text-blue-600">Personal Information</h2>
+                <div className="border-b border-[#E5E5E5] pb-3">
+                  <h2 className="text-xs font-black uppercase tracking-wider text-[#800000]">Personal Information</h2>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <InputField
                     label="Full Name" id="name" value={form.name}
                     onChange={handleChange('name')} placeholder="e.g. Arjun Nair"
-                    icon={User} required error={errors.name}
+                    required error={errors.name}
                   />
                   <InputField
                     label="Email Address" id="email" type="email" value={form.email}
                     onChange={handleChange('email')} placeholder="you@college.edu"
-                    icon={Mail} required error={errors.email}
+                    required error={errors.email}
                   />
                   <InputField
                     label="Phone Number" id="phone" type="tel" value={form.phone}
                     onChange={handleChange('phone')} placeholder="+91 9876543210"
-                    icon={Phone} error={errors.phone}
+                    error={errors.phone}
                   />
                 </div>
               </section>
 
               {/* ── Section 2: Role & Classification ────────────── */}
               <section className="space-y-4">
-                <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                  <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs">
-                    <Layers size={15} />
-                  </div>
-                  <h2 className="text-xs font-black uppercase tracking-wider text-blue-600">Role & Classification</h2>
+                <div className="border-b border-[#E5E5E5] pb-3">
+                  <h2 className="text-xs font-black uppercase tracking-wider text-[#800000]">Role & Classification</h2>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <SelectField
                     label="User Type" id="userType" value={form.userType}
                     onChange={handleChange('userType')}
                     options={[
-                      { value: 'Student', label: '🎓 Student' },
-                      { value: 'Staff', label: '👨‍🏫 Staff' },
-                      { value: 'Unit', label: '🏢 Unit / Office' },
+                      { value: 'Student', label: 'Student' },
+                      { value: 'Staff', label: 'Staff' },
+                      { value: 'Unit', label: 'Unit / Office' },
                     ]}
-                    placeholder="Select user type" icon={User} error={errors.userType}
+                    placeholder="Select user type" error={errors.userType}
                   />
 
                   {form.userType === 'Student' && (
@@ -689,47 +648,40 @@ export default function UserForm() {
                               ? SFS_PG_DEPARTMENTS
                               : DEPARTMENTS
                     }
-                    placeholder="Select department" icon={Building2} error={errors.department}
+                    placeholder="Select department" error={errors.department}
                   />
                 </div>
               </section>
 
               {/* ── Section 3: Location Details ─────────────────── */}
               <section className="space-y-4">
-                <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                  <div className="w-7 h-7 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center font-bold text-xs">
-                    <MapPin size={15} />
-                  </div>
-                  <h2 className="text-xs font-black uppercase tracking-wider text-blue-600">Location Details</h2>
+                <div className="border-b border-[#E5E5E5] pb-3">
+                  <h2 className="text-xs font-black uppercase tracking-wider text-[#800000]">Location Details</h2>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <SelectField
                     label="Block / Building" id="block" value={form.block}
                     onChange={handleChange('block')} options={BLOCKS}
-                    placeholder="Select block" icon={Building2} error={errors.block}
+                    placeholder="Select block" error={errors.block}
                   />
                   <InputField
                     label="Room / Area No." id="roomNo" value={form.roomNo}
                     onChange={handleChange('roomNo')} placeholder="e.g. Room 204, Lab 3, Restroom 2nd floor"
-                    icon={MapPin} error={errors.roomNo}
+                    error={errors.roomNo}
                   />
                 </div>
               </section>
 
               {/* ── Section 4: Issue Description & Photo ───────── */}
               <section className="space-y-5">
-                <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                  <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs">
-                    <FileText size={15} />
-                  </div>
-                  <h2 className="text-xs font-black uppercase tracking-wider text-blue-600">Issue Details</h2>
+                <div className="border-b border-[#E5E5E5] pb-3">
+                  <h2 className="text-xs font-black uppercase tracking-wider text-[#800000]">Issue Details</h2>
                 </div>
 
                 <div className="space-y-5">
                   {/* Category chips */}
                   <div>
-                    <label className="input-label flex items-center gap-1.5 font-bold text-slate-700 mb-2.5">
-                      <Hash size={15} className="text-blue-600 shrink-0" />
+                    <label className="input-label flex items-center gap-1.5 font-bold text-[#800000] mb-2.5">
                       <span className="tracking-wide">ISSUE CATEGORY</span>
                       <span className="text-red-500 font-extrabold ml-0.5">*</span>
                     </label>
@@ -752,12 +704,11 @@ export default function UserForm() {
                                   : prefix + prev.description.replace(/^[^:]+: /, ''),
                               }));
                             }}
-                            className={`group text-xs px-4 py-2 rounded-full border font-semibold transition-all duration-200 cursor-pointer flex items-center gap-2 select-none ${isSelected
-                                ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/25 scale-[1.03] ring-2 ring-blue-400/30'
-                                : 'bg-white text-slate-700 border-slate-200/90 shadow-2xs hover:border-blue-400 hover:bg-blue-50/30 hover:text-blue-600 hover:-translate-y-0.5 hover:shadow-xs active:scale-95'
+                            className={`group text-xs px-4 py-2 rounded-full border font-semibold transition-all duration-200 cursor-pointer flex items-center justify-center select-none ${isSelected
+                              ? 'bg-[#800000] text-white border-[#800000] shadow-md shadow-[#800000]/20 scale-[1.03]'
+                              : 'bg-white text-[#171717] border-[#D9D9D9] shadow-2xs hover:border-[#800000] hover:bg-[#F6E8EA] hover:text-[#800000] hover:-translate-y-0.5 hover:shadow-xs active:scale-95'
                               }`}
                           >
-                            <CategoryIcon label={cat.label} id={cat.id} />
                             <span>{cleanLabel}</span>
                           </button>
                         );
@@ -765,15 +716,14 @@ export default function UserForm() {
                     </div>
                   </div>
 
-                  {/* Sub-picks for Others (Drinking Water Leak, Restroom Tap Leak, etc.) */}
+                  {/* Sub-picks for Others */}
                   {(form.issueCategory.includes('Others') || form.issueCategory.includes('Other') || form.issueCategory.includes('📌')) && (
-                    <div className="p-4 sm:p-5 bg-gradient-to-r from-blue-50/90 via-sky-50/70 to-indigo-50/80 border border-blue-200/90 rounded-2xl animate-slide-up space-y-3 shadow-xs">
+                    <div className="p-4 sm:p-5 bg-[#F6E8EA] border border-[#D9D9D9] rounded-2xl animate-slide-up space-y-3 shadow-xs">
                       <div className="flex items-center justify-between">
-                        <p className="text-[11px] font-extrabold text-blue-800 uppercase tracking-wider flex items-center gap-1.5">
-                          <Droplets size={14} className="text-blue-600 shrink-0 animate-bounce" />
+                        <p className="text-[11px] font-extrabold text-[#800000] uppercase tracking-wider flex items-center gap-1.5">
                           <span>QUICK SUB-CATEGORIES (E.G., WATER LEAKAGE):</span>
                         </p>
-                        <span className="text-[10px] font-bold text-blue-600 bg-blue-100/70 px-2 py-0.5 rounded-full">1-Click Autofill</span>
+                        <span className="text-[10px] font-bold text-[#800000] bg-white border border-[#D9D9D9] px-2 py-0.5 rounded-full">1-Click Autofill</span>
                       </div>
 
                       <div className="flex flex-wrap gap-2.5">
@@ -790,13 +740,10 @@ export default function UserForm() {
                                 }));
                               }}
                               className={`group text-xs px-4 py-2 rounded-full border font-semibold transition-all duration-200 flex items-center gap-2 cursor-pointer select-none ${isSubSelected
-                                  ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/25 scale-[1.03] ring-2 ring-blue-400/30'
-                                  : 'bg-white text-slate-700 border-slate-200/90 shadow-2xs hover:border-blue-400 hover:bg-white hover:text-blue-600 hover:-translate-y-0.5 hover:shadow-xs active:scale-95'
+                                ? 'bg-[#800000] text-white border-[#800000] shadow-md shadow-[#800000]/20 scale-[1.03]'
+                                : 'bg-white text-[#171717] border-[#D9D9D9] shadow-2xs hover:border-[#800000] hover:bg-white hover:text-[#800000] hover:-translate-y-0.5 hover:shadow-xs active:scale-95'
                                 }`}
                             >
-                              <span className="inline-flex items-center justify-center text-[14px] transition-transform duration-200 group-hover:scale-125 group-hover:-rotate-12 select-none shrink-0">
-                                {sub.emoji}
-                              </span>
                               <span>{sub.label}</span>
                             </button>
                           );
@@ -807,27 +754,26 @@ export default function UserForm() {
 
                   {/* Priority Segmented Control */}
                   <div>
-                    <label className="input-label flex items-center gap-1.5 font-bold text-slate-700 mb-2.5">
-                      <AlertCircle size={15} className="text-slate-400 shrink-0" />
+                    <label className="input-label flex items-center gap-1.5 font-bold text-[#800000] mb-2.5">
                       <span className="tracking-wide">PRIORITY LEVEL</span>
                       <span className="text-red-500 font-extrabold ml-0.5">*</span>
                     </label>
-                    <div className="bg-[#F8FAFC] border border-slate-200/90 rounded-2xl p-1.5 flex items-center justify-between gap-2 shadow-2xs">
+                    <div className="bg-white border border-[#D9D9D9] rounded-2xl p-1.5 flex items-center justify-between gap-2 shadow-2xs">
                       {[
                         {
                           level: 'Normal',
-                          dotGradient: 'bg-[radial-gradient(circle_at_35%_35%,#6EE7B7_0%,#10B981_60%,#047857_100%)] shadow-[0_2px_4px_rgba(16,185,129,0.35)]',
-                          activeClasses: 'bg-[#F0FDF4] border-emerald-400 text-emerald-700 shadow-xs ring-1 ring-emerald-400/20',
+                          dotGradient: 'bg-[#159447]',
+                          activeClasses: 'bg-[#F6E8EA] border-[#800000] text-[#800000] shadow-xs ring-1 ring-[#800000]/20',
                         },
                         {
                           level: 'High',
-                          dotGradient: 'bg-[radial-gradient(circle_at_35%_35%,#FDE68A_0%,#F59E0B_60%,#B45309_100%)] shadow-[0_2px_4px_rgba(245,158,11,0.35)]',
-                          activeClasses: 'bg-[#FFFBEB] border-amber-400 text-amber-800 shadow-xs ring-1 ring-amber-400/20',
+                          dotGradient: 'bg-amber-500',
+                          activeClasses: 'bg-[#FFFBEB] border-amber-500 text-amber-800 shadow-xs ring-1 ring-amber-500/20',
                         },
                         {
                           level: 'Critical',
-                          dotGradient: 'bg-[radial-gradient(circle_at_35%_35%,#FCA5A5_0%,#EF4444_60%,#B91C1C_100%)] shadow-[0_2px_4px_rgba(239,68,68,0.35)]',
-                          activeClasses: 'bg-[#FEF2F2] border-red-400 text-red-700 shadow-xs ring-1 ring-red-400/20',
+                          dotGradient: 'bg-red-600',
+                          activeClasses: 'bg-[#FEF2F2] border-red-500 text-red-700 shadow-xs ring-1 ring-red-500/20',
                         },
                       ].map(({ level, dotGradient, activeClasses }) => {
                         const isActive = form.priority === level;
@@ -836,9 +782,9 @@ export default function UserForm() {
                             key={level}
                             type="button"
                             onClick={() => setForm(prev => ({ ...prev, priority: level }))}
-                            className={`group flex-1 py-2.5 px-4 rounded-xl border text-xs font-bold transition-all duration-300 flex items-center justify-center gap-2.5 cursor-pointer select-none ${isActive
-                                ? `${activeClasses} scale-[1.01]`
-                                : 'border-transparent text-slate-600 hover:bg-white hover:text-slate-900 hover:shadow-2xs active:scale-98'
+                            className={`group flex-1 py-2 sm:py-2.5 px-2 sm:px-4 rounded-xl border text-[11px] sm:text-xs font-bold transition-all duration-300 flex items-center justify-center gap-1.5 sm:gap-2.5 cursor-pointer select-none ${isActive
+                              ? `${activeClasses} scale-[1.01]`
+                              : 'border-transparent text-[#171717] hover:bg-[#F6E8EA] hover:text-[#800000] hover:shadow-2xs active:scale-98'
                               }`}
                           >
                             <div className="relative flex items-center justify-center">
@@ -856,10 +802,9 @@ export default function UserForm() {
 
                   {/* Description Textarea */}
                   <div>
-                    <label htmlFor="description" className="input-label flex items-center gap-1.5 font-bold text-slate-700">
-                      <FileText size={14} className="text-slate-400 shrink-0" />
+                    <label htmlFor="description" className="input-label flex items-center gap-1.5 font-bold text-[#800000]">
                       <span>DESCRIPTION</span>
-                      <span className="text-red-500 ml-0.5">*</span>
+                      <span className="text-red-500 font-extrabold ml-0.5">*</span>
                     </label>
                     <textarea
                       id="description"
@@ -867,25 +812,24 @@ export default function UserForm() {
                       value={form.description}
                       onChange={handleChange('description')}
                       placeholder="Describe the complaint in detail (what is broken, where, since when)..."
-                      className={`input-field resize-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 ${errors.description ? 'border-red-400 focus:ring-red-400' : ''}`}
+                      className={`w-full px-4 py-2.5 rounded-2xl border border-[#D9D9D9] bg-white text-sm text-[#171717] placeholder:text-[#777777] hover:bg-white focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#800000]/12 focus:border-[#800000] transition duration-200 resize-none shadow-xs ${errors.description ? 'border-red-400 focus:ring-red-400' : ''}`}
                     />
                     {errors.description && <p className="mt-1 text-xs text-red-500 flex items-center gap-1"><AlertCircle size={11} />{errors.description}</p>}
                   </div>
 
                   {/* Photo Upload */}
                   <div>
-                    <label className="input-label flex items-center gap-1.5 font-bold text-slate-700">
-                      <Camera size={14} className="text-slate-400" />
+                    <label className="input-label flex items-center gap-1.5 font-bold text-[#800000]">
                       <span>UPLOAD PHOTO</span>
-                      <span className="text-slate-400 font-normal text-xs">(optional · max 5MB)</span>
+                      <span className="text-[#777777] font-normal text-xs">(optional · max 5MB)</span>
                     </label>
                     {photoPreview ? (
                       <div className="relative group">
-                        <img src={photoPreview} alt="Preview" className="h-48 w-full object-cover rounded-2xl border border-slate-200 shadow-md" />
+                        <img src={photoPreview} alt="Preview" className="h-48 w-full object-cover rounded-2xl border border-[#D9D9D9] shadow-md" />
                         <button
                           type="button"
                           onClick={removePhoto}
-                          className="absolute top-3 right-3 bg-white/90 backdrop-blur-md border border-slate-200 shadow-md text-slate-700 hover:text-red-600 rounded-full p-2 transition hover:scale-110"
+                          className="absolute top-3 right-3 bg-white/90 backdrop-blur-md border border-[#D9D9D9] shadow-md text-[#171717] hover:text-red-600 rounded-full p-2 transition hover:scale-110"
                         >
                           <X size={15} />
                         </button>
@@ -893,15 +837,15 @@ export default function UserForm() {
                     ) : (
                       <div
                         onClick={() => fileInputRef.current?.click()}
-                        className="border-2 border-dashed border-slate-300 hover:border-blue-500 bg-slate-50/50 hover:bg-blue-50/30 rounded-2xl p-8 text-center cursor-pointer transition-all duration-200 group space-y-2"
+                        className="border-2 border-dashed border-[#D9D9D9] hover:border-[#800000] bg-white hover:bg-[#F6E8EA] rounded-2xl p-8 text-center cursor-pointer transition-all duration-200 group space-y-2"
                       >
-                        <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-center mx-auto text-slate-400 group-hover:text-blue-600 group-hover:scale-110 transition-all">
-                          <Upload size={22} />
+                        <div className="w-12 h-12 rounded-2xl bg-[#F6E8EA] border border-[#D9D9D9] shadow-sm flex items-center justify-center mx-auto text-[#800000] group-hover:scale-110 transition-all">
+                          <Upload size={22} className="text-[#800000]" />
                         </div>
-                        <p className="text-xs font-bold text-slate-700 group-hover:text-blue-600 transition-colors">
+                        <p className="text-xs font-bold text-[#171717] group-hover:text-[#800000] transition-colors">
                           Click or drag photo to upload
                         </p>
-                        <p className="text-[11px] text-slate-400">PNG, JPG, WEBP up to 5MB</p>
+                        <p className="text-[11px] text-[#777777]">PNG, JPG, WEBP up to 5MB</p>
                       </div>
                     )}
                     <input
@@ -916,12 +860,11 @@ export default function UserForm() {
               </section>
 
               {/* Form Info Box */}
-              <div className="flex items-center gap-3 bg-blue-50/80 border border-blue-200/80 rounded-2xl p-4 text-xs text-blue-900 font-medium">
-                <Shield size={18} className="text-blue-600 shrink-0" />
+              <div className="flex items-center gap-3 bg-[#F4E8EA] border border-[#E5E5E5] rounded-2xl p-4 text-xs text-[#800000] font-medium">
                 <span>Your submission will be logged under ticket sequence and assigned to the facilities supervisor for review.</span>
               </div>
 
-              {/* Submissions Disabled Warning (Super Admin: submissionsEnabled = false) */}
+              {/* Submissions Disabled Warning */}
               {systemConfig.submissionsEnabled === false && (
                 <div className="flex items-start gap-3 bg-amber-50 border border-amber-300 rounded-2xl px-4 py-3.5 text-xs text-amber-900 font-semibold">
                   <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
@@ -936,7 +879,7 @@ export default function UserForm() {
               <button
                 type="submit"
                 disabled={submitting || systemConfig.submissionsEnabled === false}
-                className="w-full bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black py-4 rounded-2xl shadow-xl shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-200 flex items-center justify-center gap-2.5 text-base hover:scale-[1.01] active:scale-98 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full bg-[#800000] hover:bg-[#9A1B2F] text-white font-black py-4 rounded-2xl shadow-xl shadow-[#800000]/25 hover:shadow-[#800000]/40 transition-all duration-200 flex items-center justify-center gap-2.5 text-base hover:scale-[1.01] active:scale-98 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {submitting ? (
                   <>

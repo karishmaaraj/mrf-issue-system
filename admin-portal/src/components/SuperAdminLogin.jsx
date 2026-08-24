@@ -1,14 +1,13 @@
 /**
- * SuperAdminLogin.jsx — Master Authentication Gate for Super Admin
- * Default Credentials:
- *   Email:    superadmin@mrf.edu
- *   Password: super2024
+ * SuperAdminLogin.jsx — Native Issue Portal Master Authentication Gate
+ * Design System: MCC Maroon Light Institutional Theme (100% Native to Issue Portal)
+ * Credentials: superadmin@mcc.edu / super2024
  */
 import React, { useState } from 'react';
 import CollegeLogo from './CollegeLogo.jsx';
-import { Crown, ShieldAlert, Eye, EyeOff, Lock, Mail, AlertCircle, Sparkles, KeyRound } from 'lucide-react';
+import { Crown, Lock, Mail, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 
-const SUPER_EMAIL    = 'superadmin@mrf.edu';
+const SUPER_EMAIL    = 'superadmin@mcc.edu';
 const SUPER_PASSWORD = 'super2024';
 
 export default function SuperAdminLogin({ onLogin }) {
@@ -30,6 +29,7 @@ export default function SuperAdminLogin({ onLogin }) {
       email.trim().toLowerCase() === SUPER_EMAIL &&
       password === SUPER_PASSWORD
     ) {
+      sessionStorage.setItem('mcc_super_authed', 'true');
       onLogin();
     } else {
       setError('Invalid Super Admin credentials. Access denied.');
@@ -38,71 +38,60 @@ export default function SuperAdminLogin({ onLogin }) {
     }
   };
 
-  const fillDemo = () => {
-    setEmail(SUPER_EMAIL);
-    setPassword(SUPER_PASSWORD);
-    setError('');
-  };
-
   return (
-    <div className="min-h-screen bg-[#070913] text-white flex flex-col items-center justify-center p-4 sm:p-6 relative overflow-hidden selection:bg-amber-500 selection:text-black">
-      {/* Ambient Master Glows */}
-      <div className="absolute top-10 left-10 w-96 h-96 bg-amber-500/15 rounded-full blur-[140px] pointer-events-none animate-pulse-glow" />
-      <div className="absolute bottom-10 right-10 w-[30rem] h-[30rem] bg-indigo-600/20 rounded-full blur-[160px] pointer-events-none" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-purple-500/10 rounded-full blur-[120px] pointer-events-none" />
+    <div className="min-h-screen bg-[#F8F8F8] text-[#171717] flex flex-col items-center justify-center p-4 sm:p-6 relative overflow-hidden selection:bg-[#A00000] selection:text-white font-sans">
+      {/* Soft Ambient Maroon Radial Wash */}
+      <div className="fixed top-[-10%] left-[-5%] w-[45rem] h-[45rem] bg-[#FFF5F5]/60 rounded-full blur-[140px] pointer-events-none -z-10" />
+      <div className="fixed bottom-[-10%] right-[-5%] w-[45rem] h-[45rem] bg-[#FFF5F5]/40 rounded-full blur-[140px] pointer-events-none -z-10" />
 
-      {/* Grid line texture */}
-      <div className="absolute inset-0 bg-[radial-gradient(#f59e0b15_1px,transparent_1px)] [background-size:32px_32px] pointer-events-none" />
+      {/* Grid Pattern Overlay */}
+      <div className="absolute inset-0 bg-[radial-gradient(#A000000d_1px,transparent_1px)] [background-size:32px_32px] pointer-events-none" />
 
-      {/* Header */}
-      <div className="flex items-center gap-3.5 text-white mb-8 relative z-10 animate-fade-in">
-        <div className="p-2 bg-white rounded-2xl shadow-lg border border-white/90 shrink-0 flex items-center justify-center">
-          <CollegeLogo className="h-12 w-auto" />
-        </div>
+      {/* Page Header */}
+      <div className="flex items-center gap-4 text-[#171717] mb-8 relative z-10 animate-fade-in">
+        <CollegeLogo className="h-14 sm:h-16 w-auto shrink-0" />
         <div>
-          <div className="flex items-center gap-2">
-            <span className="text-2xl font-black tracking-tight block text-white">MRF Super Admin</span>
-            <span className="text-[10px] font-black uppercase bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-md">
-              Level 0 Access
-            </span>
+          <div className="flex items-center gap-2.5">
+            <span className="text-xl sm:text-2xl font-black tracking-tight block text-[#171717]">MCC Super Admin</span>
           </div>
-          <span className="text-xs text-slate-400 font-semibold tracking-wide">Campus-Wide Master Governance & Dynamic Control</span>
+          <span className="text-xs text-[#666666] font-semibold tracking-wide block mt-0.5">
+            Campus-Wide Governance & Facilities Control System
+          </span>
         </div>
       </div>
 
       {/* Login Card */}
       <div
-        className={`bg-slate-900/90 backdrop-blur-2xl text-white w-full max-w-md rounded-3xl shadow-[0_30px_90px_-15px_rgba(0,0,0,0.95)] animate-scale-in border border-amber-500/30 relative overflow-hidden z-10 ${
+        className={`bg-white text-[#171717] w-full max-w-md rounded-3xl shadow-xl animate-scale-in border border-[#E5E5E5] relative overflow-hidden z-10 ${
           shaking ? 'animate-[shake_0.5s_ease]' : ''
         }`}
       >
-        {/* Master Gold Accent Line */}
-        <div className="h-2 w-full bg-gradient-to-r from-amber-500 via-purple-600 to-blue-500" />
+        {/* Solid Top Maroon Stripe */}
+        <div className="h-2 w-full bg-[#A00000]" />
 
-        <div className="p-8 space-y-6">
+        <div className="p-7 sm:p-8 space-y-6">
           <div className="text-center space-y-2">
-            <div className="inline-flex items-center gap-1.5 text-[11px] font-black text-amber-300 bg-amber-950/80 border border-amber-500/40 px-3.5 py-1 rounded-full uppercase tracking-wider shadow-sm">
-              <Crown size={14} className="text-amber-400" />
-              <span>Master System Commander</span>
+            <div className="inline-flex items-center gap-1.5 text-[11px] font-black text-[#A00000] bg-[#FFF5F5] border border-[#E5E5E5] px-3.5 py-1 rounded-full uppercase tracking-wider shadow-2xs">
+              <ShieldCheck size={14} className="text-[#A00000]" />
+              <span>Master Authority Gate</span>
             </div>
 
-            <div className="flex justify-center py-2 relative group">
-              <div className="absolute inset-0 bg-amber-500/20 rounded-full blur-xl group-hover:bg-amber-500/40 transition-all pointer-events-none" />
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center shadow-lg shadow-amber-500/20 border border-amber-300/30 relative z-10">
-                <Crown size={32} className="text-white" />
+            <div className="flex justify-center py-2 relative">
+              <div className="w-16 h-16 rounded-full bg-[#FFF5F5] border border-[#E5E5E5] flex items-center justify-center text-[#A00000] shadow-xs">
+                <Crown size={32} />
               </div>
             </div>
 
-            <h1 className="text-2xl font-black text-white tracking-tight">Super Admin Sign In</h1>
-            <p className="text-xs text-slate-400 font-medium">
-              Dynamic configuration for User & Admin Portals.
+            <h1 className="text-2xl font-black text-[#171717] tracking-tight">Super Admin Sign In</h1>
+            <p className="text-xs text-[#666666] font-medium">
+              Access system-wide controls, staff dispatches & portal branding.
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="super-email" className="input-label flex items-center gap-1.5 font-bold text-slate-300 mb-1 text-[11px]">
-                <Mail size={13} className="text-amber-400 shrink-0" />
+              <label htmlFor="super-email" className="input-label flex items-center gap-1.5 font-extrabold text-[#171717] mb-1 text-[11px] uppercase tracking-wider">
+                <Mail size={13} className="text-[#A00000] shrink-0" />
                 <span>SUPER ADMIN EMAIL</span>
               </label>
               <input
@@ -110,15 +99,15 @@ export default function SuperAdminLogin({ onLogin }) {
                 type="email"
                 value={email}
                 onChange={(e) => { setEmail(e.target.value); setError(''); }}
-                placeholder="superadmin@mrf.edu"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-700/80 bg-slate-950/80 text-white placeholder:text-slate-500 text-xs focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 font-medium transition duration-150 outline-none"
+                placeholder="superadmin@mcc.edu"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E5E5] bg-white text-[#171717] placeholder:text-[#888888] text-xs font-medium focus:ring-4 focus:ring-[#A00000]/10 focus:border-[#A00000] transition duration-150 outline-none"
                 autoFocus
               />
             </div>
 
             <div>
-              <label htmlFor="super-password" className="input-label flex items-center gap-1.5 font-bold text-slate-300 mb-1 text-[11px]">
-                <Lock size={13} className="text-amber-400 shrink-0" />
+              <label htmlFor="super-password" className="input-label flex items-center gap-1.5 font-extrabold text-[#171717] mb-1 text-[11px] uppercase tracking-wider">
+                <Lock size={13} className="text-[#A00000] shrink-0" />
                 <span>MASTER PASSWORD</span>
               </label>
               <div className="relative">
@@ -128,54 +117,34 @@ export default function SuperAdminLogin({ onLogin }) {
                   value={password}
                   onChange={(e) => { setPassword(e.target.value); setError(''); }}
                   placeholder="Enter master password"
-                  className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-slate-700/80 bg-slate-950/80 text-white placeholder:text-slate-500 text-xs focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 font-medium transition duration-150 outline-none"
+                  className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-[#E5E5E5] bg-white text-[#171717] placeholder:text-[#888888] text-xs font-medium focus:ring-4 focus:ring-[#A00000]/10 focus:border-[#A00000] transition duration-150 outline-none"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPw(v => !v)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#666666] hover:text-[#A00000] transition cursor-pointer"
                 >
-                  {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
+                  {showPw ? <span className="text-xs font-bold text-[#666666]">Hide</span> : <span className="text-xs font-bold text-[#A00000]">Show</span>}
                 </button>
               </div>
             </div>
 
             {error && (
-              <div className="flex items-center gap-2 text-red-300 text-xs bg-red-950/80 border border-red-500/40 rounded-xl px-3.5 py-2.5 font-semibold">
-                <AlertCircle size={14} className="shrink-0 text-red-400" />
+              <div className="flex items-center gap-2 text-red-700 text-xs bg-red-50 border border-red-200 rounded-xl px-3.5 py-2.5 font-semibold">
+                <AlertCircle size={14} className="shrink-0 text-red-500" />
                 <span>{error}</span>
               </div>
             )}
 
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-black py-3.5 rounded-xl shadow-xl shadow-amber-500/20 hover:shadow-amber-500/40 transition-all duration-200 flex items-center justify-center gap-2 text-sm hover:scale-[1.01] active:scale-95 cursor-pointer mt-2"
+              className="w-full bg-[#A00000] hover:bg-[#800000] text-white font-bold py-3.5 rounded-xl shadow-md shadow-[#A00000]/20 hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 text-xs sm:text-sm hover:scale-[1.01] active:scale-95 cursor-pointer mt-2"
             >
-              <Crown size={17} />
               <span>Enter Super Admin Control Center</span>
+              <ArrowRight size={16} />
             </button>
           </form>
         </div>
-      </div>
-
-      {/* Demo Credentials Pill */}
-      <div className="mt-6 bg-slate-900/90 backdrop-blur-md border border-slate-700/80 rounded-2xl px-5 py-3 text-xs text-slate-300 flex flex-col sm:flex-row items-center gap-3 shadow-xl relative z-10">
-        <div className="flex items-center gap-1.5 font-bold text-amber-400">
-          <KeyRound size={14} />
-          <span>Super Admin Access:</span>
-        </div>
-        <div className="flex items-center gap-2 text-xs">
-          <span>Email: <code className="bg-slate-950 text-amber-300 px-2 py-0.5 rounded-md font-mono border border-slate-800">superadmin@mrf.edu</code></span>
-          <span>·</span>
-          <span>Pass: <code className="bg-slate-950 text-amber-300 px-2 py-0.5 rounded-md font-mono border border-slate-800">super2024</code></span>
-        </div>
-        <button
-          type="button"
-          onClick={fillDemo}
-          className="ml-auto text-[11px] font-black text-amber-300 hover:text-black bg-amber-500/20 hover:bg-amber-400 border border-amber-500/40 px-3 py-1 rounded-xl transition shadow-xs flex items-center gap-1 cursor-pointer"
-        >
-          <Sparkles size={12} /> Auto-Fill
-        </button>
       </div>
     </div>
   );

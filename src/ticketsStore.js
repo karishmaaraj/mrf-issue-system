@@ -17,14 +17,14 @@ export function getTicketsApiUrl() {
   return `${getApiBase()}/api/tickets`;
 }
 
-const TICKETS_KEY = 'mrf_tickets';
-const COUNTER_KEY = 'mrf_ticket_counter';
+const TICKETS_KEY = 'mcc_tickets';
+const COUNTER_KEY = 'mcc_ticket_counter';
 
 let cachedTickets = [];
 let lastSerializedHash = '';
 
 const syncChannel = typeof window !== 'undefined' && 'BroadcastChannel' in window
-  ? new BroadcastChannel('mrf_tickets_sync_channel')
+  ? new BroadcastChannel('mcc_tickets_sync_channel')
   : null;
 
 function computeSimpleHash(tickets) {

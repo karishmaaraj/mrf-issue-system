@@ -19,13 +19,14 @@ function ScrollToTop() {
 }
 
 /**
- * App.jsx — MRF Issue Portal Router (Running on http://localhost:5174/)
+ * App.jsx — MCC Issue Portal Router (Running on http://localhost:5174/)
  *
  * Routes:
  *   "/"             → Student Landing Overview Page
  *   "/complaint"    → Student Complaint Submission Form
  *   "/admin"        → Admin Portal (Login & Dashboard)
  *   "/super-admin"  → Super Admin Master Dynamic Control Center
+ *   "/superadmin"   → Super Admin Master Dynamic Control Center (Shortcut)
  *   "*"             → Redirect to "/"
  */
 export default function App() {
@@ -37,6 +38,7 @@ export default function App() {
         <Route path="/complaint" element={<UserForm />} />
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/super-admin" element={<SuperAdminDashboard />} />
+        <Route path="/superadmin" element={<SuperAdminDashboard />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

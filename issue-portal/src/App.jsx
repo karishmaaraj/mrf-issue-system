@@ -19,7 +19,7 @@ function ScrollToTop() {
 }
 
 /**
- * App.jsx — MRF Issue Portal Router (Running on http://localhost:5174/)
+ * App.jsx — MCC Issue Portal Router (Running on http://localhost:5174/)
  *
  * Routes:
  *   "/"             → Student Landing Overview Page

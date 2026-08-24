@@ -1021,4 +1021,4 @@ server.listen(PORT, HOST, () => {
 });
 
 // Keep-alive heartbeat interval
-setInterval(() => {}, 1000 * 60 * 60);
+setInterval(() => { }, 1000 * 60 * 60);

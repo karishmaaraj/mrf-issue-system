@@ -73,7 +73,7 @@ export async function sendWorkerAssignmentEmail({ worker_name, worker_email, tic
 
   const templateParams = {
     to_name: worker_name,
-    to_email: worker_email || `${worker_name.toLowerCase().replace(/\s+/g, '.')}@mrf.edu`,
+    to_email: worker_email || `${worker_name.toLowerCase().replace(/\s+/g, '.')}@mcc.edu`,
     ticket_no,
     message: `New Work Order Dispatched: Ticket ${ticket_no} [${issueCategory}] at ${location}. Description: ${description}`,
   };

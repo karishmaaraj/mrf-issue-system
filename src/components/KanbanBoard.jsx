@@ -61,6 +61,8 @@ function EmptyState({ colId }) {
 }
 
 export default function KanbanBoard({ tickets, onTicketSelect, onSolveTicket, onTicketsChange }) {
+  const [activeTab, setActiveTab] = React.useState('All');
+
   const grouped = {
     Unsolved:  tickets.filter(t => t.status === 'Unsolved'),
     Ongoing:   tickets.filter(t => t.status === 'Ongoing'),
@@ -76,75 +78,113 @@ export default function KanbanBoard({ tickets, onTicketSelect, onSolveTicket, on
     onTicketsChange();
   };
 
+  const visibleCols = activeTab === 'All'
+    ? COLUMNS
+    : COLUMNS.filter(c => c.id === activeTab);
+
   return (
-    <DragDropContext onDragEnd={onDragEnd}>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-        {COLUMNS.map((col) => {
-          const colTickets = grouped[col.id] || [];
-          const ColIcon = col.icon;
-
-          return (
-            <div
-              key={col.id}
-              className={`rounded-[28px] border ${col.colBorder} overflow-hidden flex flex-col bg-white shadow-[0_8px_24px_-6px_rgba(0,0,0,0.04)] hover:shadow-xl transition-all duration-300`}
-            >
-              {/* Header with Frosted Gradient Wash Fills */}
-              <div className={`${col.headerBg} border-b ${col.colBorder} px-5 py-4 flex items-center justify-between`}>
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-xl bg-white/90 shadow-2xs flex items-center justify-center border border-white">
-                    <ColIcon size={16} className={`${col.iconColor} animate-pulse`} />
-                  </div>
-                  <h2 className={`text-xs font-black ${col.headerText} uppercase tracking-wider`}>
-                    {col.label}
-                  </h2>
-                </div>
-                <span className={`text-xs font-black px-3 py-1 rounded-full ${col.countBadge} animate-pop-badge`}>
-                  {colTickets.length}
-                </span>
-              </div>
-
-              {/* Droppable Area */}
-              <Droppable droppableId={col.id}>
-                {(provided, snapshot) => (
-                  <div
-                    ref={provided.innerRef}
-                    {...provided.droppableProps}
-                    className={`
-                      flex-1 min-h-[300px] p-4 space-y-4
-                      ${col.accentBg}
-                      ${snapshot.isDraggingOver ? 'kanban-col-dragging-over' : ''}
-                      transition-colors duration-200
-                    `}
-                  >
-                    {colTickets.length === 0 ? (
-                      <EmptyState colId={col.id} />
-                    ) : (
-                      colTickets.map((ticket, index) => (
-                        <Draggable
-                          key={ticket.ticketNo}
-                          draggableId={ticket.ticketNo}
-                          index={index}
-                        >
-                          {(prov, snap) => (
-                            <TicketCard
-                              ticket={ticket}
-                              onSelect={onTicketSelect}
-                              onSolveTicket={onSolveTicket}
-                              provided={prov}
-                              snapshot={snap}
-                            />
-                          )}
-                        </Draggable>
-                      ))
-                    )}
-                    {provided.placeholder}
-                  </div>
-                )}
-              </Droppable>
-            </div>
-          );
-        })}
+    <div className="space-y-4">
+      {/* Mobile Column Tab Switcher Bar */}
+      <div className="flex items-center gap-1.5 lg:hidden bg-white p-1.5 rounded-2xl border border-[#E5E5E5] shadow-2xs overflow-x-auto scrollbar-none">
+        <button
+          type="button"
+          onClick={() => setActiveTab('All')}
+          className={`flex-1 min-w-[70px] py-2 px-3 rounded-xl text-xs font-bold transition cursor-pointer ${
+            activeTab === 'All'
+              ? 'bg-[#800000] text-white shadow-xs'
+              : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          All ({tickets.length})
+        </button>
+        {COLUMNS.map(col => (
+          <button
+            key={col.id}
+            type="button"
+            onClick={() => setActiveTab(col.id)}
+            className={`flex-1 min-w-[100px] py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeTab === col.id
+                ? 'bg-[#800000] text-white shadow-xs'
+                : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            <span>{col.label}</span>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${activeTab === col.id ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'}`}>
+              {(grouped[col.id] || []).length}
+            </span>
+          </button>
+        ))}
       </div>
-    </DragDropContext>
+
+      <DragDropContext onDragEnd={onDragEnd}>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 items-start">
+          {visibleCols.map((col) => {
+            const colTickets = grouped[col.id] || [];
+            const ColIcon = col.icon;
+
+            return (
+              <div
+                key={col.id}
+                className={`rounded-[24px] sm:rounded-[28px] border ${col.colBorder} overflow-hidden flex flex-col bg-white shadow-[0_8px_24px_-6px_rgba(0,0,0,0.04)] hover:shadow-xl transition-all duration-300`}
+              >
+                {/* Header with Frosted Gradient Wash Fills */}
+                <div className={`${col.headerBg} border-b ${col.colBorder} px-4 sm:px-5 py-3.5 sm:py-4 flex items-center justify-between`}>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-xl bg-white/90 shadow-2xs flex items-center justify-center border border-white">
+                      <ColIcon size={16} className={`${col.iconColor} animate-pulse`} />
+                    </div>
+                    <h2 className={`text-xs font-black ${col.headerText} uppercase tracking-wider`}>
+                      {col.label}
+                    </h2>
+                  </div>
+                  <span className={`text-xs font-black px-3 py-1 rounded-full ${col.countBadge} animate-pop-badge`}>
+                    {colTickets.length}
+                  </span>
+                </div>
+
+                {/* Droppable Area */}
+                <Droppable droppableId={col.id}>
+                  {(provided, snapshot) => (
+                    <div
+                      ref={provided.innerRef}
+                      {...provided.droppableProps}
+                      className={`
+                        flex-1 min-h-[260px] sm:min-h-[300px] p-3 sm:p-4 space-y-3 sm:space-y-4
+                        ${col.accentBg}
+                        ${snapshot.isDraggingOver ? 'kanban-col-dragging-over' : ''}
+                        transition-colors duration-200
+                      `}
+                    >
+                      {colTickets.length === 0 ? (
+                        <EmptyState colId={col.id} />
+                      ) : (
+                        colTickets.map((ticket, index) => (
+                          <Draggable
+                            key={ticket.ticketNo}
+                            draggableId={ticket.ticketNo}
+                            index={index}
+                          >
+                            {(prov, snap) => (
+                              <TicketCard
+                                ticket={ticket}
+                                onSelect={onTicketSelect}
+                                onSolveTicket={onSolveTicket}
+                                provided={prov}
+                                snapshot={snap}
+                              />
+                            )}
+                          </Draggable>
+                        ))
+                      )}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              </div>
+            );
+          })}
+        </div>
+      </DragDropContext>
+    </div>
   );
 }

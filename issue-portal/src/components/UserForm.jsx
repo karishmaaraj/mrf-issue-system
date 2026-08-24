@@ -22,7 +22,9 @@ import {
   ChevronDown, LayoutDashboard, X, AlertCircle, Hash,
   Clock, Wrench, Info, MapPin, GraduationCap, BadgeCheck,
   SendHorizonal, PhoneCall, HelpCircle, ChevronRight,
-  CalendarDays, Shield, ArrowLeft, Droplets, Megaphone, Lock
+  CalendarDays, Shield, ArrowLeft, Droplets, Megaphone, Lock,
+  Zap, Monitor, Trash2, Accessibility, MoreHorizontal, CloudRain,
+  Plus, Sparkles, Check, Home
 } from 'lucide-react';
 
 export const AIDED_UG_DEPARTMENTS = [
@@ -104,27 +106,125 @@ const BLOCKS = [
 ];
 
 const ISSUE_CATEGORIES = [
-  { label: '💡 Electrical', prefix: 'Electrical issue: ' },
-  { label: '🚰 Plumbing', prefix: 'Plumbing issue: ' },
-  { label: '🖥️ IT / Network', prefix: 'IT/Network issue: ' },
-  { label: '🪟 Civil / Infra', prefix: 'Civil/Infrastructure issue: ' },
-  { label: '🧹 Sanitation', prefix: 'Sanitation issue: ' },
-  { label: '♿ Accessibility', prefix: 'Accessibility issue: ' },
-  { label: '📌 Others', prefix: 'Other issue: ' },
+  { label: 'Electrical', prefix: 'Electrical issue: ', color: 'amber' },
+  { label: 'Plumbing', prefix: 'Plumbing issue: ', color: 'cyan' },
+  { label: 'IT / Network', prefix: 'IT/Network issue: ', color: 'indigo' },
+  { label: 'Civil / Infra', prefix: 'Civil/Infrastructure issue: ', color: 'orange' },
+  { label: 'Sanitation', prefix: 'Sanitation issue: ', color: 'emerald' },
+  { label: 'Accessibility', prefix: 'Accessibility issue: ', color: 'sky' },
+  { label: 'Others', prefix: 'Other issue: ', color: 'rose' },
 ];
 
 const OTHER_SUB_CATEGORIES = [
-  { label: '💧 Drinking Water Cooler Leak', text: 'Drinking Water Leakage: Water cooler / purifier unit is leaking water.' },
-  { label: '🚰 Restroom Tap / Flush Leak', text: 'Restroom Water Leakage: Tap, washbasin, or flush valve leaking continuously.' },
-  { label: '🌧️ Pipe / Ceiling Water Seepage', text: 'Water Seepage Leakage: Water leaking from overhead tank, pipe junction, or ceiling.' },
-  { label: '🧹 General Maintenance', text: 'General Maintenance: ' },
+  {
+    id: 'sub-water-cooler',
+    label: 'Drinking Water Cooler Leak',
+    text: 'Drinking Water Leakage: Water cooler / purifier unit is leaking water.',
+    emoji: '💧',
+  },
+  {
+    id: 'sub-restroom-tap',
+    label: 'Restroom Tap / Flush Leak',
+    text: 'Restroom Water Leakage: Tap, washbasin, or flush valve leaking continuously.',
+    emoji: '🚰',
+  },
+  {
+    id: 'sub-pipe-seepage',
+    label: 'Pipe / Ceiling Water Seepage',
+    text: 'Water Seepage Leakage: Water leaking from overhead tank, pipe junction, or ceiling.',
+    emoji: '🌧️',
+  },
+  {
+    id: 'sub-general-maint',
+    label: 'General Maintenance',
+    text: 'General Maintenance: ',
+    emoji: '🔧',
+  },
 ];
 
-function SelectField({ label, id, value, onChange, options, placeholder, icon: Icon, error }) {
+function CategoryIcon({ label, id }) {
+  const clean = ((label || '') + ' ' + (id || '')).toLowerCase();
+  if (clean.includes('cat1') || clean.includes('electric') || clean.includes('power') || clean.includes('light')) {
+    return (
+      <span className="inline-flex items-center justify-center text-[15px] transition-transform duration-200 group-hover:scale-125 group-hover:-rotate-12 select-none shrink-0">
+        💡
+      </span>
+    );
+  }
+  if (clean.includes('cat2') || clean.includes('plumb') || clean.includes('water') || clean.includes('pipe') || clean.includes('tap')) {
+    return (
+      <span className="inline-flex items-center justify-center text-[15px] transition-transform duration-200 group-hover:scale-125 group-hover:rotate-6 select-none shrink-0">
+        🚰
+      </span>
+    );
+  }
+  if (clean.includes('cat3') || clean.includes('it') || clean.includes('net') || clean.includes('wifi') || clean.includes('computer')) {
+    return (
+      <span className="inline-flex items-center justify-center text-[15px] transition-transform duration-200 group-hover:scale-125 group-hover:-rotate-6 select-none shrink-0">
+        🖥️
+      </span>
+    );
+  }
+  if (clean.includes('cat4') || clean.includes('civil') || clean.includes('infra') || clean.includes('build') || clean.includes('window') || clean.includes('door')) {
+    return (
+      <span className="inline-flex items-center justify-center text-[15px] transition-transform duration-200 group-hover:scale-125 group-hover:rotate-12 select-none shrink-0">
+        🪟
+      </span>
+    );
+  }
+  if (clean.includes('cat5') || clean.includes('sanit') || clean.includes('clean') || clean.includes('wash') || clean.includes('waste') || clean.includes('trash') || clean.includes('sweep') || clean.includes('broom')) {
+    return (
+      <span className="inline-flex items-center justify-center text-[15px] transition-transform duration-200 group-hover:scale-125 group-hover:-rotate-12 select-none shrink-0">
+        🧹
+      </span>
+    );
+  }
+  if (clean.includes('cat6') || clean.includes('access') || clean.includes('ramp') || clean.includes('lift') || clean.includes('wheel') || clean.includes('handicap') || clean.includes('disabled')) {
+    return (
+      <span className="inline-flex items-center justify-center text-[15px] transition-transform duration-200 group-hover:scale-125 group-hover:rotate-6 select-none shrink-0">
+        ♿
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center justify-center text-[15px] transition-transform duration-200 group-hover:scale-125 group-hover:rotate-12 select-none shrink-0">
+      📌
+    </span>
+  );
+}
+
+function getCleanCategoryLabel(label) {
+  if (!label) return '';
+  // Strip leading question marks, broken unicode chars, emojis, or spaces
+  const cleaned = label.replace(/^[\?\s\uFFFD\uD800-\uDBFF\uDC00-\uDFFF\u2600-\u27BF\uFE0F\u{1F300}-\u{1FAFF}]+/gu, '').trim();
+  return cleaned || label;
+}
+/**
+ * Abstract3DSaasBackdrop — Premium Abstract 3D SaaS Environment (Linear / Stripe / Raycast)
+ * 
+ * Visibly designed 3D abstract geometric elements:
+ * • Base light cool-gray canvas (#F6F8FC)
+ * • 1. Top-Left: Large Translucent Blue Rounded Capsule / Tile (rich blue gradient, glass border, drop shadow)
+ * • 2. Top-Right: Large Translucent Indigo Curved Glass Tile (rich indigo gradient, glass border, drop shadow)
+ * • 3. Left-Edge: Floating Translucent Pill Shape (sky-blue to indigo glass)
+ * • 4. Right-Edge: Partial Cyan / Blue Geometric Rounded Shape
+ * • 5. Bottom: Soft Overlapping Horizon Pill Arc creating depth
+ * • Soft ambient radial depth underlay
+ */
+function Abstract3DSaasBackdrop() {
+  return (
+    <div className="fixed inset-0 pointer-events-none overflow-hidden z-0" aria-hidden="true">
+      {/* ── 1. Base Canvas ── */}
+      <div className="absolute inset-0 bg-[#F7F7F7]" />
+      <div className="absolute inset-0 bg-[radial-gradient(120%_90%_at_50%_10%,#FFFFFF_0%,#F7F7F7_60%,#F4E8EA_100%)]" />
+    </div>
+  );
+}
+
+function SelectField({ label, id, value, onChange, options, placeholder, error }) {
   return (
     <div>
-      <label htmlFor={id} className="input-label flex items-center gap-1.5">
-        {Icon && <Icon size={14} className="text-slate-400 shrink-0" />}
+      <label htmlFor={id} className="input-label flex items-center gap-1 font-bold text-[#171717]">
         <span>{label}</span>
         <span className="text-red-500 font-extrabold ml-0.5">*</span>
       </label>
@@ -144,18 +244,17 @@ function SelectField({ label, id, value, onChange, options, placeholder, icon: I
         </select>
         <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
       </div>
-      {error && <p className="mt-1 text-xs text-red-500 flex items-center gap-1"><AlertCircle size={11}/>{error}</p>}
+      {error && <p className="mt-1 text-xs text-red-500 flex items-center gap-1"><AlertCircle size={11} />{error}</p>}
     </div>
   );
 }
 
-function InputField({ label, id, type = 'text', value, onChange, placeholder, icon: Icon, required, error }) {
+function InputField({ label, id, type = 'text', value, onChange, placeholder, required, error }) {
   return (
     <div>
-      <label htmlFor={id} className="input-label flex items-center gap-1.5">
-        {Icon && <Icon size={14} className="text-slate-400 shrink-0" />}
+      <label htmlFor={id} className="input-label flex items-center gap-1 font-bold text-[#171717]">
         <span>{label}</span>
-        <span className="text-red-500 font-extrabold ml-0.5">*</span>
+        {required && <span className="text-red-500 font-extrabold ml-0.5">*</span>}
       </label>
       <input
         id={id}
@@ -166,7 +265,7 @@ function InputField({ label, id, type = 'text', value, onChange, placeholder, ic
         required={required}
         className={`input-field ${error ? 'border-red-400 focus:ring-red-400' : ''}`}
       />
-      {error && <p className="mt-1 text-xs text-red-500 flex items-center gap-1"><AlertCircle size={11}/>{error}</p>}
+      {error && <p className="mt-1 text-xs text-red-500 flex items-center gap-1"><AlertCircle size={11} />{error}</p>}
     </div>
   );
 }
@@ -176,11 +275,12 @@ export default function UserForm() {
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    document.title = 'MCC Issue Portal — Campus Facilities';
     fetchSystemConfigFromServer().then(cfg => {
       if (cfg) setSystemConfig(cfg);
     });
     const handleStorage = (e) => {
-      if (e.key === 'mrf_system_config') {
+      if (e.key === 'mcc_system_config') {
         setSystemConfig(getSystemConfig());
       }
     };
@@ -243,16 +343,16 @@ export default function UserForm() {
 
   const validate = () => {
     const errs = {};
-    if (!form.name.trim())        errs.name = 'Name is required.';
-    if (!form.email.trim())       errs.email = 'Email is required.';
+    if (!form.name.trim()) errs.name = 'Name is required.';
+    if (!form.email.trim()) errs.email = 'Email is required.';
     else if (!/\S+@\S+\.\S+/.test(form.email)) errs.email = 'Enter a valid email.';
-    if (!form.department)         errs.department = 'Select a department.';
-    if (!form.userType)           errs.userType = 'Select a user type.';
+    if (!form.department) errs.department = 'Select a department.';
+    if (!form.userType) errs.userType = 'Select a user type.';
     if (form.userType === 'Student') {
-      if (!form.studentStream)    errs.studentStream = 'Select stream.';
-      if (!form.studentLevel)     errs.studentLevel = 'Select level.';
+      if (!form.studentStream) errs.studentStream = 'Select stream.';
+      if (!form.studentLevel) errs.studentLevel = 'Select level.';
     }
-    if (!form.block)              errs.block = 'Select a block/building.';
+    if (!form.block) errs.block = 'Select a block/building.';
     if (!form.description.trim()) errs.description = 'Describe the issue.';
     return errs;
   };
@@ -292,67 +392,73 @@ export default function UserForm() {
       ? new Date().toLocaleString('en-IN', { dateStyle: 'long', timeStyle: 'short' })
       : dateObj.toLocaleString('en-IN', { dateStyle: 'long', timeStyle: 'short' });
     return (
-      <div className="min-h-screen bg-slate-100 flex flex-col">
-        <Navbar />
+      <div className="min-h-screen flex flex-col relative selection:bg-blue-500 selection:text-white saas-3d-bg">
+        <Abstract3DSaasBackdrop />
 
-        <div className="flex-1 flex items-center justify-center p-6 py-12">
-          <div className="animate-scale-in w-full max-w-lg">
-            <div className="bg-white rounded-3xl shadow-lg border border-slate-200 overflow-hidden">
-              <div className="bg-gradient-to-r from-emerald-500 to-teal-500 p-6 text-center text-white">
-                <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-3">
-                  <CheckCircle size={34} className="text-white" />
-                </div>
-                <h1 className="text-2xl font-extrabold tracking-tight">Ticket Submitted!</h1>
-                <p className="text-emerald-100 text-sm mt-1">Your complaint has been logged in the system.</p>
-              </div>
+        <div className="relative z-10 flex flex-col min-h-screen">
+          <Navbar />
 
-              <div className="p-6 space-y-5">
-                <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-2xl px-5 py-4">
-                  <div>
-                    <p className="text-xs font-semibold text-blue-500 uppercase tracking-widest">Assigned Ticket Number</p>
-                    <p className="text-3xl font-extrabold text-blue-700 tracking-tight mt-0.5">{createdTicket.ticketNo}</p>
+          <div className="flex-1 flex items-center justify-center p-6 py-12">
+            <div className="animate-scale-in w-full max-w-lg">
+              <div className="bg-white rounded-2xl shadow-[0_25px_60px_-15px_rgba(15,23,42,0.12),0_10px_30px_-5px_rgba(37,99,235,0.08),0_0_0_1px_rgba(226,232,240,0.9)] border border-slate-200/90 overflow-hidden ring-1 ring-blue-500/10">
+                <div className="bg-gradient-to-r from-emerald-500 to-teal-500 p-6 text-center text-white">
+                  <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-3">
+                    <CheckCircle size={34} className="text-white" />
                   </div>
-                  <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
-                    <Hash size={22} className="text-blue-600" />
-                  </div>
+                  <h1 className="text-2xl font-extrabold tracking-tight">Ticket Submitted!</h1>
+                  <p className="text-emerald-100 text-sm mt-1">Your complaint has been logged in the system.</p>
                 </div>
 
-                <div className="space-y-0 divide-y divide-slate-100 rounded-2xl border border-slate-200 overflow-hidden text-xs">
-                  {[
-                    { icon: User,        label: 'Name',        value: createdTicket.name },
-                    { icon: Mail,        label: 'Email',       value: createdTicket.email },
-                    { icon: Building2,   label: 'Department',  value: createdTicket.department },
-                    { icon: GraduationCap, label: 'User Type', value:
-                      createdTicket.userType +
-                      (createdTicket.studentStream ? ` · ${createdTicket.studentStream}` : '') +
-                      (createdTicket.studentLevel  ? ` · ${createdTicket.studentLevel}`  : '')
-                    },
-                    { icon: MapPin,      label: 'Location',    value:
-                      createdTicket.block + (createdTicket.roomNo ? ` · Room ${createdTicket.roomNo}` : '')
-                    },
-                    { icon: CalendarDays, label: 'Submitted',  value: submittedAt },
-                  ].map(({ icon: Icon, label, value }) => (
-                    <div key={label} className="flex items-center gap-3 px-4 py-3 bg-white">
-                      <Icon size={14} className="text-slate-400 shrink-0" />
-                      <span className="text-slate-500 w-24 shrink-0 font-medium">{label}</span>
-                      <span className="font-semibold text-slate-700 truncate">{value}</span>
+                <div className="p-6 space-y-5">
+                  <div className="flex items-center justify-between bg-[#F4E8EA] border border-[#E5E5E5] rounded-2xl px-5 py-4">
+                    <div>
+                      <p className="text-xs font-semibold text-[#800000] uppercase tracking-widest">Assigned Ticket Number</p>
+                      <p className="text-3xl font-extrabold text-[#800000] tracking-tight mt-0.5">{createdTicket.ticketNo}</p>
                     </div>
-                  ))}
-                </div>
+                    <div className="w-12 h-12 rounded-xl bg-white border border-[#E5E5E5] flex items-center justify-center">
+                      <Hash size={22} className="text-[#800000]" />
+                    </div>
+                  </div>
 
-                <div className="flex gap-3 pt-2">
-                  <button
-                    onClick={handleNewTicket}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl py-3 transition flex items-center justify-center gap-2 text-sm shadow"
-                  >
-                    <SendHorizonal size={15}/> File Another Issue
-                  </button>
-                  <Link
-                    to="/"
-                    className="px-4 py-3 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-sm font-medium transition flex items-center gap-1.5"
-                  >
-                    <ArrowLeft size={15}/> Home
-                  </Link>
+                  <div className="space-y-0 divide-y divide-[#E5E5E5] rounded-2xl border border-[#E5E5E5] overflow-hidden text-xs">
+                    {[
+                      { icon: User, label: 'Name', value: createdTicket.name },
+                      { icon: Mail, label: 'Email', value: createdTicket.email },
+                      { icon: Building2, label: 'Department', value: createdTicket.department },
+                      {
+                        icon: GraduationCap, label: 'User Type', value:
+                          createdTicket.userType +
+                          (createdTicket.studentStream ? ` · ${createdTicket.studentStream}` : '') +
+                          (createdTicket.studentLevel ? ` · ${createdTicket.studentLevel}` : '')
+                      },
+                      {
+                        icon: MapPin, label: 'Location', value:
+                          createdTicket.block + (createdTicket.roomNo ? ` · Room ${createdTicket.roomNo}` : '')
+                      },
+                      { icon: CalendarDays, label: 'Submitted', value: submittedAt },
+                    ].map(({ icon: Icon, label, value }) => (
+                      <div key={label} className="flex items-center gap-3 px-4 py-3 bg-white">
+                        <Icon size={14} className="text-[#6B6B6B] shrink-0" />
+                        <span className="text-[#6B6B6B] w-24 shrink-0 font-medium">{label}</span>
+                        <span className="font-semibold text-[#171717] truncate">{value}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      onClick={handleNewTicket}
+                      className="flex-1 bg-[#800000] hover:bg-[#9A1B2F] text-white font-semibold rounded-xl py-3 transition flex items-center justify-center gap-2 text-sm shadow"
+                    >
+                      <SendHorizonal size={15} /> File Another Issue
+                    </button>
+                    <Link
+                      to="/"
+                      className="px-4 py-3 rounded-xl border border-[#E5E5E5] text-[#171717] hover:bg-[#F7F7F7] text-sm font-medium transition flex items-center gap-1.5"
+                    >
+                      <ArrowLeft size={15} /> Home
+                    </Link>
+                  </div>
                 </div>
               </div>
             </div>
@@ -367,36 +473,40 @@ export default function UserForm() {
   // ─────────────────────────────────────────────────────────────
   if (systemConfig.portalActive === false) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex flex-col selection:bg-blue-500 selection:text-white">
-        <Navbar />
-        <div className="flex-1 flex items-center justify-center p-6">
-          <div className="max-w-md w-full text-center space-y-6">
-            <div className="w-20 h-20 rounded-3xl bg-slate-100 border border-slate-200 flex items-center justify-center mx-auto">
-              <Lock size={36} className="text-slate-400" />
-            </div>
-            <div className="space-y-2">
-              <h1 className="text-2xl font-black text-slate-900 tracking-tight">Portal Temporarily Closed</h1>
-              <p className="text-sm text-slate-500 font-medium leading-relaxed">
-                The MRF Issue Portal is currently offline for maintenance or scheduled downtime.<br />
-                Please check back shortly or contact the Facilities Office directly.
-              </p>
-            </div>
-            {systemConfig.portalNotice?.enabled && systemConfig.portalNotice?.message && (
-              <div className={`text-xs font-semibold px-4 py-3 rounded-2xl border text-left ${
-                systemConfig.portalNotice.type === 'alert' ? 'bg-red-50 text-red-800 border-red-200'
-                : systemConfig.portalNotice.type === 'warning' ? 'bg-amber-50 text-amber-800 border-amber-200'
-                : 'bg-blue-50 text-blue-800 border-blue-200'
-              }`}>
-                <Megaphone size={13} className="inline mr-1.5" />
-                {systemConfig.portalNotice.message}
+      <div className="min-h-screen flex flex-col relative selection:bg-blue-500 selection:text-white saas-3d-bg">
+        <Abstract3DSaasBackdrop />
+
+        <div className="relative z-10 flex flex-col min-h-screen">
+          <Navbar />
+          <div className="flex-1 flex items-center justify-center p-6">
+            <div className="max-w-md w-full text-center space-y-6">
+              <div className="w-20 h-20 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-center mx-auto">
+                <Lock size={36} className="text-slate-400" />
               </div>
-            )}
-            <Link
-              to="/"
-              className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold px-6 py-3 rounded-2xl text-sm transition"
-            >
-              <ArrowLeft size={15} /> Back to Home
-            </Link>
+              <div className="space-y-2">
+                <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+                  {systemConfig.userPortal?.closedNotice?.title || 'Portal Temporarily Closed'}
+                </h1>
+                <p className="text-sm text-slate-500 font-medium leading-relaxed">
+                  {systemConfig.userPortal?.closedNotice?.message || 'The MCC Issue Portal is currently offline for maintenance or scheduled downtime. Please check back shortly or contact the Facilities Office directly.'}
+                </p>
+              </div>
+              {systemConfig.portalNotice?.enabled && systemConfig.portalNotice?.message && (
+                <div className={`text-xs font-semibold px-4 py-3 rounded-xl border text-left ${systemConfig.portalNotice.type === 'alert' ? 'bg-red-50 text-red-800 border-red-200'
+                  : systemConfig.portalNotice.type === 'warning' ? 'bg-amber-50 text-amber-800 border-amber-200'
+                    : 'bg-blue-50 text-blue-800 border-blue-200'
+                  }`}>
+                  <Megaphone size={13} className="inline mr-1.5" />
+                  {systemConfig.portalNotice.message}
+                </div>
+              )}
+              <Link
+                to="/"
+                className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold px-6 py-3 rounded-xl text-sm transition shadow"
+              >
+                <ArrowLeft size={15} /> Back to Home
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -407,384 +517,384 @@ export default function UserForm() {
   // COMPLAINT FORM PAGE
   // ─────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col selection:bg-blue-500 selection:text-white">
-      <Navbar />
+    <div className="min-h-screen flex flex-col relative selection:bg-[#800000] selection:text-white bg-[#F7F7F7]">
+      <Abstract3DSaasBackdrop />
 
-      {/* Broadcast Banner Live Notice from Super Admin */}
-      {systemConfig.announcement?.enabled && systemConfig.announcement?.message && (
-        <div className={`px-6 py-2.5 text-xs font-bold flex items-center justify-between border-b ${
-          systemConfig.announcement.type === 'alert'
-            ? 'bg-red-50 text-red-800 border-red-200'
-            : systemConfig.announcement.type === 'warning'
-            ? 'bg-amber-50 text-amber-800 border-amber-200'
-            : 'bg-blue-50 text-blue-800 border-blue-200'
-        }`}>
-          <div className="max-w-4xl mx-auto w-full flex items-center gap-2">
-            <Megaphone size={15} className="shrink-0 animate-bounce" />
-            <span className="uppercase text-[10px] font-black tracking-wider px-1.5 py-0.5 bg-black/10 rounded">Notice</span>
-            <span className="truncate">{systemConfig.announcement.message}</span>
-          </div>
-        </div>
-      )}
+      <div className="relative z-10 flex flex-col min-h-screen">
+        <Navbar />
 
-      {/* Page Header */}
-      <div className="bg-white border-b border-slate-200/80 px-6 py-8 shadow-xs">
-        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
-              <Link to="/" className="hover:text-blue-600 transition">Home</Link>
-              <span>/</span>
-              <span className="font-bold text-blue-600">Complaint Form</span>
+        {/* Page Header */}
+        <div className="bg-white border-b border-[#E5E5E5] px-6 py-7 shadow-xs">
+          <div className="max-w-4xl mx-auto space-y-1.5">
+            <div className="flex items-center gap-2 text-xs font-semibold mb-2">
+              <Link
+                to="/"
+                className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-[#800000]/30 text-[#800000] hover:border-[#800000]/60 hover:bg-[#F4E8EA] transition-all duration-150 shadow-2xs font-medium"
+              >
+                <Home size={13} className="text-[#800000]" />
+                <span>Home</span>
+              </Link>
+
+              <span className="text-[#9E9E9E] font-medium text-xs px-0.5 select-none">/</span>
+
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#F4E8EA] border border-[#800000]/30 text-[#800000] font-bold shadow-2xs">
+                <FileText size={13} className="text-[#800000]" />
+                <span>Complaint Form</span>
+              </span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-sm shrink-0">
-                <ClipboardList size={22} />
-              </div>
-              <span>Submit Maintenance Complaint</span>
-            </h1>
-            <p className="text-xs text-slate-500 font-medium">
-              Fill out the form below to report campus infrastructure or facility issues.
-            </p>
+
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-black text-[#171717] tracking-tight">
+                Submit Maintenance Complaint
+              </h1>
+              <p className="text-xs text-[#6B6B6B] font-medium mt-1">
+                Fill out the form below to report campus infrastructure or facility issues.
+              </p>
+            </div>
           </div>
-
-          <Link
-            to="/"
-            className="text-xs text-slate-600 hover:text-blue-600 font-bold flex items-center gap-2 bg-slate-100/80 hover:bg-slate-200/80 border border-slate-200/80 px-4 py-2.5 rounded-xl transition shadow-xs"
-          >
-            <ArrowLeft size={15} />
-            <span>Back to Overview</span>
-          </Link>
         </div>
-      </div>
 
-      {/* Form Container */}
-      <div className="flex-1 max-w-4xl mx-auto w-full px-4 py-8">
-        <form
-          onSubmit={handleSubmit}
-          noValidate
-          className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-slate-200/90 overflow-hidden animate-slide-up"
-        >
-          {/* Top Gradient Accent Line */}
-          <div className="h-2 w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500" />
+        {/* Form Container */}
+        <div className="flex-1 max-w-4xl mx-auto w-full px-4 py-8">
+          <form
+            onSubmit={handleSubmit}
+            noValidate
+            className="bg-white rounded-2xl shadow-[0_25px_60px_-15px_rgba(23,23,23,0.08),0_0_0_1px_rgba(229,229,229,0.9)] border border-[#E5E5E5] overflow-hidden ring-1 ring-[#800000]/10 animate-slide-up"
+          >
+            {/* Top Accent Line */}
+            <div className="h-1.5 w-full bg-[#800000]" />
 
-          <div className="p-6 md:p-10 space-y-10">
+            <div className="p-6 md:p-10 space-y-10">
 
-            {/* ── Section 1: Personal Info ────────────────────── */}
-            <section className="space-y-4">
-              <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs">
-                  <User size={15} />
+              {/* ── Section 1: Personal Info ────────────────────── */}
+              <section className="space-y-4">
+                <div className="border-b border-[#E5E5E5] pb-3">
+                  <h2 className="text-xs font-black uppercase tracking-wider text-[#800000]">Personal Information</h2>
                 </div>
-                <h2 className="text-xs font-black uppercase tracking-wider text-blue-600">Personal Information</h2>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <InputField
-                  label="Full Name" id="name" value={form.name}
-                  onChange={handleChange('name')} placeholder="e.g. Arjun Nair"
-                  icon={User} required error={errors.name}
-                />
-                <InputField
-                  label="Email Address" id="email" type="email" value={form.email}
-                  onChange={handleChange('email')} placeholder="you@college.edu"
-                  icon={Mail} required error={errors.email}
-                />
-                <InputField
-                  label="Phone Number" id="phone" type="tel" value={form.phone}
-                  onChange={handleChange('phone')} placeholder="+91 9876543210"
-                  icon={Phone} error={errors.phone}
-                />
-              </div>
-            </section>
-
-            {/* ── Section 2: Role & Classification ────────────── */}
-            <section className="space-y-4">
-              <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs">
-                  <Layers size={15} />
-                </div>
-                <h2 className="text-xs font-black uppercase tracking-wider text-blue-600">Role & Classification</h2>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <SelectField
-                  label="User Type" id="userType" value={form.userType}
-                  onChange={handleChange('userType')}
-                  options={[
-                    { value: 'Student', label: '🎓 Student' },
-                    { value: 'Staff',   label: '👨‍🏫 Staff' },
-                    { value: 'Unit',    label: '🏢 Unit / Office' },
-                  ]}
-                  placeholder="Select user type" icon={User} error={errors.userType}
-                />
-
-                {form.userType === 'Student' && (
-                  <>
-                    <div className="animate-fade-in">
-                      <SelectField
-                        label="Stream" id="studentStream" value={form.studentStream}
-                        onChange={handleChange('studentStream')}
-                        options={[
-                          { value: 'Aided', label: 'Aided' },
-                          { value: 'SFS',   label: 'SFS (Self-Financing)' },
-                        ]}
-                        placeholder="Select stream" error={errors.studentStream}
-                      />
-                    </div>
-                    <div className="animate-fade-in">
-                      <SelectField
-                        label="Level" id="studentLevel" value={form.studentLevel}
-                        onChange={handleChange('studentLevel')}
-                        options={[
-                          { value: 'UG', label: 'UG (Undergraduate)' },
-                          { value: 'PG', label: 'PG (Postgraduate)' },
-                        ]}
-                        placeholder="Select level" error={errors.studentLevel}
-                      />
-                    </div>
-                  </>
-                )}
-
-                <SelectField
-                  label="Department" id="department" value={form.department}
-                  onChange={handleChange('department')}
-                  options={
-                    form.userType === 'Student' && form.studentStream === 'Aided' && form.studentLevel === 'UG'
-                      ? AIDED_UG_DEPARTMENTS
-                      : form.userType === 'Student' && form.studentStream === 'Aided' && form.studentLevel === 'PG'
-                      ? AIDED_PG_DEPARTMENTS
-                      : form.userType === 'Student' && form.studentStream === 'SFS' && form.studentLevel === 'UG'
-                      ? SFS_UG_DEPARTMENTS
-                      : form.userType === 'Student' && form.studentStream === 'SFS' && form.studentLevel === 'PG'
-                      ? SFS_PG_DEPARTMENTS
-                      : DEPARTMENTS
-                  }
-                  placeholder="Select department" icon={Building2} error={errors.department}
-                />
-              </div>
-            </section>
-
-            {/* ── Section 3: Location Details ─────────────────── */}
-            <section className="space-y-4">
-              <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                <div className="w-7 h-7 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center font-bold text-xs">
-                  <MapPin size={15} />
-                </div>
-                <h2 className="text-xs font-black uppercase tracking-wider text-blue-600">Location Details</h2>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <SelectField
-                  label="Block / Building" id="block" value={form.block}
-                  onChange={handleChange('block')} options={BLOCKS}
-                  placeholder="Select block" icon={Building2} error={errors.block}
-                />
-                <InputField
-                  label="Room / Area No." id="roomNo" value={form.roomNo}
-                  onChange={handleChange('roomNo')} placeholder="e.g. Room 204, Lab 3, Restroom 2nd floor"
-                  icon={MapPin} error={errors.roomNo}
-                />
-              </div>
-            </section>
-
-            {/* ── Section 4: Issue Description & Photo ───────── */}
-            <section className="space-y-5">
-              <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs">
-                  <FileText size={15} />
-                </div>
-                <h2 className="text-xs font-black uppercase tracking-wider text-blue-600">Issue Details</h2>
-              </div>
-
-              <div className="space-y-5">
-                {/* Category chips */}
-                <div>
-                  <label className="input-label flex items-center gap-1.5 font-bold text-slate-700 mb-2">
-                    <Hash size={14} className="text-blue-500 shrink-0"/>
-                    <span>ISSUE CATEGORY</span>
-                    <span className="text-red-500 font-extrabold ml-0.5">*</span>
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {dynamicCategories.map(({ label, prefix }) => (
-                      <button
-                        key={label}
-                        type="button"
-                        onClick={() => {
-                          setForm(prev => ({
-                            ...prev,
-                            issueCategory: label,
-                            description: prev.description.startsWith(prefix)
-                              ? prev.description
-                              : prefix + prev.description.replace(/^[^:]+: /, ''),
-                          }));
-                        }}
-                        className={`text-xs px-3.5 py-2 rounded-xl border font-bold transition-all duration-200 cursor-pointer ${
-                          form.issueCategory === label
-                            ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20 scale-105'
-                            : 'bg-slate-50/80 text-slate-600 border-slate-200 hover:border-blue-300 hover:bg-white hover:text-blue-600'
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Sub-picks for Others (Drinking Water Leak, Restroom Tap Leak, etc.) */}
-                {form.issueCategory.includes('Others') && (
-                  <div className="p-4 bg-blue-50/90 border border-blue-200/80 rounded-2xl animate-fade-in space-y-2.5 shadow-xs">
-                    <p className="text-[11px] font-extrabold text-blue-800 uppercase tracking-wider flex items-center gap-1.5">
-                      <Droplets size={14} className="text-blue-600 shrink-0" />
-                      Quick Sub-Categories (e.g., Water Leakage):
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {OTHER_SUB_CATEGORIES.map(sub => (
-                        <button
-                          key={sub.label}
-                          type="button"
-                          onClick={() => {
-                            setForm(prev => ({
-                              ...prev,
-                              description: sub.text,
-                            }));
-                          }}
-                          className={`text-xs px-3.5 py-2 rounded-xl border font-bold transition-all duration-200 flex items-center gap-1.5 ${
-                            form.description.startsWith(sub.text.split(':')[0])
-                              ? 'bg-blue-600 text-white border-blue-600 shadow-md'
-                              : 'bg-white text-slate-700 border-slate-200 hover:border-blue-400 hover:text-blue-600'
-                          }`}
-                        >
-                          {sub.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Priority Segmented Control */}
-                <div>
-                  <label className="input-label flex items-center gap-1.5 font-bold text-slate-700 mb-2">
-                    <AlertCircle size={14} className="text-amber-500 shrink-0"/>
-                    <span>PRIORITY LEVEL</span>
-                    <span className="text-red-500 font-extrabold ml-0.5">*</span>
-                  </label>
-                  <div className="grid grid-cols-3 gap-2.5 bg-slate-100/80 p-2 rounded-2xl border border-slate-200/80">
-                    {[
-                      { level: 'Normal',   icon: '🟢', bgActive: 'bg-[#ECFDF5] text-[#10B981] border-emerald-300 shadow-sm font-black' },
-                      { level: 'High',     icon: '🟡', bgActive: 'bg-[#FFFBEB] text-[#D97706] border-amber-300 shadow-sm font-black' },
-                      { level: 'Critical', icon: '🔴', bgActive: 'bg-[#FEF2F2] text-[#EF4444] border-red-300 shadow-sm font-black' },
-                    ].map(({ level: p, icon, bgActive }) => (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() => setForm(prev => ({ ...prev, priority: p }))}
-                        className={`text-xs py-2.5 px-3 rounded-xl border font-bold transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${
-                          form.priority === p
-                            ? bgActive
-                            : 'bg-white/70 text-slate-500 border-transparent hover:bg-white hover:text-slate-800'
-                        }`}
-                      >
-                        <span>{icon}</span>
-                        <span>{p}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Description Textarea */}
-                <div>
-                  <label htmlFor="description" className="input-label flex items-center gap-1.5 font-bold text-slate-700">
-                    <FileText size={14} className="text-slate-400 shrink-0"/>
-                    <span>DESCRIPTION</span>
-                    <span className="text-red-500 ml-0.5">*</span>
-                  </label>
-                  <textarea
-                    id="description"
-                    rows={5}
-                    value={form.description}
-                    onChange={handleChange('description')}
-                    placeholder="Describe the complaint in detail (what is broken, where, since when)..."
-                    className={`input-field resize-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 ${errors.description ? 'border-red-400 focus:ring-red-400' : ''}`}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <InputField
+                    label="Full Name" id="name" value={form.name}
+                    onChange={handleChange('name')} placeholder="e.g. Arjun Nair"
+                    required error={errors.name}
                   />
-                  {errors.description && <p className="mt-1 text-xs text-red-500 flex items-center gap-1"><AlertCircle size={11}/>{errors.description}</p>}
+                  <InputField
+                    label="Email Address" id="email" type="email" value={form.email}
+                    onChange={handleChange('email')} placeholder="you@college.edu"
+                    required error={errors.email}
+                  />
+                  <InputField
+                    label="Phone Number" id="phone" type="tel" value={form.phone}
+                    onChange={handleChange('phone')} placeholder="+91 9876543210"
+                    error={errors.phone}
+                  />
+                </div>
+              </section>
+
+              {/* ── Section 2: Role & Classification ────────────── */}
+              <section className="space-y-4">
+                <div className="border-b border-[#E5E5E5] pb-3">
+                  <h2 className="text-xs font-black uppercase tracking-wider text-[#800000]">Role & Classification</h2>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <SelectField
+                    label="User Type" id="userType" value={form.userType}
+                    onChange={handleChange('userType')}
+                    options={[
+                      { value: 'Student', label: 'Student' },
+                      { value: 'Staff', label: 'Staff' },
+                      { value: 'Unit', label: 'Unit / Office' },
+                    ]}
+                    placeholder="Select user type" error={errors.userType}
+                  />
+
+                  {form.userType === 'Student' && (
+                    <>
+                      <div className="animate-fade-in">
+                        <SelectField
+                          label="Stream" id="studentStream" value={form.studentStream}
+                          onChange={handleChange('studentStream')}
+                          options={[
+                            { value: 'Aided', label: 'Aided' },
+                            { value: 'SFS', label: 'SFS (Self-Financing)' },
+                          ]}
+                          placeholder="Select stream" error={errors.studentStream}
+                        />
+                      </div>
+                      <div className="animate-fade-in">
+                        <SelectField
+                          label="Level" id="studentLevel" value={form.studentLevel}
+                          onChange={handleChange('studentLevel')}
+                          options={[
+                            { value: 'UG', label: 'UG (Undergraduate)' },
+                            { value: 'PG', label: 'PG (Postgraduate)' },
+                          ]}
+                          placeholder="Select level" error={errors.studentLevel}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  <SelectField
+                    label="Department" id="department" value={form.department}
+                    onChange={handleChange('department')}
+                    options={
+                      form.userType === 'Student' && form.studentStream === 'Aided' && form.studentLevel === 'UG'
+                        ? AIDED_UG_DEPARTMENTS
+                        : form.userType === 'Student' && form.studentStream === 'Aided' && form.studentLevel === 'PG'
+                          ? AIDED_PG_DEPARTMENTS
+                          : form.userType === 'Student' && form.studentStream === 'SFS' && form.studentLevel === 'UG'
+                            ? SFS_UG_DEPARTMENTS
+                            : form.userType === 'Student' && form.studentStream === 'SFS' && form.studentLevel === 'PG'
+                              ? SFS_PG_DEPARTMENTS
+                              : DEPARTMENTS
+                    }
+                    placeholder="Select department" error={errors.department}
+                  />
+                </div>
+              </section>
+
+              {/* ── Section 3: Location Details ─────────────────── */}
+              <section className="space-y-4">
+                <div className="border-b border-[#E5E5E5] pb-3">
+                  <h2 className="text-xs font-black uppercase tracking-wider text-[#800000]">Location Details</h2>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <SelectField
+                    label="Block / Building" id="block" value={form.block}
+                    onChange={handleChange('block')} options={BLOCKS}
+                    placeholder="Select block" error={errors.block}
+                  />
+                  <InputField
+                    label="Room / Area No." id="roomNo" value={form.roomNo}
+                    onChange={handleChange('roomNo')} placeholder="e.g. Room 204, Lab 3, Restroom 2nd floor"
+                    error={errors.roomNo}
+                  />
+                </div>
+              </section>
+
+              {/* ── Section 4: Issue Description & Photo ───────── */}
+              <section className="space-y-5">
+                <div className="border-b border-[#E5E5E5] pb-3">
+                  <h2 className="text-xs font-black uppercase tracking-wider text-[#800000]">Issue Details</h2>
                 </div>
 
-                {/* Photo Upload */}
-                <div>
-                  <label className="input-label flex items-center gap-1.5 font-bold text-slate-700">
-                    <Camera size={14} className="text-slate-400"/>
-                    <span>UPLOAD PHOTO</span>
-                    <span className="text-slate-400 font-normal text-xs">(optional · max 5MB)</span>
-                  </label>
-                  {photoPreview ? (
-                    <div className="relative group">
-                      <img src={photoPreview} alt="Preview" className="h-48 w-full object-cover rounded-2xl border border-slate-200 shadow-md"/>
-                      <button
-                        type="button"
-                        onClick={removePhoto}
-                        className="absolute top-3 right-3 bg-white/90 backdrop-blur-md border border-slate-200 shadow-md text-slate-700 hover:text-red-600 rounded-full p-2 transition hover:scale-110"
-                      >
-                        <X size={15}/>
-                      </button>
+                <div className="space-y-5">
+                  {/* Category chips */}
+                  <div>
+                    <label className="input-label flex items-center gap-1.5 font-bold text-[#800000] mb-2.5">
+                      <span className="tracking-wide">ISSUE CATEGORY</span>
+                      <span className="text-red-500 font-extrabold ml-0.5">*</span>
+                    </label>
+                    <div className="flex flex-wrap gap-2.5">
+                      {dynamicCategories.map((cat) => {
+                        const cleanLabel = getCleanCategoryLabel(cat.label);
+                        const isSelected = form.issueCategory === cat.label || form.issueCategory === cleanLabel;
+                        const prefix = cat.prefix || `${cleanLabel} issue: `;
+
+                        return (
+                          <button
+                            key={cat.id || cat.label}
+                            type="button"
+                            onClick={() => {
+                              setForm(prev => ({
+                                ...prev,
+                                issueCategory: cleanLabel,
+                                description: prev.description.startsWith(prefix)
+                                  ? prev.description
+                                  : prefix + prev.description.replace(/^[^:]+: /, ''),
+                              }));
+                            }}
+                            className={`group text-xs px-4 py-2 rounded-full border font-semibold transition-all duration-200 cursor-pointer flex items-center justify-center select-none ${isSelected
+                              ? 'bg-[#800000] text-white border-[#800000] shadow-md shadow-[#800000]/20 scale-[1.03]'
+                              : 'bg-white text-[#171717] border-[#D9D9D9] shadow-2xs hover:border-[#800000] hover:bg-[#F6E8EA] hover:text-[#800000] hover:-translate-y-0.5 hover:shadow-xs active:scale-95'
+                              }`}
+                          >
+                            <span>{cleanLabel}</span>
+                          </button>
+                        );
+                      })}
                     </div>
-                  ) : (
-                    <div
-                      onClick={() => fileInputRef.current?.click()}
-                      className="border-2 border-dashed border-slate-300 hover:border-blue-500 bg-slate-50/50 hover:bg-blue-50/30 rounded-2xl p-8 text-center cursor-pointer transition-all duration-200 group space-y-2"
-                    >
-                      <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-center mx-auto text-slate-400 group-hover:text-blue-600 group-hover:scale-110 transition-all">
-                        <Upload size={22} />
+                  </div>
+
+                  {/* Sub-picks for Others */}
+                  {(form.issueCategory.includes('Others') || form.issueCategory.includes('Other') || form.issueCategory.includes('📌')) && (
+                    <div className="p-4 sm:p-5 bg-[#F6E8EA] border border-[#D9D9D9] rounded-2xl animate-slide-up space-y-3 shadow-xs">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[11px] font-extrabold text-[#800000] uppercase tracking-wider flex items-center gap-1.5">
+                          <span>QUICK SUB-CATEGORIES (E.G., WATER LEAKAGE):</span>
+                        </p>
+                        <span className="text-[10px] font-bold text-[#800000] bg-white border border-[#D9D9D9] px-2 py-0.5 rounded-full">1-Click Autofill</span>
                       </div>
-                      <p className="text-xs font-bold text-slate-700 group-hover:text-blue-600 transition-colors">
-                        Click or drag photo to upload
-                      </p>
-                      <p className="text-[11px] text-slate-400">PNG, JPG, WEBP up to 5MB</p>
+
+                      <div className="flex flex-wrap gap-2.5">
+                        {OTHER_SUB_CATEGORIES.map(sub => {
+                          const isSubSelected = form.description.startsWith(sub.text.split(':')[0]);
+                          return (
+                            <button
+                              key={sub.id || sub.label}
+                              type="button"
+                              onClick={() => {
+                                setForm(prev => ({
+                                  ...prev,
+                                  description: sub.text,
+                                }));
+                              }}
+                              className={`group text-xs px-4 py-2 rounded-full border font-semibold transition-all duration-200 flex items-center gap-2 cursor-pointer select-none ${isSubSelected
+                                ? 'bg-[#800000] text-white border-[#800000] shadow-md shadow-[#800000]/20 scale-[1.03]'
+                                : 'bg-white text-[#171717] border-[#D9D9D9] shadow-2xs hover:border-[#800000] hover:bg-white hover:text-[#800000] hover:-translate-y-0.5 hover:shadow-xs active:scale-95'
+                                }`}
+                            >
+                              <span>{sub.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handlePhotoChange}
-                    className="hidden"
-                  />
+
+                  {/* Priority Segmented Control */}
+                  <div>
+                    <label className="input-label flex items-center gap-1.5 font-bold text-[#800000] mb-2.5">
+                      <span className="tracking-wide">PRIORITY LEVEL</span>
+                      <span className="text-red-500 font-extrabold ml-0.5">*</span>
+                    </label>
+                    <div className="bg-white border border-[#D9D9D9] rounded-2xl p-1.5 flex items-center justify-between gap-2 shadow-2xs">
+                      {[
+                        {
+                          level: 'Normal',
+                          dotGradient: 'bg-[#159447]',
+                          activeClasses: 'bg-[#F6E8EA] border-[#800000] text-[#800000] shadow-xs ring-1 ring-[#800000]/20',
+                        },
+                        {
+                          level: 'High',
+                          dotGradient: 'bg-amber-500',
+                          activeClasses: 'bg-[#FFFBEB] border-amber-500 text-amber-800 shadow-xs ring-1 ring-amber-500/20',
+                        },
+                        {
+                          level: 'Critical',
+                          dotGradient: 'bg-red-600',
+                          activeClasses: 'bg-[#FEF2F2] border-red-500 text-red-700 shadow-xs ring-1 ring-red-500/20',
+                        },
+                      ].map(({ level, dotGradient, activeClasses }) => {
+                        const isActive = form.priority === level;
+                        return (
+                          <button
+                            key={level}
+                            type="button"
+                            onClick={() => setForm(prev => ({ ...prev, priority: level }))}
+                            className={`group flex-1 py-2 sm:py-2.5 px-2 sm:px-4 rounded-xl border text-[11px] sm:text-xs font-bold transition-all duration-300 flex items-center justify-center gap-1.5 sm:gap-2.5 cursor-pointer select-none ${isActive
+                              ? `${activeClasses} scale-[1.01]`
+                              : 'border-transparent text-[#171717] hover:bg-[#F6E8EA] hover:text-[#800000] hover:shadow-2xs active:scale-98'
+                              }`}
+                          >
+                            <div className="relative flex items-center justify-center">
+                              <span className={`w-3.5 h-3.5 rounded-full ${dotGradient} shrink-0 transition-transform duration-300 group-hover:scale-120`} />
+                              {isActive && level === 'Critical' && (
+                                <span className="absolute w-3.5 h-3.5 rounded-full bg-red-400 opacity-75 animate-ping" />
+                              )}
+                            </div>
+                            <span>{level}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Description Textarea */}
+                  <div>
+                    <label htmlFor="description" className="input-label flex items-center gap-1.5 font-bold text-[#800000]">
+                      <span>DESCRIPTION</span>
+                      <span className="text-red-500 font-extrabold ml-0.5">*</span>
+                    </label>
+                    <textarea
+                      id="description"
+                      rows={5}
+                      value={form.description}
+                      onChange={handleChange('description')}
+                      placeholder="Describe the complaint in detail (what is broken, where, since when)..."
+                      className={`w-full px-4 py-2.5 rounded-2xl border border-[#D9D9D9] bg-white text-sm text-[#171717] placeholder:text-[#777777] hover:bg-white focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#800000]/12 focus:border-[#800000] transition duration-200 resize-none shadow-xs ${errors.description ? 'border-red-400 focus:ring-red-400' : ''}`}
+                    />
+                    {errors.description && <p className="mt-1 text-xs text-red-500 flex items-center gap-1"><AlertCircle size={11} />{errors.description}</p>}
+                  </div>
+
+                  {/* Photo Upload */}
+                  <div>
+                    <label className="input-label flex items-center gap-1.5 font-bold text-[#800000]">
+                      <span>UPLOAD PHOTO</span>
+                      <span className="text-[#777777] font-normal text-xs">(optional · max 5MB)</span>
+                    </label>
+                    {photoPreview ? (
+                      <div className="relative group">
+                        <img src={photoPreview} alt="Preview" className="h-48 w-full object-cover rounded-2xl border border-[#D9D9D9] shadow-md" />
+                        <button
+                          type="button"
+                          onClick={removePhoto}
+                          className="absolute top-3 right-3 bg-white/90 backdrop-blur-md border border-[#D9D9D9] shadow-md text-[#171717] hover:text-red-600 rounded-full p-2 transition hover:scale-110"
+                        >
+                          <X size={15} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        onClick={() => fileInputRef.current?.click()}
+                        className="border-2 border-dashed border-[#D9D9D9] hover:border-[#800000] bg-white hover:bg-[#F6E8EA] rounded-2xl p-8 text-center cursor-pointer transition-all duration-200 group space-y-2"
+                      >
+                        <div className="w-12 h-12 rounded-2xl bg-[#F6E8EA] border border-[#D9D9D9] shadow-sm flex items-center justify-center mx-auto text-[#800000] group-hover:scale-110 transition-all">
+                          <Upload size={22} className="text-[#800000]" />
+                        </div>
+                        <p className="text-xs font-bold text-[#171717] group-hover:text-[#800000] transition-colors">
+                          Click or drag photo to upload
+                        </p>
+                        <p className="text-[11px] text-[#777777]">PNG, JPG, WEBP up to 5MB</p>
+                      </div>
+                    )}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePhotoChange}
+                      className="hidden"
+                    />
+                  </div>
                 </div>
+              </section>
+
+              {/* Form Info Box */}
+              <div className="flex items-center gap-3 bg-[#F4E8EA] border border-[#E5E5E5] rounded-2xl p-4 text-xs text-[#800000] font-medium">
+                <span>Your submission will be logged under ticket sequence and assigned to the facilities supervisor for review.</span>
               </div>
-            </section>
 
-            {/* Form Info Box */}
-            <div className="flex items-center gap-3 bg-blue-50/80 border border-blue-200/80 rounded-2xl p-4 text-xs text-blue-900 font-medium">
-              <Shield size={18} className="text-blue-600 shrink-0" />
-              <span>Your submission will be logged under ticket sequence and assigned to the facilities supervisor for review.</span>
-            </div>
-
-            {/* Submissions Disabled Warning (Super Admin: submissionsEnabled = false) */}
-            {systemConfig.submissionsEnabled === false && (
-              <div className="flex items-start gap-3 bg-amber-50 border border-amber-300 rounded-2xl px-4 py-3.5 text-xs text-amber-900 font-semibold">
-                <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
-                <div>
-                  <span className="font-black block">Submissions Temporarily Disabled</span>
-                  <span className="font-medium text-amber-800">The portal is visible but new complaint submissions have been paused by the administrator. Please try again later.</span>
+              {/* Submissions Disabled Warning */}
+              {systemConfig.submissionsEnabled === false && (
+                <div className="flex items-start gap-3 bg-amber-50 border border-amber-300 rounded-2xl px-4 py-3.5 text-xs text-amber-900 font-semibold">
+                  <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-black block">Submissions Temporarily Disabled</span>
+                    <span className="font-medium text-amber-800">The portal is visible but new complaint submissions have been paused by the administrator. Please try again later.</span>
+                  </div>
                 </div>
-              </div>
-            )}
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={submitting || systemConfig.submissionsEnabled === false}
-              className="w-full bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black py-4 rounded-2xl shadow-xl shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-200 flex items-center justify-center gap-2.5 text-base hover:scale-[1.01] active:scale-98 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {submitting ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Submitting Ticket...</span>
-                </>
-              ) : systemConfig.submissionsEnabled === false ? (
-                <><Lock size={17}/> Submissions Paused</>
-              ) : (
-                <><SendHorizonal size={17}/> Submit Complaint</>
               )}
-            </button>
-          </div>
-        </form>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={submitting || systemConfig.submissionsEnabled === false}
+                className="w-full bg-[#800000] hover:bg-[#9A1B2F] text-white font-black py-4 rounded-2xl shadow-xl shadow-[#800000]/25 hover:shadow-[#800000]/40 transition-all duration-200 flex items-center justify-center gap-2.5 text-base hover:scale-[1.01] active:scale-98 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {submitting ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Submitting Ticket...</span>
+                  </>
+                ) : systemConfig.submissionsEnabled === false ? (
+                  <><Lock size={17} /> Submissions Paused</>
+                ) : (
+                  <><SendHorizonal size={17} /> Submit Complaint</>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

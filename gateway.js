@@ -1,5 +1,5 @@
 /**
- * gateway.js — Unified Reverse Proxy Gateway for MRF Campus Maintenance System
+ * gateway.js — Unified Reverse Proxy Gateway for MCC Campus Maintenance System
  * Runs on Port 80 (http://localhost/)
  *
  * Routing Table:
@@ -17,6 +17,8 @@ const PORT = process.env.PORT || 80;
 
 const ROUTES = [
   { prefix: '/issue', targetPort: 5174, targetHost: 'localhost' },
+  { prefix: '/admin', targetPort: 5175, targetHost: 'localhost' },
+  { prefix: '/superadmin', targetPort: 5177, targetHost: 'localhost' },
   { prefix: '/api', targetPort: 5000, targetHost: 'localhost' },
 ];
 
@@ -35,19 +37,6 @@ const server = http.createServer((req, res) => {
   // Root path handler
   if (url === '/' || url === '') {
     res.writeHead(302, { Location: '/issue/' });
-    res.end();
-    return;
-  }
-
-  // Handle direct portal shortcuts
-  if (url === '/admin' || url === '/admin/' || url.startsWith('/admin?')) {
-    res.writeHead(302, { Location: '/issue/admin' });
-    res.end();
-    return;
-  }
-
-  if (url === '/superadmin' || url === '/superadmin/' || url.startsWith('/superadmin?')) {
-    res.writeHead(302, { Location: '/issue/super-admin' });
     res.end();
     return;
   }
@@ -85,7 +74,7 @@ const server = http.createServer((req, res) => {
       <html lang="en">
       <head>
         <meta charset="UTF-8">
-        <title>MRF Portal Gateway</title>
+        <title>MCC Portal Gateway</title>
         <style>
           body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 40px; text-align: center; }
           .card { max-width: 600px; margin: 40px auto; background: #1e293b; padding: 32px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
@@ -99,7 +88,7 @@ const server = http.createServer((req, res) => {
       </head>
       <body>
         <div class="card">
-          <h1>MRF Portal Gateway</h1>
+          <h1>MCC Portal Gateway</h1>
           <p>The requested path was not found. Please choose a portal:</p>
           <div class="links">
             <a href="/issue/">📋 Issue Portal (/issue)</a>
@@ -202,7 +191,7 @@ server.on('error', (err) => {
 
 server.listen(PORT, () => {
   console.log(`\n==================================================`);
-  console.log(`🚀 MRF Gateway Running on http://localhost:${PORT}`);
+  console.log(`🚀 MCC Gateway Running on http://localhost:${PORT}`);
   console.log(`==================================================`);
   console.log(`  📋 Issue Portal       → http://localhost/issue/`);
   console.log(`  🛡️ Admin Portal       → http://localhost/admin/`);

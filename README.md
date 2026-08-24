@@ -1,4 +1,4 @@
-# 🏢 MRF Campus Maintenance & Issue Management System
+# 🏢 MCC Campus Maintenance & Issue Management System
 
 A modern, full-stack campus maintenance and complaint lifecycle portal built with **React**, **Vite**, **Tailwind CSS**, **Node.js HTTP/SMTP**, and interactive **3D Glassmorphism UI**.
 
@@ -7,7 +7,7 @@ A modern, full-stack campus maintenance and complaint lifecycle portal built wit
 ## 📁 Repository Structure
 
 ```text
-mrf-issue-system/
+mcc-issue-system/
 ├── 📁 issue-portal/          # User-Facing Complaint Submission & Tracking Portal (Port 5174)
 │   ├── src/
 │   │   ├── components/       # LandingPage, UserForm, Navbar, CollegeLogo, etc.
@@ -35,7 +35,7 @@ mrf-issue-system/
 ### 📋 Issue Portal (`issue-portal`)
 - **Modern Landing Page**: Dynamic hero banner with KPIs, interactive workflow walkthrough, and department category chips.
 - **Smart Complaint Form**: Multi-step student/faculty validation, category selection (Electrical, Plumbing, Civil, IT, etc.), water leak quick-picks, photo drag & drop upload, and priority flags.
-- **Ticket Tracking**: Immediate generation of ticket numbers (e.g., `#MRF-2026-0001`) with real-time status tracking.
+- **Ticket Tracking**: Immediate generation of ticket numbers (e.g., `#MCC-2026-0001`) with real-time status tracking.
 
 ### 🛡️ Admin Control Board (`admin-portal`)
 - **3D Animated Glassmorphism Login**: Interactive mouse parallax 3D tilt tracking, floating CSS 3D cubes, and 1-click demo credentials auto-fill.
@@ -60,8 +60,8 @@ Clone the repository and install dependencies in both sub-portals:
 
 ```bash
 # Clone the repository
-git clone https://github.com/<your-username>/mrf-issue-system.git
-cd mrf-issue-system
+git clone https://github.com/<your-username>/mcc-issue-system.git
+cd mcc-issue-system
 
 # Install dependencies for both portals
 npm run install:all
@@ -104,8 +104,8 @@ npm run dev
 | **Sync & SMTP Server** | `http://localhost:5000` | Backend API & SMTP Service |
 
 ### 🔑 Demo Admin Credentials
-- **Email**: `admin@mrf.edu`
-- **Password**: `admin@mrf2024`
+- **Email**: `admin@mcc.edu`
+- **Password**: `admin@mcc2024`
 
 ---
 

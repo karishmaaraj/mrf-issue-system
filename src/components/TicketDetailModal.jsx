@@ -7,7 +7,7 @@ import { updateTicket } from '../ticketsStore.js';
 import { sendCompletionEmail } from '../emailService.js';
 import {
   X, User, Mail, Building2, MapPin, FileText, Wrench,
-  CheckCircle2, AlertTriangle, ArrowRight, Calendar, Tag, Shield, Sparkles, Clock
+  CheckCircle2, AlertTriangle, ArrowRight, Calendar, Tag, Shield, Sparkles
 } from 'lucide-react';
 
 import { WORKER_LIST } from '../constants.js';
@@ -48,21 +48,21 @@ export default function TicketDetailModal({ ticket: initialTicket, onClose, onUp
 
   const effectiveWorker = worker === '__custom__' ? customWorker : worker;
 
-  const handleStatusAdvance = async () => {
-    const flow = STATUS_FLOW[ticket.status];
-    if (!flow) return;
-
+  const handleStatusChange = async (nextStatus) => {
     setSaving(true);
-    const updates = { status: flow.next };
-
-    if (effectiveWorker.trim()) updates.assignedWorker = effectiveWorker.trim();
-
-    if (flow.next === 'Completed') {
+    const updates = { status: nextStatus };
+    if (nextStatus === 'Completed') {
       updates.completedAt = new Date().toISOString();
       updates.completedDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
       updates.completedTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-      updates.completedBy = effectiveWorker || ticket.assignedWorker || 'Facilities Admin';
+      updates.completedBy = ticket.assignedWorker || 'Facilities Admin';
+    }
+    const updated = await updateTicket(ticket.ticketNo, updates);
+    setTicket(updated);
+    onUpdate(updated);
+    setSaving(false);
 
+    if (nextStatus === 'Completed') {
       await sendCompletionEmail({
         to_email: ticket.email,
         to_name: ticket.name,
@@ -70,19 +70,14 @@ export default function TicketDetailModal({ ticket: initialTicket, onClose, onUp
       });
       setEmailSent(true);
     }
-
-    const updated = await updateTicket(ticket.ticketNo, updates);
-    setTicket(updated);
-    onUpdate(updated);
-    setSaving(false);
   };
 
-  const handleSaveWorker = async () => {
-    if (!effectiveWorker.trim()) return;
+  const handleAssign = async () => {
+    if (!effectiveWorker) return;
     setSaving(true);
     const updated = await updateTicket(ticket.ticketNo, {
-      assignedWorker: effectiveWorker.trim(),
-      status: ticket.status === 'Unsolved' ? 'Ongoing' : ticket.status
+      assignedWorker: effectiveWorker,
+      status: ticket.status === 'Unsolved' ? 'Ongoing' : ticket.status,
     });
     setTicket(updated);
     onUpdate(updated);
@@ -204,21 +199,18 @@ export default function TicketDetailModal({ ticket: initialTicket, onClose, onUp
                     onChange={(e) => setWorker(e.target.value)}
                     className="input-field flex-1 font-bold cursor-pointer"
                   >
-                    <option value="">-- Select Worker --</option>
-                    {WORKER_LIST.map((w) => (
-                      <option key={w} value={w}>
-                        {w}
-                      </option>
+                    <option value="">— Unassigned —</option>
+                    {WORKER_LIST.map(w => (
+                      <option key={w} value={w}>{w}</option>
                     ))}
-                    <option value="__custom__">Other (Type name...)</option>
+                    <option value="__custom__">+ Enter custom name…</option>
                   </select>
-
                   <button
+                    type="button"
                     onClick={handleSaveWorker}
-                    disabled={saving || !effectiveWorker.trim()}
-                    className="btn-primary shrink-0 text-xs px-4"
+                    className="px-4 py-2.5 bg-blue-600 text-white text-xs font-black rounded-xl hover:bg-blue-700 active:scale-95 transition-all shadow-sm shrink-0 cursor-pointer"
                   >
-                    Assign
+                    Save
                   </button>
                 </div>
 
@@ -227,31 +219,41 @@ export default function TicketDetailModal({ ticket: initialTicket, onClose, onUp
                     type="text"
                     value={customWorker}
                     onChange={(e) => setCustomWorker(e.target.value)}
-                    placeholder="Enter worker's full name"
-                    className="input-field mt-2 text-xs"
-                    autoFocus
+                    placeholder="Enter worker name…"
+                    className="input-field mt-2 animate-slide-up"
                   />
                 )}
               </div>
 
+              {/* Urgent Toggle */}
               <div className="flex items-center justify-between pt-1">
-                <label className="text-xs font-extrabold text-slate-700 cursor-pointer flex items-center gap-2">
-                  <span className="text-red-500">🔴</span> Mark Issue as Critical / Urgent
-                </label>
+                <div>
+                  <p className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                    <AlertTriangle size={13} className="text-red-500 animate-bounce" /> Flag as Urgent
+                  </p>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    Tickets older than 48h are automatically highlighted.
+                  </p>
+                </div>
                 <button
                   type="button"
                   onClick={handleToggleUrgent}
-                  className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors duration-300 cursor-pointer ${
-                    ticket.isUrgent ? 'bg-red-500 justify-end' : 'bg-slate-300 justify-start'
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer shadow-inner ${
+                    ticket.isUrgent ? 'bg-red-500' : 'bg-slate-300'
                   }`}
                 >
-                  <span className="bg-white w-4 h-4 rounded-full shadow-md transform transition-transform" />
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition-transform duration-200 ${
+                      ticket.isUrgent ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
                 </button>
               </div>
 
               {/* Status Advance Button */}
               {flow ? (
                 <button
+                  type="button"
                   onClick={handleStatusAdvance}
                   disabled={saving}
                   className={`w-full text-white font-black py-3 rounded-2xl transition-all duration-200

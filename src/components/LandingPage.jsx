@@ -73,31 +73,54 @@ const HOW_STEPS = [
 
 export default function LandingPage() {
   const [systemConfig, setSystemConfig] = useState(() => getSystemConfig());
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false);
 
   useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    document.title = 'MCC Issue Portal — Campus Facilities';
+
     fetchSystemConfigFromServer().then(cfg => {
       if (cfg) setSystemConfig(cfg);
     });
+
     const handleStorage = (e) => {
-      if (e.key === 'mrf_system_config') {
+      if (!e.key || e.key === 'mcc_system_config') {
         setSystemConfig(getSystemConfig());
       }
     };
     window.addEventListener('storage', handleStorage);
-    // Poll every 4s so LandingPage stays in sync with Super Admin changes
+
+    let channel;
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      channel = new BroadcastChannel('mcc_config_sync_channel');
+      channel.onmessage = (e) => {
+        if (e.data && e.data.type === 'CONFIG_UPDATED' && e.data.config) {
+          setSystemConfig(e.data.config);
+        }
+      };
+    }
+
+    // Fast 2s polling to ensure instant synchronization across portals
     const pollTimer = setInterval(() => {
       fetchSystemConfigFromServer().then(cfg => {
         if (cfg) setSystemConfig(cfg);
       });
-    }, 4000);
+    }, 2000);
+
     return () => {
       window.removeEventListener('storage', handleStorage);
+      if (channel) channel.close();
       clearInterval(pollTimer);
     };
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col selection:bg-blue-500 selection:text-white">
+    <div className="min-h-screen bg-[#F7F7F7] flex flex-col selection:bg-[#800000] selection:text-white">
 
       {/* Hero Section Custom Animations */}
       <style>{`
@@ -132,10 +155,10 @@ export default function LandingPage() {
       {/* Broadcast Banner Live Notice from Super Admin */}
       {systemConfig.announcement?.enabled && systemConfig.announcement?.message && (
         <div className={`px-6 py-2.5 text-xs font-bold flex items-center justify-between border-b ${systemConfig.announcement.type === 'alert'
-          ? 'bg-red-500 text-white border-red-600'
+          ? 'bg-[#800000] text-white border-[#9A1B2F]'
           : systemConfig.announcement.type === 'warning'
-            ? 'bg-amber-500 text-slate-950 border-amber-600'
-            : 'bg-blue-600 text-white border-blue-700'
+            ? 'bg-[#800000] text-white border-[#9A1B2F]'
+            : 'bg-[#800000] text-white border-[#9A1B2F]'
           }`}>
           <div className="max-w-6xl mx-auto w-full flex items-center gap-2">
             <Megaphone size={15} className="shrink-0 animate-bounce" />
@@ -148,10 +171,10 @@ export default function LandingPage() {
       {/* Portal Notice Banner (Super Admin: portalNotice) — shown on Landing Page */}
       {systemConfig.portalNotice?.enabled && systemConfig.portalNotice?.message && (
         <div className={`px-6 py-2.5 text-xs font-bold flex items-center border-b ${systemConfig.portalNotice.type === 'alert'
-            ? 'bg-red-50 text-red-800 border-red-200'
-            : systemConfig.portalNotice.type === 'warning'
-              ? 'bg-amber-50 text-amber-800 border-amber-200'
-              : 'bg-indigo-50 text-indigo-800 border-indigo-200'
+          ? 'bg-[#F4E8EA] text-[#800000] border-[#E5E5E5]'
+          : systemConfig.portalNotice.type === 'warning'
+            ? 'bg-[#F4E8EA] text-[#800000] border-[#E5E5E5]'
+            : 'bg-[#F4E8EA] text-[#800000] border-[#E5E5E5]'
           }`}>
           <div className="max-w-6xl mx-auto w-full flex items-center gap-2">
             <Megaphone size={14} className="shrink-0" />
@@ -162,17 +185,25 @@ export default function LandingPage() {
       )}
 
       {/* Hero Banner matched to reference image */}
-      <div className="relative overflow-hidden py-16 md:py-24 border-b border-slate-800/60 min-h-[580px] flex items-center bg-slate-950">
+      <div className="relative overflow-hidden py-16 md:py-24 border-b border-[#1A1A1A] min-h-[580px] flex items-center bg-[#111111]">
 
-        {/* Full Natural Campus Photograph */}
+        {/* Dynamic Campus Background Image */}
         <img
-          src={campusBg}
-          alt="MCC MRF Innovation Park"
-          className="absolute inset-0 w-full h-full object-cover object-center"
+          src={
+            (isMobile && systemConfig.homePage?.hero?.mobileBackgroundImage)
+              ? systemConfig.homePage.hero.mobileBackgroundImage
+              : (systemConfig.homePage?.hero?.desktopBackgroundImage || systemConfig.homePage?.hero?.backgroundImage || campusBg)
+          }
+          alt="MCC Campus Background"
+          className="absolute inset-0 w-full h-full object-cover object-center transition-all duration-500"
+          onError={(e) => {
+            e.currentTarget.onerror = null;
+            e.currentTarget.src = campusBg;
+          }}
         />
 
         {/* Left Horizontal Dark Gradient Vignette for Text Contrast */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/75 via-40% to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 via-40% to-transparent pointer-events-none" />
         <div className="absolute bottom-0 inset-x-0 h-16 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
 
         <div className="max-w-6xl mx-auto px-6 relative z-10 w-full flex flex-col md:flex-row items-center justify-between gap-10">
@@ -180,26 +211,13 @@ export default function LandingPage() {
           {/* Left Column: Typography, Badges & Action Buttons */}
           <div className="flex-1 space-y-6 text-left max-w-xl">
 
-            {/* Pill Badge */}
-            <div className="inline-flex items-center gap-2 text-xs font-bold text-slate-800 bg-white px-3.5 py-1.5 rounded-full shadow-lg border border-slate-100">
-              <div
-                className="flex items-center justify-center w-4 h-4 rounded-full text-white"
-                style={{ backgroundColor: systemConfig.homePage?.hero?.highlightColor || systemConfig.theme?.primaryColor || '#DC2626' }}
-              >
-                <Shield size={10} className="fill-white" />
-              </div>
-              <span className="tracking-widest uppercase text-[11px] font-bold text-slate-700">
-                {systemConfig.homePage?.hero?.badgeText || systemConfig.branding?.officialBadgeText || 'OFFICIAL MCC PORTAL'}
-              </span>
-            </div>
-
             {/* Main Heading & Subtitle */}
             <div className="space-y-2">
               <h1 className="text-5xl sm:text-6xl md:text-7xl font-black leading-[1.05] tracking-tight text-white drop-shadow-md">
                 {systemConfig.homePage?.hero?.titleLine1 || 'Campus'} <br />
                 <span
-                  className="font-black inline-block"
-                  style={{ color: systemConfig.homePage?.hero?.highlightColor || systemConfig.theme?.primaryColor || '#DC2626' }}
+                  className="font-black inline-block transition-colors duration-300"
+                  style={{ color: systemConfig.homePage?.hero?.highlightColor || systemConfig.theme?.primaryColor || '#800000' }}
                 >
                   {systemConfig.homePage?.hero?.titleLine2 || 'Maintenance'}
                 </span>
@@ -210,7 +228,7 @@ export default function LandingPage() {
             </div>
 
             {/* Description Text */}
-            <div className="space-y-1.5 text-slate-300 text-sm md:text-base leading-relaxed font-normal">
+            <div className="space-y-1.5 text-[#E5E5E5] text-sm md:text-base leading-relaxed font-normal">
               <p>
                 {systemConfig.homePage?.hero?.description1 || 'Report maintenance issues across classrooms, labs, hostels, water coolers, and campus infrastructure.'}
               </p>
@@ -222,36 +240,28 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Right Column: 4 Frosted Glass KPI Cards in 2x2 Grid */}
+          {/* Right Column: 4 Clean Institutional Light KPI Cards (MCC IGH Style) */}
           <div className="grid grid-cols-2 gap-4 shrink-0 w-full md:w-[380px]">
             {(systemConfig.homePage?.statistics?.cards || [
-              { value: '100+', label: 'Issues Resolved', desc: 'Successfully resolved maintenance requests', color: 'emerald' },
-              { value: '24h', label: 'Response SLA', desc: 'Average target response time', color: 'amber' },
-              { value: '14+', label: 'Departments', desc: 'Working together for a better campus', color: 'sky' },
-              { value: '100%', label: 'Tracked & Logged', desc: 'Every request is tracked transparently', color: 'purple' },
+              { value: '100+', label: 'Issues Resolved', desc: 'Successfully resolved maintenance requests' },
+              { value: '24h', label: 'Response SLA', desc: 'Average target response time' },
+              { value: '14+', label: 'Departments', desc: 'Working together for a better campus' },
+              { value: '100%', label: 'Tracked & Logged', desc: 'Every request is tracked transparently' },
             ]).filter(c => c.visible !== false).map((card, idx) => {
               const icons = [CheckCircle2, Clock, Users, BarChart2];
               const Icon = icons[idx % icons.length];
-              const colorMap = {
-                emerald: { text: 'text-emerald-400', border: 'hover:border-emerald-500/50' },
-                amber: { text: 'text-amber-400', border: 'hover:border-amber-500/50' },
-                sky: { text: 'text-sky-400', border: 'hover:border-sky-500/50' },
-                purple: { text: 'text-purple-400', border: 'hover:border-purple-500/50' },
-                red: { text: 'text-red-400', border: 'hover:border-red-500/50' },
-              };
-              const colorInfo = colorMap[card.color] || colorMap.emerald;
 
               return (
                 <div
                   key={card.id || card.label || idx}
-                  className={`bg-black/40 backdrop-blur-md border border-white/20 rounded-2xl p-5 text-center shadow-xl hover:bg-black/50 ${colorInfo.border} hover:scale-[1.03] transition-all duration-300 flex flex-col items-center justify-center`}
+                  className="bg-white/95 backdrop-blur-md border border-white/90 rounded-2xl p-5 text-center shadow-xl hover:bg-white hover:scale-[1.03] transition-all duration-300 flex flex-col items-center justify-center"
                 >
-                  <div className="mb-2">
-                    <Icon size={24} className={colorInfo.text} />
+                  <div className="mb-2 p-2 rounded-xl bg-[#F5E6E6] border border-[#EBD0D0] text-[#800000]">
+                    <Icon size={20} className="text-[#800000]" />
                   </div>
-                  <p className="text-3xl sm:text-4xl font-black text-white tracking-tight">{card.value}</p>
-                  <p className={`text-xs font-bold ${colorInfo.text} mt-1`}>{card.label}</p>
-                  <p className="text-[10px] text-slate-300 font-medium mt-1 leading-tight">{card.desc || card.description}</p>
+                  <p className="text-3xl sm:text-4xl font-black text-[#111111] tracking-tight">{card.value}</p>
+                  <p className="text-xs font-extrabold text-[#111111] mt-1">{card.label}</p>
+                  <p className="text-[10px] text-slate-500 font-medium mt-1 leading-tight">{card.desc || card.description}</p>
                 </div>
               );
             })}
@@ -282,24 +292,24 @@ export default function LandingPage() {
 
           {/* Section Header */}
           <div className="text-center max-w-xl mx-auto space-y-2 relative z-10">
-            <div className="inline-flex items-center gap-1.5 text-[10px] font-bold text-indigo-600 bg-indigo-50/90 border border-indigo-200/80 px-3 py-1 rounded-full shadow-xs">
-              <Sparkles size={11} className="text-indigo-500" />
+            <div className="inline-flex items-center gap-1.5 text-[10px] font-bold text-[#800000] bg-[#F4E8EA] border border-[#E5E5E5] px-3 py-1 rounded-full shadow-xs">
+              <Sparkles size={11} className="text-[#800000]" />
               <span className="tracking-wider uppercase font-extrabold">TRANSPARENT CAMPUS WORKFLOW</span>
             </div>
 
-            <h2 className="text-2xl sm:text-3xl md:text-[32px] font-black text-slate-900 tracking-tight leading-tight">
-              How Complaints <span className="text-[#DC2626]">Get Solved</span>
+            <h2 className="text-2xl sm:text-3xl md:text-[32px] font-black text-[#171717] tracking-tight leading-tight">
+              How Complaints <span className="text-[#800000]">Get Solved</span>
             </h2>
 
-            <p className="text-xs sm:text-sm text-slate-500 font-medium max-w-md mx-auto">
+            <p className="text-xs sm:text-sm text-[#6B6B6B] font-medium max-w-md mx-auto">
               Clear 3-stage process from ticket submission to full resolution.
             </p>
 
             {/* Slider Dot Indicator */}
             <div className="flex items-center justify-center gap-1.5 pt-0.5">
-              <span className="w-6 h-0.5 bg-slate-300 rounded-full" />
-              <span className="w-2 h-2 bg-[#DC2626] rounded-full shadow-xs" />
-              <span className="w-6 h-0.5 bg-slate-300 rounded-full" />
+              <span className="w-6 h-0.5 bg-[#E5E5E5] rounded-full" />
+              <span className="w-2 h-2 bg-[#800000] rounded-full shadow-xs" />
+              <span className="w-6 h-0.5 bg-[#E5E5E5] rounded-full" />
             </div>
           </div>
 
@@ -311,75 +321,42 @@ export default function LandingPage() {
                 <div key={step.title} className="relative flex flex-col">
                   {/* The Card */}
                   <div
-                    className={`
-                      relative overflow-hidden bg-white
-                      rounded-[26px] border border-slate-200/80 shadow-[0_12px_36px_-8px_rgba(0,0,0,0.06)]
-                      hover:shadow-[0_20px_48px_-12px_rgba(37,99,235,0.12)] ${step.hoverBorder}
-                      hover:-translate-y-2 transition-all duration-300
-                      flex flex-col justify-between group p-5 sm:p-5.5 flex-1
-                    `}
+                    className="relative overflow-hidden bg-white rounded-[26px] border border-[#E5E5E5] shadow-md hover:shadow-xl hover:border-[#800000]/40 hover:-translate-y-2 transition-all duration-300 flex flex-col justify-between group p-5 sm:p-5.5 flex-1"
                   >
                     {/* Top Curved Accent Cap */}
-                    <div className={`absolute top-0 inset-x-0 h-1.5 rounded-t-[26px] ${step.topBar}`} />
+                    <div className="absolute top-0 inset-x-0 h-1.5 rounded-t-[26px] bg-[#800000]" />
 
                     {/* Top Subtle Gradient Wash */}
-                    <div className={`absolute top-1.5 inset-x-0 h-24 ${step.topWash} pointer-events-none`} />
+                    <div className="absolute top-1.5 inset-x-0 h-24 bg-gradient-to-b from-[#F4E8EA]/60 to-transparent pointer-events-none" />
 
                     {/* Card Content Top */}
                     <div className="pt-1 relative z-10">
                       {/* Header: Step Pill & Circular 3D Icon with Floating Specks */}
                       <div className="flex items-center justify-between">
-                        <span className={`inline-flex items-center text-[10px] font-extrabold px-3 py-1 rounded-full text-white ${step.badgeBg} shadow-xs tracking-wider uppercase`}>
+                        <span className="inline-flex items-center text-[10px] font-extrabold px-3 py-1 rounded-full text-white bg-[#800000] shadow-xs tracking-wider uppercase">
                           {step.badge}
                         </span>
 
-                        {/* 3D Styled Step Icon Badge with Floating Specks */}
-                        {step.iconType === 'clipboard' && (
-                          <div className="relative">
-                            <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200/80 flex items-center justify-center relative shadow-xs group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
-                              <ClipboardList size={24} className="text-blue-600" />
-                              <span className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-xs border-2 border-white">
-                                <Plus size={11} strokeWidth={3} />
-                              </span>
-                            </div>
-                            <span className="absolute -top-1 -left-1 w-1 h-1 rounded-full bg-blue-400 opacity-70" />
-                            <span className="absolute -bottom-1 -left-1.5 w-1 h-1 rounded-full bg-blue-300 opacity-60" />
-                          </div>
-                        )}
-
-                        {step.iconType === 'ticket' && (
-                          <div className="relative">
-                            <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200/80 flex items-center justify-center relative shadow-xs group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-300">
-                              <div className="px-2 py-0.5 rounded-md bg-purple-100 border-2 border-purple-400 text-purple-700 shadow-2xs flex items-center justify-center">
+                        {/* 3D Styled Step Icon Badge */}
+                        <div className="relative">
+                          <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-[#F4E8EA] border border-[#E5E5E5] flex items-center justify-center relative shadow-xs group-hover:scale-110 transition-transform duration-300">
+                            {step.iconType === 'clipboard' && <ClipboardList size={24} className="text-[#800000]" />}
+                            {step.iconType === 'ticket' && (
+                              <div className="px-2 py-0.5 rounded-md bg-white border border-[#800000] text-[#800000] shadow-2xs flex items-center justify-center">
                                 <span className="text-[11px] font-black tracking-tight font-mono">#003</span>
                               </div>
-                            </div>
-                            <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-purple-400 animate-ping opacity-75" />
-                            <span className="absolute -bottom-0.5 -left-1 w-1 h-1 rounded-full bg-purple-500 opacity-80" />
-                            <span className="absolute top-1/2 -right-1.5 w-1 h-1 rounded-full bg-purple-400 opacity-70" />
+                            )}
+                            {step.iconType === 'wrench' && <Wrench size={24} className="text-[#800000]" />}
                           </div>
-                        )}
-
-                        {step.iconType === 'wrench' && (
-                          <div className="relative">
-                            <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-emerald-50 to-emerald-100 border border-emerald-200/80 flex items-center justify-center relative shadow-xs group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
-                              <Wrench size={24} className="text-emerald-600" />
-                              <span className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-xs border-2 border-white">
-                                <Check size={11} strokeWidth={3} />
-                              </span>
-                            </div>
-                            <span className="absolute -top-1 -left-1 w-1 h-1 rounded-full bg-emerald-400 opacity-70" />
-                            <span className="absolute bottom-1 -left-1.5 w-1 h-1 rounded-full bg-emerald-300 opacity-60" />
-                          </div>
-                        )}
+                        </div>
                       </div>
 
                       {/* Step Title & Description */}
                       <div className="mt-4 space-y-1.5 text-left">
-                        <h3 className="font-black text-slate-900 text-base sm:text-lg tracking-tight leading-snug group-hover:text-slate-950 transition-colors">
+                        <h3 className="font-black text-[#171717] text-base sm:text-lg tracking-tight leading-snug group-hover:text-[#800000] transition-colors">
                           {step.title}
                         </h3>
-                        <p className="text-xs sm:text-[13px] text-slate-500 leading-relaxed font-normal min-h-[44px]">
+                        <p className="text-xs sm:text-[13px] text-[#6B6B6B] leading-relaxed font-normal min-h-[44px]">
                           {step.desc}
                         </p>
                       </div>
@@ -388,23 +365,23 @@ export default function LandingPage() {
                     {/* Bottom Highlight Action Box */}
                     <Link
                       to="/complaint"
-                      className={`w-full ${step.tagBg} border rounded-xl p-2.5 sm:p-3 flex items-center justify-between transition-all duration-300 hover:scale-[1.02] shadow-2xs group/tag cursor-pointer mt-4 relative z-10`}
+                      className="w-full bg-[#F7F7F7] border border-[#E5E5E5] hover:border-[#800000]/40 rounded-xl p-2.5 sm:p-3 flex items-center justify-between transition-all duration-300 hover:scale-[1.02] shadow-2xs group/tag cursor-pointer mt-4 relative z-10"
                     >
                       <div className="flex items-center gap-2.5">
-                        <div className={`p-1.5 rounded-lg bg-white shadow-2xs ${step.tagIconColor}`}>
+                        <div className="p-1.5 rounded-lg bg-white border border-[#E5E5E5] text-[#800000] shadow-2xs">
                           <TagIcon size={15} />
                         </div>
                         <div className="text-left">
-                          <p className="text-xs sm:text-[13px] font-black text-slate-900 leading-snug">
+                          <p className="text-xs sm:text-[13px] font-black text-[#171717] leading-snug">
                             {step.tagTitle}
                           </p>
-                          <p className="text-[10px] text-slate-500 font-medium">
+                          <p className="text-[10px] text-[#6B6B6B] font-medium">
                             {step.tagSubtitle}
                           </p>
                         </div>
                       </div>
 
-                      <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full ${step.arrowBg} flex items-center justify-center transition-all duration-300 shadow-2xs shrink-0`}>
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#800000] text-white flex items-center justify-center transition-all duration-300 shadow-2xs shrink-0">
                         <ArrowRight size={14} className="group-hover/tag:translate-x-0.5 transition-transform" />
                       </div>
                     </Link>
@@ -414,37 +391,37 @@ export default function LandingPage() {
             })}
           </div>
 
-          {/* Bottom Area: Left Signature in Circle area, Center CTA, Right Building Sketch in Box area */}
+          {/* Bottom Area: Signature, Center CTA, Building Sketch */}
           <div className="relative pt-4 pb-1 min-h-[110px] flex items-center justify-center">
 
-            {/* Left: Signature Watermark (in the circle area below Card 1) */}
+            {/* Left: Signature Watermark */}
             <div className="hidden lg:flex flex-col items-start absolute left-0 sm:left-2 bottom-1 select-none pointer-events-none z-10 opacity-95">
-              <p className="font-serif italic text-slate-700 text-xl font-black leading-tight tracking-wide" style={{ fontFamily: "'Caveat', 'Segoe Script', cursive, serif" }}>
+              <p className="font-serif italic text-[#171717] text-xl font-black leading-tight tracking-wide" style={{ fontFamily: "'Caveat', 'Segoe Script', cursive, serif" }}>
                 Together<br />
-                <span className="text-base font-extrabold text-slate-600">for a better campus</span>
+                <span className="text-base font-extrabold text-[#6B6B6B]">for a better campus</span>
               </p>
-              <div className="w-28 h-1 bg-[#DC2626] rounded-full -rotate-2 mt-1 ml-0.5 shadow-2xs" />
+              <div className="w-28 h-1 bg-[#800000] rounded-full -rotate-2 mt-1 ml-0.5 shadow-2xs" />
             </div>
 
             {/* Center: CTA Button */}
             <div className="flex flex-col items-center justify-center space-y-2.5 relative z-20">
               <Link
                 to="/complaint"
-                className="inline-flex items-center gap-2.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-black text-xs sm:text-sm px-7 py-3 rounded-full shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:scale-105 active:scale-95 transition-all duration-300 group"
+                className="inline-flex items-center gap-2.5 bg-[#800000] hover:bg-[#9A1B2F] text-white font-black text-xs sm:text-sm px-7 py-3 rounded-full shadow-lg shadow-[#800000]/25 hover:shadow-[#800000]/40 hover:scale-105 active:scale-95 transition-all duration-300 group"
               >
                 <Send size={15} className="text-white -rotate-12 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                 <span>Submit a Complaint Now</span>
                 <ArrowRight size={15} className="text-white/80 group-hover:text-white group-hover:translate-x-1 transition-transform" />
               </Link>
 
-              <div className="flex items-center justify-center gap-2.5 text-[11px] sm:text-xs text-slate-400 font-medium">
-                <span className="w-10 h-px bg-slate-200"></span>
+              <div className="flex items-center justify-center gap-2.5 text-[11px] sm:text-xs text-[#6B6B6B] font-medium">
+                <span className="w-10 h-px bg-[#E5E5E5]"></span>
                 <span>A better campus starts with your voice.</span>
-                <span className="w-10 h-px bg-slate-200"></span>
+                <span className="w-10 h-px bg-[#E5E5E5]"></span>
               </div>
             </div>
 
-            {/* Right: Building Sketch (in the right box area below Card 3) */}
+            {/* Right: Building Sketch */}
             <div className="hidden md:block absolute right-0 sm:right-1 -bottom-3 w-[290px] sm:w-[340px] pointer-events-none select-none z-10 opacity-95 mix-blend-multiply filter contrast-125 brightness-90">
               <img src={campusIllustration} alt="Campus Building Sketch" className="w-full object-contain object-bottom" />
             </div>
@@ -458,33 +435,49 @@ export default function LandingPage() {
         {/* Section 2: Contact & Emergency Support Cards */}
         <section className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
           {/* Facilities Contact & Support Card */}
-          <div className="bg-[#EEF5FF] border border-blue-200/70 rounded-2xl p-6 sm:p-7 space-y-4 shadow-sm hover:shadow-md transition">
+          <div className="bg-white border border-[#E5E5E5] rounded-2xl p-6 sm:p-7 space-y-4 shadow-sm hover:shadow-md hover:border-[#800000]/40 transition">
             <div className="flex items-center gap-2.5">
-              <PhoneCall size={20} className="text-blue-600 shrink-0" />
-              <h4 className="font-extrabold text-slate-900 text-base sm:text-lg">Facilities Contact & Support</h4>
+              <PhoneCall size={20} className="text-[#800000] shrink-0" />
+              <h4 className="font-extrabold text-[#171717] text-base sm:text-lg">
+                {systemConfig.facilitiesContact?.title || 'Facilities Contact & Support'}
+              </h4>
             </div>
-            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
-              If you have urgent inquiries regarding a previously submitted complaint, contact the campus facilities helpdesk.
+            <p className="text-xs sm:text-sm text-[#6B6B6B] leading-relaxed font-normal">
+              {systemConfig.facilitiesContact?.description || 'If you have urgent inquiries regarding a previously submitted complaint, contact the campus facilities helpdesk.'}
             </p>
-            <div className="space-y-1.5 text-xs sm:text-sm text-slate-700 font-medium pt-2">
-              <p><span className="font-bold text-slate-900">Office:</span> Campus Maintenance Office, Ground Floor, Admin Block</p>
-              <p><span className="font-bold text-slate-900">Email:</span> mrf-support@campus.edu</p>
-              <p><span className="font-bold text-slate-900">Hours:</span> Monday – Saturday (8:30 AM – 5:00 PM)</p>
+            <div className="space-y-1.5 text-xs sm:text-sm text-[#171717] font-medium pt-2">
+              <p>
+                <span className="font-bold text-[#171717]">Office:</span>{' '}
+                {systemConfig.facilitiesContact?.office || 'Campus Maintenance Office, Ground Floor, Admin Block'}
+              </p>
+              <p>
+                <span className="font-bold text-[#171717]">Email:</span>{' '}
+                {systemConfig.facilitiesContact?.email || 'mcc-support@campus.edu'}
+              </p>
+              <p>
+                <span className="font-bold text-[#171717]">Hours:</span>{' '}
+                {systemConfig.facilitiesContact?.hours || 'Monday – Saturday (8:30 AM – 5:00 PM)'}
+              </p>
             </div>
           </div>
 
           {/* Emergency Hazards Card */}
-          <div className="bg-[#FFF0F0] border border-red-200/70 rounded-2xl p-6 sm:p-7 space-y-4 shadow-sm hover:shadow-md transition">
+          <div className="bg-[#F4E8EA] border border-[#E5E5E5] rounded-2xl p-6 sm:p-7 space-y-4 shadow-sm hover:shadow-md transition">
             <div className="flex items-center gap-2.5">
-              <AlertCircle size={20} className="text-red-600 shrink-0" />
-              <h4 className="font-extrabold text-red-900 text-base sm:text-lg">Emergency Hazards</h4>
+              <AlertCircle size={20} className="text-[#800000] shrink-0" />
+              <h4 className="font-extrabold text-[#800000] text-base sm:text-lg">
+                {systemConfig.emergencyHazards?.title || 'Emergency Hazards'}
+              </h4>
             </div>
-            <p className="text-xs sm:text-sm text-red-800 leading-relaxed font-normal">
-              For critical emergencies such as active electrical fires, major gas leaks, structural collapse, or severe flooding, please contact security immediately.
+            <p className="text-xs sm:text-sm text-[#800000] leading-relaxed font-normal">
+              {systemConfig.emergencyHazards?.description || 'For critical emergencies such as active electrical fires, major gas leaks, structural collapse, or severe flooding, please contact security immediately.'}
             </p>
             <div className="text-xs sm:text-sm pt-2">
-              <p className="font-bold text-red-950">
-                Emergency Helpline: <span className="font-extrabold text-red-900 underline underline-offset-2">+91 0000-00000</span>
+              <p className="font-bold text-[#171717]">
+                Emergency Helpline:{' '}
+                <span className="font-extrabold text-[#800000] underline underline-offset-2">
+                  {systemConfig.emergencyHazards?.helpline || '+91 0000-00000'}
+                </span>
               </p>
             </div>
           </div>
@@ -493,14 +486,14 @@ export default function LandingPage() {
       </div>
 
       {/* Footer */}
-      <footer className="bg-[#0B132B] text-slate-400 border-t border-slate-800 py-6 px-6 mt-auto">
+      <footer className="bg-[#171717] text-[#E5E5E5] border-t border-[#262626] py-6 px-6 mt-auto">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-medium">
-          <div className="flex items-center gap-2 text-slate-300 font-bold">
-            <ClipboardList size={16} className="text-blue-400" />
-            <span>MRF Issue Portal</span>
-            <span className="text-slate-500 font-normal">— Campus Complaint System</span>
+          <div className="flex items-center gap-2 text-white font-bold">
+            <ClipboardList size={16} className="text-[#800000]" />
+            <span>MCC Issue Portal</span>
+            <span className="text-[#6B6B6B] font-normal">— Campus Complaint System</span>
           </div>
-          <p className="text-slate-400">© 2026 Campus Facilities Dept. All rights reserved.</p>
+          <p className="text-[#6B6B6B]">© 2026 Campus Facilities Dept. All rights reserved.</p>
         </div>
       </footer>
     </div>

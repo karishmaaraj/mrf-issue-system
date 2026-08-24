@@ -134,17 +134,17 @@ export default function WorkerEmailModal({ isOpen, onClose, worker, tickets = []
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-900 text-white p-5 sm:p-6 relative">
+        <div className="bg-[#A00000] text-white p-5 sm:p-6 relative">
           <button
             onClick={onClose}
             disabled={isSending}
-            className="absolute top-4 right-4 p-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition cursor-pointer"
+            className="absolute top-4 right-4 p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition cursor-pointer"
           >
             <X size={18} />
           </button>
 
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-black text-xl flex items-center justify-center shadow-lg shadow-blue-500/25 shrink-0 border border-white/20">
+            <div className="w-12 h-12 rounded-2xl bg-white/15 text-white font-black text-xl flex items-center justify-center shadow-md shrink-0 border border-white/20">
               {worker.icon || worker.name.charAt(0)}
             </div>
             <div>
@@ -152,12 +152,12 @@ export default function WorkerEmailModal({ isOpen, onClose, worker, tickets = []
                 <h3 className="text-base sm:text-lg font-black text-white leading-tight">
                   Email {worker.name}
                 </h3>
-                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-blue-500/30 text-blue-200 border border-blue-400/40">
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-white/20 text-white border border-white/30">
                   {worker.role}
                 </span>
               </div>
-              <p className="text-xs text-slate-300 font-mono flex items-center gap-1.5 mt-1">
-                <Mail size={12} className="text-cyan-300" />
+              <p className="text-xs text-white/80 font-mono flex items-center gap-1.5 mt-1">
+                <Mail size={12} className="text-white/90" />
                 <span>{worker.email}</span>
               </p>
             </div>
@@ -274,7 +274,7 @@ export default function WorkerEmailModal({ isOpen, onClose, worker, tickets = []
               <button
                 type="submit"
                 disabled={isSending || success}
-                className="px-5 py-2 text-xs font-black text-white bg-blue-600 hover:bg-blue-700 active:scale-95 rounded-xl shadow-md shadow-blue-500/25 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-5 py-2 text-xs font-black text-white bg-[#A00000] hover:bg-[#800000] active:scale-95 rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSending ? (
                   <>

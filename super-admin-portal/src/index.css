@@ -3,23 +3,27 @@
 @tailwind utilities;
 
 /* ────────────────────────────────────────────────────────────
-   Global base styles — Slate Glass & Royal Blue Theme
+   Global Base Styles — MCC Institutional Theme
 ──────────────────────────────────────────────────────────── */
 @layer base {
   *, *::before, *::after {
     box-sizing: border-box;
   }
 
-  html {
+  html, body {
     font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     scroll-behavior: smooth;
+    max-width: 100vw;
+    overflow-x: hidden;
+    width: 100%;
   }
 
   body {
-    background-color: #F8FAFC;
-    @apply text-slate-800 min-h-screen selection:bg-blue-500 selection:text-white;
+    background-color: #F8F8F8;
+    color: #171717;
+    @apply min-h-screen selection:bg-[#800000] selection:text-white;
   }
 }
 
@@ -31,14 +35,14 @@
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background-color: #F1F5F9;
+  background-color: #F8F8F8;
 }
 ::-webkit-scrollbar-thumb {
-  background-color: #CBD5E1;
+  background-color: #E5E5E5;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background-color: #94A3B8;
+  background-color: #800000;
 }
 
 /* ────────────────────────────────────────────────────────────
@@ -51,30 +55,30 @@
 
 @keyframes pulseGlow {
   0%, 100% {
-    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+    box-shadow: 0 0 0 0 rgba(128, 0, 0, 0.3);
   }
   50% {
-    box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+    box-shadow: 0 0 0 10px rgba(128, 0, 0, 0);
   }
 }
 
 @keyframes urgentBorderPulse {
   0%, 100% {
-    box-shadow: 0 0 0 1.5px rgba(239, 68, 68, 0.6), 0 8px 24px -4px rgba(239, 68, 68, 0.15);
-    border-color: rgba(239, 68, 68, 0.7);
+    box-shadow: 0 0 0 1.5px rgba(128, 0, 0, 0.6), 0 8px 24px -4px rgba(128, 0, 0, 0.15);
+    border-color: rgba(128, 0, 0, 0.7);
   }
   50% {
-    box-shadow: 0 0 0 2.5px rgba(239, 68, 68, 0.9), 0 16px 36px -4px rgba(239, 68, 68, 0.35);
-    border-color: rgba(239, 68, 68, 1);
+    box-shadow: 0 0 0 2.5px rgba(128, 0, 0, 0.9), 0 16px 36px -4px rgba(128, 0, 0, 0.35);
+    border-color: rgba(128, 0, 0, 1);
   }
 }
 
 @keyframes ongoingBorderGlow {
   0%, 100% {
-    box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.3), 0 4px 16px -2px rgba(245, 158, 11, 0.1);
+    box-shadow: 0 0 0 1px rgba(197, 138, 0, 0.3), 0 4px 16px -2px rgba(197, 138, 0, 0.1);
   }
   50% {
-    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.6), 0 8px 24px -2px rgba(245, 158, 11, 0.22);
+    box-shadow: 0 0 0 2px rgba(197, 138, 0, 0.6), 0 8px 24px -2px rgba(197, 138, 0, 0.22);
   }
 }
 
@@ -133,36 +137,24 @@
   75% { transform: rotate(8deg); }
 }
 
-@keyframes radarPing {
-  0% {
-    transform: scale(0.9);
-    opacity: 0.9;
-  }
-  80%, 100% {
-    transform: scale(2.4);
-    opacity: 0;
-  }
-}
-
 /* ────────────────────────────────────────────────────────────
-   Sculpted SaaS Card Styles & Hover Effects
+   Sculpted Cards & Hover Effects
 ──────────────────────────────────────────────────────────── */
 .sculpted-card {
-  border-radius: 1.5rem; /* 24px rounded */
+  border-radius: 1.25rem;
   background: #FFFFFF;
   position: relative;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  box-shadow: 0 4px 14px -3px rgba(15, 23, 42, 0.04), 0 2px 6px -2px rgba(15, 23, 42, 0.02);
+  transition: all 0.25s ease-out;
+  border: 1px solid #E5E5E5;
+  box-shadow: 0 4px 14px -3px rgba(23, 23, 23, 0.04);
 }
 
 .sculpted-card:hover {
-  transform: translateY(-5px) scale(1.01);
-  box-shadow: 0 20px 38px -12px rgba(15, 23, 42, 0.09), 0 8px 18px -4px rgba(37, 99, 235, 0.07);
-  border-color: rgba(147, 197, 253, 0.85);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px -8px rgba(23, 23, 23, 0.08);
+  border-color: rgba(128, 0, 0, 0.4);
 }
 
-/* Light reflective shine sweep across card on hover */
 .card-shine-effect {
   position: absolute;
   inset: 0;
@@ -211,7 +203,7 @@
 }
 
 .card-shimmer-bar {
-  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.6) 50%, rgba(255,255,255,0) 100%);
+  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(247,234,234,0.8) 50%, rgba(255,255,255,0) 100%);
   background-size: 200% 100%;
   animation: shimmerSlide 2.5s infinite;
 }
@@ -238,60 +230,80 @@
 }
 
 /* ────────────────────────────────────────────────────────────
-   Glassmorphism Panel
+   Header Panel
 ──────────────────────────────────────────────────────────── */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(226, 232, 240, 0.9);
+  background: #FFFFFF;
+  border-bottom: 1px solid #E5E5E5;
 }
 
 /* ────────────────────────────────────────────────────────────
-   Kanban Drag highlights & 3D Tilt
+   Kanban Drag Highlights
 ──────────────────────────────────────────────────────────── */
 .kanban-col-dragging-over {
-  @apply ring-2 ring-inset ring-blue-500 bg-blue-50/70;
+  @apply ring-2 ring-inset ring-[#800000] bg-[#F7EAEA]/50;
   transition: background 0.15s ease, box-shadow 0.15s ease;
 }
 
 .ticket-card-dragging {
-  @apply shadow-2xl rotate-2 opacity-95 scale-[1.04] ring-4 ring-blue-500/40;
+  @apply shadow-2xl rotate-2 opacity-95 scale-[1.04] ring-2 ring-[#800000]/40;
   transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
 
 /* ────────────────────────────────────────────────────────────
-   Status Washes (Soft fills with vibrant text)
+   Status Badges
 ──────────────────────────────────────────────────────────── */
 .badge-unsolved {
-  background-color: #FEF2F2;
-  color: #EF4444;
-  border: 1px solid rgba(252, 165, 165, 0.7);
+  background-color: #F7EAEA;
+  color: #800000;
+  border: 1px solid #E5E5E5;
 }
 
 .badge-ongoing {
-  background-color: #FFFBEB;
-  color: #D97706;
-  border: 1px solid rgba(252, 211, 77, 0.7);
+  background-color: #FEF3C7;
+  color: #C58A00;
+  border: 1px solid #FDE68A;
 }
 
 .badge-completed {
-  background-color: #ECFDF5;
-  color: #10B981;
-  border: 1px solid rgba(110, 231, 183, 0.7);
+  background-color: #F0FDF4;
+  color: #159447;
+  border: 1px solid #BBF7D0;
 }
 
 /* ────────────────────────────────────────────────────────────
    Form Field Inputs
 ──────────────────────────────────────────────────────────── */
 .input-field {
-  @apply w-full px-4 py-2.5 rounded-2xl border border-slate-200 bg-slate-50/60
-         text-sm text-slate-800 placeholder:text-slate-400
-         hover:bg-white focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/15 focus:border-blue-500
+  @apply w-full px-4 py-2.5 rounded-xl border border-[#E5E5E5] bg-white
+         text-sm text-[#171717] placeholder:text-[#888888]
+         focus:bg-white focus:outline-none focus:ring-4 focus:ring-red-900/10 focus:border-[#800000]
          transition duration-200;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.02);
 }
 
 .input-label {
-  @apply flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5;
+  @apply flex items-center gap-1.5 text-xs font-bold text-[#171717] uppercase tracking-wide mb-1.5;
+}
+
+/* Responsive Helper Utilities */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.responsive-modal-container {
+  width: min(95vw, 680px);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.responsive-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }

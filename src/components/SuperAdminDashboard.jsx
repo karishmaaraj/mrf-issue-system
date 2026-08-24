@@ -10,8 +10,10 @@ import {
   AlertTriangle, Flame, RefreshCw, Trash2, Plus, LogOut, ArrowUpRight,
   Database, BarChart3, Search, ChevronRight, ExternalLink, X, Save,
   Palette, Monitor, Layout, Sliders, Mail, Settings, Globe,
-  Check, Undo, Eye, Smartphone, Laptop, RotateCcw, Sparkles
+  Check, Undo, Eye, Smartphone, Laptop, RotateCcw, Sparkles, Activity, PhoneCall, AlertCircle, Menu,
+  Upload, Image as ImageIcon
 } from 'lucide-react';
+import campusBg from '../assets/campus_bg.png';
 import {
   getSystemConfig,
   saveSystemConfig,
@@ -28,7 +30,7 @@ import {
 import CollegeLogo from './CollegeLogo.jsx';
 import SuperAdminLogin from './SuperAdminLogin.jsx';
 
-const SUPER_ADMIN_AUTH_KEY = 'mrf_super_admin_authed';
+const SUPER_ADMIN_AUTH_KEY = 'mcc_super_admin_authed';
 
 export const PRESET_NAMED_COLORS = [
   { name: 'Red', hex: '#DC2626', hover: '#B91C1C', bg: 'bg-red-600', emoji: '🔴' },
@@ -66,13 +68,11 @@ const COLOR_PRESETS = [
 ];
 
 export default function SuperAdminDashboard() {
-  const [authed, setAuthed] = useState(() => {
-    try {
-      return sessionStorage.getItem(SUPER_ADMIN_AUTH_KEY) === 'true';
-    } catch {
-      return false;
-    }
-  });
+  const [authed, setAuthed] = useState(true);
+
+  useEffect(() => {
+    document.title = 'MCC Super Admin — Campus Facilities';
+  }, []);
 
   const handleLogin = () => {
     try {
@@ -96,6 +96,7 @@ export default function SuperAdminDashboard() {
   const [previewDevice, setPreviewDevice] = useState('desktop'); // 'desktop' | 'mobile'
 
   const [activeTab, setActiveTab] = useState('overview');
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [tickets, setTickets] = useState([]);
   const [search, setSearch] = useState('');
   const [filterPriority, setFilterPriority] = useState('All');
@@ -231,7 +232,7 @@ export default function SuperAdminDashboard() {
     }, 3500);
 
     const ticketChannel = typeof window !== 'undefined' && 'BroadcastChannel' in window
-      ? new BroadcastChannel('mrf_tickets_sync_channel')
+      ? new BroadcastChannel('mcc_tickets_sync_channel')
       : null;
 
     if (ticketChannel) {
@@ -493,7 +494,7 @@ export default function SuperAdminDashboard() {
   }, [tickets, search, filterPriority]);
 
   const navTabs = [
-    { id: 'overview', label: 'Executive Overview', icon: ActivityIcon },
+    { id: 'overview', label: 'Executive Overview', icon: Activity },
     { id: 'userportal', label: 'User Portal Studio', icon: Monitor },
     { id: 'brandingTheme', label: 'Theme & Branding', icon: Palette },
     { id: 'adminPortal', label: 'Admin Portal Studio', icon: Layout },
@@ -519,43 +520,37 @@ export default function SuperAdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-amber-500 selection:text-slate-950 font-sans">
+    <div className="min-h-screen bg-[#F5F5F5] text-[#111111] flex flex-col selection:bg-[#A00000] selection:text-white font-sans">
       
       {/* Toast Notification */}
       {toast && (
-        <div className="fixed top-5 right-5 z-50 bg-slate-900 border border-amber-500/80 text-white text-xs font-bold px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 animate-slide-in">
-          <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+        <div className="fixed top-5 right-5 z-50 bg-[#111111] border border-[#E5E5E5] text-white text-xs font-bold px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 animate-slide-in">
+          <span className="w-2 h-2 rounded-full bg-[#A00000] animate-ping" />
           <span>{toast}</span>
         </div>
       )}
 
       {/* Top Super Admin Master Navbar */}
-      <header className="bg-slate-900/90 backdrop-blur-xl border-b border-amber-500/30 sticky top-0 z-40 px-6 py-3 flex flex-wrap items-center justify-between gap-4">
+      <header className="bg-white border-b border-[#E5E5E5] sticky top-0 z-40 px-6 py-3 flex flex-wrap items-center justify-between gap-4 shadow-2xs">
         <div className="flex items-center gap-3">
-          <div className="p-1 bg-white rounded-xl shadow-md border border-white/90 shrink-0 flex items-center justify-center">
-            <CollegeLogo className="h-8 w-auto" />
-          </div>
+          <CollegeLogo className="h-9 sm:h-10 w-auto shrink-0" />
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-black text-lg text-white tracking-tight">MRF Super Admin</span>
-              <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2.5 py-0.5 rounded-full">
-                <Crown size={11} className="text-amber-400" />
-                <span>Executive Command</span>
-              </span>
+              <span className="font-black text-lg text-[#111111] tracking-tight">MCC Super Admin</span>
             </div>
-            <span className="text-[11px] text-slate-400 font-medium">Central Multi-Portal Synchronization & Theme Engine</span>
+            <span className="text-[11px] text-slate-500 font-medium">Central Multi-Portal Synchronization & Theme Engine</span>
           </div>
         </div>
 
         {/* Action Controls & Publish Bar */}
         <div className="flex items-center gap-2.5">
           {hasUnsavedChanges && (
-            <div className="flex items-center gap-2 bg-amber-950/80 border border-amber-500/60 px-3 py-1.5 rounded-xl animate-pulse">
-              <span className="w-2 h-2 rounded-full bg-amber-400" />
-              <span className="text-xs font-bold text-amber-300">Unsaved Changes</span>
+            <div className="flex items-center gap-2 bg-[#FFF5F5] border border-[#A00000]/30 px-3 py-1.5 rounded-xl animate-pulse">
+              <span className="w-2 h-2 rounded-full bg-[#A00000]" />
+              <span className="text-xs font-bold text-[#A00000]">Unsaved Changes</span>
               <button
                 onClick={handleDiscardDraft}
-                className="text-xs font-bold text-slate-400 hover:text-white px-2 py-0.5 rounded-lg hover:bg-slate-800 transition flex items-center gap-1"
+                className="text-xs font-bold text-slate-600 hover:text-[#111111] px-2 py-0.5 rounded-lg hover:bg-white transition flex items-center gap-1"
                 title="Discard draft changes and revert to live configuration"
               >
                 <Undo size={12} /> Discard
@@ -566,9 +561,9 @@ export default function SuperAdminDashboard() {
           <button
             onClick={handlePublish}
             disabled={isPublishing}
-            className={`px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 transition shadow-lg cursor-pointer ${hasUnsavedChanges
-              ? 'bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 shadow-amber-500/30 scale-105'
-              : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-700'
+            className={`px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 transition shadow-xs cursor-pointer ${hasUnsavedChanges
+              ? 'bg-[#A00000] hover:bg-[#800000] text-white shadow-2xs scale-105'
+              : 'bg-[#A00000] text-white hover:bg-[#800000] border border-[#A00000]'
             }`}
           >
             <Save size={14} className={isPublishing ? 'animate-spin' : ''} />
@@ -579,7 +574,7 @@ export default function SuperAdminDashboard() {
             href={issuePortalUrl}
             target="_blank"
             rel="noreferrer"
-            className="text-xs font-bold text-slate-400 hover:text-white bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 px-3 py-2 rounded-xl transition flex items-center gap-1.5"
+            className="text-xs font-bold text-[#111111] hover:text-[#A00000] bg-white hover:bg-[#FFF5F5] border border-[#E5E5E5] px-3 py-2 rounded-xl transition flex items-center gap-1.5 shadow-2xs"
             title="Open Live Issue Portal"
           >
             <ExternalLink size={12} />
@@ -590,16 +585,16 @@ export default function SuperAdminDashboard() {
             href={adminPortalUrl}
             target="_blank"
             rel="noreferrer"
-            className="text-xs font-bold text-blue-300 hover:text-white bg-blue-950/80 hover:bg-blue-900 border border-blue-500/40 px-3 py-2 rounded-xl transition flex items-center gap-1.5"
+            className="text-xs font-bold text-[#111111] hover:text-[#A00000] bg-white hover:bg-[#FFF5F5] border border-[#E5E5E5] px-3 py-2 rounded-xl transition flex items-center gap-1.5 shadow-2xs"
             title="Open Live Admin Portal"
           >
             <span>Admin Portal</span>
-            <ArrowUpRight size={13} className="text-blue-400" />
+            <ArrowUpRight size={13} className="text-[#A00000]" />
           </a>
 
           <button
             onClick={handleLogout}
-            className="p-2 text-red-400 hover:text-red-300 bg-red-950/60 hover:bg-red-950 rounded-xl border border-red-500/30 transition ml-2 cursor-pointer"
+            className="p-2 text-[#A00000] hover:text-white bg-white hover:bg-[#A00000] rounded-xl border border-[#A00000]/30 transition ml-2 cursor-pointer shadow-2xs"
             title="Sign Out"
           >
             <LogOut size={15} />
@@ -607,58 +602,88 @@ export default function SuperAdminDashboard() {
         </div>
       </header>
 
-      {/* Main Container */}
-      <div className="max-w-7xl mx-auto w-full p-4 sm:p-6 space-y-6 flex-1">
-        
-        {/* Navigation Tabs Bar */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-800 scrollbar-thin">
-          {navTabs.map(({ id, label, icon: Icon, badge }) => (
-            <button
-              key={id}
-              onClick={() => setActiveTab(id)}
-              className={`flex items-center gap-2 px-3.5 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer whitespace-nowrap ${activeTab === id
-                ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
-                : 'bg-slate-900/80 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800'
-              }`}
-            >
-              <Icon size={14} />
-              <span>{label}</span>
-              {badge !== undefined && (
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${activeTab === id ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-800 text-slate-300'}`}>
-                  {badge}
-                </span>
-              )}
-            </button>
-          ))}
+      {/* Main Flex Layout Container */}
+      <div className="max-w-7xl mx-auto w-full p-4 sm:p-6 flex-1 flex flex-col lg:flex-row gap-6">
+
+        {/* Mobile Sidebar Toggle Header (Visible on mobile/tablet < lg) */}
+        <div className="lg:hidden flex items-center justify-between bg-white border border-[#E5E5E5] p-3.5 rounded-2xl shadow-2xs">
+          <div className="flex items-center gap-2.5">
+            <span className="font-black text-xs text-[#111111] uppercase tracking-wider">Module Navigation:</span>
+            <span className="text-[11px] font-black bg-[#A00000] text-white px-2.5 py-0.5 rounded-full shadow-2xs">
+              {navTabs.find(t => t.id === activeTab)?.label}
+            </span>
+          </div>
+          <button
+            onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+            className="p-2 rounded-xl bg-[#F5F5F5] text-[#111111] hover:bg-[#FFF5F5] hover:text-[#A00000] border border-[#E5E5E5] transition cursor-pointer"
+          >
+            {mobileSidebarOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
         </div>
 
-        {/* ── TAB 1: EXECUTIVE OVERVIEW ───────────────────────────── */}
-        {activeTab === 'overview' && (
+        {/* Left Vertical Sidebar (Desktop sticky / Mobile drawer) */}
+        <aside className={`lg:w-60 xl:w-64 shrink-0 space-y-1.5 ${mobileSidebarOpen ? 'block' : 'hidden lg:block'}`}>
+          <div className="sticky top-20 bg-white border border-[#E5E5E5] rounded-3xl p-3.5 shadow-2xs space-y-1.5">
+            <div className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400 border-b border-[#E5E5E5] mb-1.5 flex items-center justify-between">
+              <span>Control Modules</span>
+              <span className="bg-[#F5F5F5] text-slate-600 px-2 py-0.5 rounded-full text-[9px] font-bold">11 Views</span>
+            </div>
+
+            {navTabs.map(({ id, label, icon: Icon, badge }) => (
+              <button
+                key={id}
+                onClick={() => {
+                  setActiveTab(id);
+                  setMobileSidebarOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-black transition-all cursor-pointer ${activeTab === id
+                  ? 'bg-[#A00000] text-white shadow-2xs'
+                  : 'bg-white text-[#111111] hover:text-[#A00000] hover:bg-[#FFF5F5] border border-[#E5E5E5]'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Icon size={15} className="shrink-0" />
+                  <span className="truncate">{label}</span>
+                </div>
+                {badge !== undefined && (
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${activeTab === id ? 'bg-white/20 text-white' : 'bg-[#F5F5F5] text-slate-600 border border-[#E5E5E5]'}`}>
+                    {badge}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </aside>
+
+        {/* Right Main Content View Area */}
+        <main className="flex-1 min-w-0 space-y-6">
+          {/* ── TAB 1: EXECUTIVE OVERVIEW ───────────────────────────── */}
+          {activeTab === 'overview' && (
           <div className="space-y-6 animate-fade-in">
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
               {[
-                { label: 'Total Tickets', value: stats.total, icon: Database, color: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
-                { label: 'Unsolved', value: stats.unsolved, icon: AlertTriangle, color: 'text-red-400 bg-red-500/10 border-red-500/20' },
-                { label: 'In Progress', value: stats.ongoing, icon: Clock, color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
-                { label: 'Solved', value: stats.completed, icon: CheckCircle2, color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
-                { label: 'Critical / Urgent', value: stats.critical, icon: Flame, color: 'text-rose-400 bg-rose-500/10 border-rose-500/20' },
-                { label: 'Active Workers', value: stats.activeStaff, icon: Users, color: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
+                { label: 'Total Tickets', value: stats.total, icon: Database, color: 'text-[#A00000] bg-white border-[#E5E5E5]' },
+                { label: 'Unsolved', value: stats.unsolved, icon: AlertTriangle, color: 'text-red-700 bg-red-50 border-red-200' },
+                { label: 'In Progress', value: stats.ongoing, icon: Clock, color: 'text-amber-800 bg-amber-50 border-amber-200' },
+                { label: 'Solved', value: stats.completed, icon: CheckCircle2, color: 'text-emerald-800 bg-emerald-50 border-emerald-200' },
+                { label: 'Critical / Urgent', value: stats.critical, icon: Flame, color: 'text-rose-800 bg-rose-50 border-rose-200' },
+                { label: 'Active Workers', value: stats.activeStaff, icon: Users, color: 'text-[#A00000] bg-white border-[#E5E5E5]' },
               ].map(({ label, value, icon: Icon, color }) => (
-                <div key={label} className={`p-4 rounded-2xl border ${color} backdrop-blur-md space-y-1`}>
+                <div key={label} className={`p-4 rounded-2xl border ${color} shadow-2xs space-y-1`}>
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-slate-400">{label}</span>
+                    <span className="text-[11px] font-bold text-slate-500">{label}</span>
                     <Icon size={16} />
                   </div>
-                  <p className="text-2xl font-black text-white">{value}</p>
+                  <p className="text-2xl font-black text-[#111111]">{value}</p>
                 </div>
               ))}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                  <h3 className="text-sm font-black text-white flex items-center gap-2">
-                    <BarChart3 size={16} className="text-amber-400" />
+              <div className="bg-white border border-[#E5E5E5] rounded-3xl p-6 space-y-4 shadow-2xs">
+                <div className="flex items-center justify-between border-b border-[#E5E5E5] pb-3">
+                  <h3 className="text-sm font-black text-[#111111] flex items-center gap-2">
+                    <BarChart3 size={16} className="text-[#A00000]" />
                     <span>Stream & Classification Complaints Breakdown</span>
                   </h3>
                 </div>
@@ -668,11 +693,11 @@ export default function SuperAdminDashboard() {
                     return (
                       <div key={stream} className="space-y-1">
                         <div className="flex items-center justify-between text-xs font-bold">
-                          <span className="text-slate-300">{stream}</span>
-                          <span className="text-slate-400">{count} tickets ({pct}%)</span>
+                          <span className="text-[#111111]">{stream}</span>
+                          <span className="text-slate-500">{count} tickets ({pct}%)</span>
                         </div>
-                        <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
-                          <div className="bg-gradient-to-r from-amber-500 to-blue-500 h-2 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                        <div className="w-full bg-[#F5F5F5] rounded-full h-2 overflow-hidden border border-[#E5E5E5]">
+                          <div className="bg-[#A00000] h-2 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
                         </div>
                       </div>
                     );
@@ -680,32 +705,32 @@ export default function SuperAdminDashboard() {
                 </div>
               </div>
 
-              <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                  <h3 className="text-sm font-black text-white flex items-center gap-2">
-                    <Palette size={16} className="text-emerald-400" />
+              <div className="bg-white border border-[#E5E5E5] rounded-3xl p-6 space-y-4 shadow-2xs">
+                <div className="flex items-center justify-between border-b border-[#E5E5E5] pb-3">
+                  <h3 className="text-sm font-black text-[#111111] flex items-center gap-2">
+                    <Palette size={16} className="text-[#A00000]" />
                     <span>Active Theme & Branding Status</span>
                   </h3>
-                  <button onClick={() => setActiveTab('brandingTheme')} className="text-xs font-bold text-amber-400 hover:underline">Customize</button>
+                  <button onClick={() => setActiveTab('brandingTheme')} className="text-xs font-bold text-[#A00000] hover:underline">Customize</button>
                 </div>
                 <div className="space-y-3 text-xs">
-                  <div className="flex items-center justify-between p-3 bg-slate-950/60 rounded-xl border border-slate-800">
-                    <span className="text-slate-400">Primary Brand Color</span>
+                  <div className="flex items-center justify-between p-3 bg-[#F5F5F5] rounded-xl border border-[#E5E5E5]">
+                    <span className="text-slate-600 font-medium">Primary Brand Color</span>
                     <div className="flex items-center gap-2">
-                      <span className="w-4 h-4 rounded-full border border-white/20" style={{ backgroundColor: draftConfig.theme?.primaryColor || '#DC2626' }} />
-                      <span className="font-bold text-white flex items-center gap-1.5">
+                      <span className="w-4 h-4 rounded-full border border-black/20 shadow-2xs" style={{ backgroundColor: draftConfig.theme?.primaryColor || '#A00000' }} />
+                      <span className="font-bold text-[#111111] flex items-center gap-1.5">
                         <span>{getFriendlyColorName(draftConfig.theme?.primaryColor)}</span>
-                        <span className="text-[10px] font-mono text-slate-400">({draftConfig.theme?.primaryColor || '#DC2626'})</span>
+                        <span className="text-[10px] font-mono text-slate-500">({draftConfig.theme?.primaryColor || '#A00000'})</span>
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between p-3 bg-slate-950/60 rounded-xl border border-slate-800">
-                    <span className="text-slate-400">Portal Name</span>
-                    <span className="font-bold text-white">{draftConfig.branding?.portalName || 'MRF Issue Portal'}</span>
+                  <div className="flex items-center justify-between p-3 bg-[#F5F5F5] rounded-xl border border-[#E5E5E5]">
+                    <span className="text-slate-600 font-medium">Portal Name</span>
+                    <span className="font-bold text-[#111111]">{draftConfig.branding?.portalName || 'MCC Issue Portal'}</span>
                   </div>
-                  <div className="flex items-center justify-between p-3 bg-slate-950/60 rounded-xl border border-slate-800">
-                    <span className="text-slate-400">User Portal Availability</span>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${draftConfig.userPortal?.portalActive !== false ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/40' : 'bg-red-950 text-red-400 border border-red-500/40'}`}>
+                  <div className="flex items-center justify-between p-3 bg-[#F5F5F5] rounded-xl border border-[#E5E5E5]">
+                    <span className="text-slate-600 font-medium">User Portal Availability</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${draftConfig.userPortal?.portalActive !== false ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
                       {draftConfig.userPortal?.portalActive !== false ? 'Online' : 'Closed'}
                     </span>
                   </div>
@@ -718,13 +743,13 @@ export default function SuperAdminDashboard() {
         {/* ── TAB 2: USER PORTAL STUDIO (HERO, TEXT, KPI CARDS & OUTAGE) ─ */}
         {activeTab === 'userportal' && (
           <div className="space-y-6 animate-fade-in">
-            <div className="bg-slate-900/80 p-5 rounded-3xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="bg-white p-5 rounded-3xl border border-[#E5E5E5] flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
               <div>
-                <h2 className="text-lg font-black text-white flex items-center gap-2">
-                  <Monitor size={18} className="text-emerald-400" />
+                <h2 className="text-lg font-black text-[#111111] flex items-center gap-2">
+                  <Monitor size={18} className="text-[#A00000]" />
                   <span>User Portal & Landing Page Studio</span>
                 </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-slate-500 mt-0.5">
                   Control all text, Hero headings, highlight colors, 4 KPI cards, outage screens, and portal notices dynamically.
                 </p>
               </div>
@@ -737,15 +762,15 @@ export default function SuperAdminDashboard() {
               <div className="xl:col-span-7 space-y-6">
                 
                 {/* 1. Hero Content & Typography */}
-                <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 space-y-4">
-                  <h3 className="text-sm font-black text-white border-b border-slate-800 pb-3 flex items-center gap-2">
-                    <Layout size={15} className="text-amber-400" />
+                <div className="bg-white border border-[#E5E5E5] rounded-3xl p-6 space-y-4 shadow-2xs">
+                  <h3 className="text-sm font-black text-[#111111] border-b border-[#E5E5E5] pb-3 flex items-center gap-2">
+                    <Layout size={15} className="text-[#A00000]" />
                     <span>Hero Section & Typography</span>
                   </h3>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                     <div>
-                      <label className="block text-slate-400 font-bold mb-1">Hero Title Line 1</label>
+                      <label className="block text-slate-600 font-bold mb-1">Hero Title Line 1</label>
                       <input
                         type="text"
                         value={draftConfig.homePage?.hero?.titleLine1 || 'Campus'}
@@ -756,11 +781,11 @@ export default function SuperAdminDashboard() {
                             hero: { ...prev.homePage?.hero, titleLine1: e.target.value }
                           }
                         }))}
-                        className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold"
+                        className="w-full px-3.5 py-2 rounded-xl bg-white border border-[#E5E5E5] text-[#111111] font-bold focus:border-[#A00000] outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-400 font-bold mb-1">Hero Title Line 2 (Highlighted)</label>
+                      <label className="block text-slate-600 font-bold mb-1">Hero Title Line 2 (Highlighted)</label>
                       <input
                         type="text"
                         value={draftConfig.homePage?.hero?.titleLine2 || 'Maintenance'}
@@ -771,14 +796,14 @@ export default function SuperAdminDashboard() {
                             hero: { ...prev.homePage?.hero, titleLine2: e.target.value }
                           }
                         }))}
-                        className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold"
+                        className="w-full px-3.5 py-2 rounded-xl bg-white border border-[#E5E5E5] text-[#111111] font-bold focus:border-[#A00000] outline-none"
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                     <div>
-                      <label className="block text-slate-400 font-bold mb-1">Official Badge Text</label>
+                      <label className="block text-slate-600 font-bold mb-1">Official Badge Text</label>
                       <input
                         type="text"
                         value={draftConfig.homePage?.hero?.badgeText || 'OFFICIAL MCC PORTAL'}
@@ -789,11 +814,11 @@ export default function SuperAdminDashboard() {
                             hero: { ...prev.homePage?.hero, badgeText: e.target.value }
                           }
                         }))}
-                        className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white"
+                        className="w-full px-3.5 py-2 rounded-xl bg-white border border-[#E5E5E5] text-[#111111] font-bold focus:border-[#A00000] outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-400 font-bold mb-1">Hero Tagline</label>
+                      <label className="block text-slate-600 font-bold mb-1">Hero Tagline</label>
                       <input
                         type="text"
                         value={draftConfig.homePage?.hero?.tagline || 'Report. Track. Resolve.'}
@@ -804,27 +829,27 @@ export default function SuperAdminDashboard() {
                             hero: { ...prev.homePage?.hero, tagline: e.target.value }
                           }
                         }))}
-                        className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold"
+                        className="w-full px-3.5 py-2 rounded-xl bg-white border border-[#E5E5E5] text-[#111111] font-bold focus:border-[#A00000] outline-none"
                       />
                     </div>
                   </div>
 
                   {/* Hero Highlight Color Chooser by Name */}
-                  <div className="p-4 bg-slate-950/70 border border-slate-800/90 rounded-2xl space-y-3">
+                  <div className="p-4 bg-[#F5F5F5] border border-[#E5E5E5] rounded-2xl space-y-3">
                     <div className="flex items-center justify-between">
-                      <label className="text-slate-300 font-black flex items-center gap-2 text-xs">
+                      <label className="text-[#111111] font-black flex items-center gap-2 text-xs">
                         <span>Hero Highlight Color</span>
-                        <span className="text-[11px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
-                          {getFriendlyColorName(draftConfig.homePage?.hero?.highlightColor || '#DC2626')}
+                        <span className="text-[11px] font-bold text-[#A00000] bg-[#FFF5F5] px-2 py-0.5 rounded-full border border-[#A00000]/30">
+                          {getFriendlyColorName(draftConfig.homePage?.hero?.highlightColor || '#A00000')}
                         </span>
                       </label>
-                      <span className="text-[10px] font-mono text-slate-400">{draftConfig.homePage?.hero?.highlightColor || '#DC2626'}</span>
+                      <span className="text-[10px] font-mono text-slate-500">{draftConfig.homePage?.hero?.highlightColor || '#A00000'}</span>
                     </div>
 
                     <div className="flex items-center gap-2.5">
                       <input
                         type="color"
-                        value={draftConfig.homePage?.hero?.highlightColor || '#DC2626'}
+                        value={draftConfig.homePage?.hero?.highlightColor || '#A00000'}
                         onChange={(e) => updateDraft(prev => ({
                           ...prev,
                           homePage: {
@@ -832,13 +857,13 @@ export default function SuperAdminDashboard() {
                             hero: { ...prev.homePage?.hero, highlightColor: e.target.value }
                           }
                         }))}
-                        className="w-10 h-10 rounded-xl border-2 border-slate-700 bg-slate-950 cursor-pointer p-0.5 shrink-0"
+                        className="w-10 h-10 rounded-xl border-2 border-[#E5E5E5] bg-white cursor-pointer p-0.5 shrink-0"
                         title="Open Color Wheel"
                       />
                       <select
-                        value={PRESET_NAMED_COLORS.some(c => c.hex.toLowerCase() === (draftConfig.homePage?.hero?.highlightColor || '#DC2626').toLowerCase())
-                          ? PRESET_NAMED_COLORS.find(c => c.hex.toLowerCase() === (draftConfig.homePage?.hero?.highlightColor || '#DC2626').toLowerCase())?.hex
-                          : (draftConfig.homePage?.hero?.highlightColor || '#DC2626')}
+                        value={PRESET_NAMED_COLORS.some(c => c.hex.toLowerCase() === (draftConfig.homePage?.hero?.highlightColor || '#A00000').toLowerCase())
+                          ? PRESET_NAMED_COLORS.find(c => c.hex.toLowerCase() === (draftConfig.homePage?.hero?.highlightColor || '#A00000').toLowerCase())?.hex
+                          : (draftConfig.homePage?.hero?.highlightColor || '#A00000')}
                         onChange={(e) => updateDraft(prev => ({
                           ...prev,
                           homePage: {
@@ -846,7 +871,7 @@ export default function SuperAdminDashboard() {
                             hero: { ...prev.homePage?.hero, highlightColor: e.target.value }
                           }
                         }))}
-                        className="flex-1 px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white font-bold text-xs cursor-pointer"
+                        className="flex-1 px-3 py-2.5 rounded-xl bg-white border border-[#E5E5E5] text-[#111111] font-bold text-xs cursor-pointer focus:border-[#A00000] outline-none"
                       >
                         {PRESET_NAMED_COLORS.map(c => (
                           <option key={c.hex} value={c.hex}>
@@ -858,12 +883,12 @@ export default function SuperAdminDashboard() {
 
                     {/* Quick Named Color Buttons for Hero Highlight */}
                     <div>
-                      <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block mb-1.5">
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500 block mb-1.5">
                         Quick Pick Color by Name:
                       </span>
                       <div className="grid grid-cols-5 gap-1.5">
                         {PRESET_NAMED_COLORS.map(c => {
-                          const isCurrent = (draftConfig.homePage?.hero?.highlightColor || '#DC2626').toLowerCase() === c.hex.toLowerCase();
+                          const isCurrent = (draftConfig.homePage?.hero?.highlightColor || '#A00000').toLowerCase() === c.hex.toLowerCase();
                           return (
                             <button
                               key={c.name}
@@ -877,8 +902,8 @@ export default function SuperAdminDashboard() {
                               }))}
                               className={`px-1.5 py-1.5 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 border transition-all cursor-pointer select-none ${
                                 isCurrent
-                                  ? 'bg-slate-800 border-amber-400 text-white shadow-md ring-1 ring-amber-400/30 font-black scale-105'
-                                  : 'bg-slate-900/90 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white hover:border-slate-600'
+                                  ? 'bg-[#A00000] border-[#A00000] text-white shadow-2xs font-black scale-105'
+                                  : 'bg-white border-[#E5E5E5] text-[#111111] hover:bg-[#FFF5F5] hover:text-[#A00000]'
                               }`}
                               title={`${c.name} (${c.hex})`}
                             >
@@ -891,36 +916,248 @@ export default function SuperAdminDashboard() {
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-slate-400 font-bold mb-1 text-xs">Description Paragraph 1</label>
-                    <textarea
-                      rows={2}
-                      value={draftConfig.homePage?.hero?.description1 || ''}
-                      onChange={(e) => updateDraft(prev => ({
-                        ...prev,
-                        homePage: {
-                          ...prev.homePage,
-                          hero: { ...prev.homePage?.hero, description1: e.target.value }
-                        }
-                      }))}
-                      className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs resize-none"
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <label className="block text-slate-600 font-bold mb-1">Description Paragraph 1</label>
+                      <textarea
+                        rows={2}
+                        value={draftConfig.homePage?.hero?.description1 || ''}
+                        onChange={(e) => updateDraft(prev => ({
+                          ...prev,
+                          homePage: {
+                            ...prev.homePage,
+                            hero: { ...prev.homePage?.hero, description1: e.target.value }
+                          }
+                        }))}
+                        className="w-full px-3.5 py-2 rounded-xl bg-white border border-[#E5E5E5] text-[#111111] text-xs resize-none focus:border-[#A00000] outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-600 font-bold mb-1">Description Paragraph 2</label>
+                      <textarea
+                        rows={2}
+                        value={draftConfig.homePage?.hero?.description2 || ''}
+                        onChange={(e) => updateDraft(prev => ({
+                          ...prev,
+                          homePage: {
+                            ...prev.homePage,
+                            hero: { ...prev.homePage?.hero, description2: e.target.value }
+                          }
+                        }))}
+                        className="w-full px-3.5 py-2 rounded-xl bg-white border border-[#E5E5E5] text-[#111111] text-xs resize-none focus:border-[#A00000] outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 1b. PORTAL BACKGROUND MANAGEMENT */}
+                <div className="bg-white border border-[#E5E5E5] rounded-3xl p-6 space-y-5 shadow-2xs">
+                  <h3 className="text-sm font-black text-[#111111] border-b border-[#E5E5E5] pb-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <ImageIcon size={16} className="text-[#A00000]" />
+                      <span>PORTAL BACKGROUND MANAGEMENT</span>
+                    </div>
+                    <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-[#A00000]/10 text-[#A00000] border border-[#A00000]/20">
+                      Super Admin Live Control
+                    </span>
+                  </h3>
+
+                  {/* 🖥️ DESKTOP / LAPTOP BACKGROUND */}
+                  <div className="p-4 bg-[#F9FAFB] border border-[#E5E5E5] rounded-2xl space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-black text-[#111111] flex items-center gap-1.5">
+                        <span>🖥️ Desktop / Laptop Background</span>
+                        <span className="text-[10px] font-bold text-slate-500">(1920×1080 Viewport)</span>
+                      </label>
+                      {draftConfig.homePage?.hero?.desktopBackgroundImage && !draftConfig.homePage.hero.desktopBackgroundImage.includes('campus_bg.png') && (
+                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                          ✓ Custom Image Set
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Image Preview Container */}
+                    <div className="relative h-40 w-full rounded-xl overflow-hidden border border-[#E5E5E5] bg-slate-900 group">
+                      <img
+                        src={draftConfig.homePage?.hero?.desktopBackgroundImage || draftConfig.homePage?.hero?.backgroundImage || campusBg}
+                        alt="Desktop Background Preview"
+                        className="w-full h-full object-cover object-center"
+                      />
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="text-xs text-white font-bold bg-black/60 px-3 py-1.5 rounded-lg border border-white/20 backdrop-blur-xs">
+                          Desktop View Preview
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Controls */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                      <div className="text-[11px] text-slate-500 font-mono truncate max-w-[220px]">
+                        {draftConfig.homePage?.hero?.desktopBackgroundImage
+                          ? (draftConfig.homePage.hero.desktopBackgroundImage.startsWith('data:') ? 'Custom Uploaded File' : draftConfig.homePage.hero.desktopBackgroundImage.split('/').pop())
+                          : 'Default Campus Asset'}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <label className="px-3 py-1.5 bg-[#A00000] hover:bg-[#800000] text-white text-xs font-bold rounded-xl cursor-pointer transition shadow-2xs flex items-center gap-1.5">
+                          <Upload size={13} />
+                          <span>{draftConfig.homePage?.hero?.desktopBackgroundImage ? 'Replace Image' : 'Choose Background Image'}</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onload = (uploadEvt) => {
+                                  const dataUrl = uploadEvt.target.result;
+                                  updateDraft(prev => ({
+                                    ...prev,
+                                    homePage: {
+                                      ...prev.homePage,
+                                      hero: {
+                                        ...prev.homePage?.hero,
+                                        desktopBackgroundImage: dataUrl,
+                                        backgroundImage: dataUrl,
+                                      }
+                                    }
+                                  }));
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                          />
+                        </label>
+
+                        {(draftConfig.homePage?.hero?.desktopBackgroundImage || draftConfig.homePage?.hero?.backgroundImage) && (
+                          <button
+                            type="button"
+                            onClick={() => updateDraft(prev => ({
+                              ...prev,
+                              homePage: {
+                                ...prev.homePage,
+                                hero: {
+                                  ...prev.homePage?.hero,
+                                  desktopBackgroundImage: '',
+                                  backgroundImage: '/campus_bg.png',
+                                }
+                              }
+                            }))}
+                            className="px-3 py-1.5 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 text-xs font-bold rounded-xl border border-slate-200 hover:border-red-200 transition flex items-center gap-1 cursor-pointer"
+                          >
+                            <Trash2 size={13} />
+                            <span>Remove Image</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 📱 MOBILE / PHONE BACKGROUND */}
+                  <div className="p-4 bg-[#F9FAFB] border border-[#E5E5E5] rounded-2xl space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-black text-[#111111] flex items-center gap-1.5">
+                        <span>📱 Mobile / Phone Background</span>
+                        <span className="text-[10px] font-bold text-slate-500">(320px–768px Viewport)</span>
+                      </label>
+                      {draftConfig.homePage?.hero?.mobileBackgroundImage && (
+                        <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200">
+                          ✓ Mobile Image Set
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Image Preview Container */}
+                    <div className="relative h-40 w-full sm:w-48 mx-auto rounded-xl overflow-hidden border border-[#E5E5E5] bg-slate-900 group shadow-sm">
+                      <img
+                        src={draftConfig.homePage?.hero?.mobileBackgroundImage || draftConfig.homePage?.hero?.desktopBackgroundImage || draftConfig.homePage?.hero?.backgroundImage || campusBg}
+                        alt="Mobile Background Preview"
+                        className="w-full h-full object-cover object-center"
+                      />
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="text-xs text-white font-bold bg-black/60 px-3 py-1.5 rounded-lg border border-white/20 backdrop-blur-xs">
+                          Mobile View Preview
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Controls */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                      <div className="text-[11px] text-slate-500 font-mono truncate max-w-[220px]">
+                        {draftConfig.homePage?.hero?.mobileBackgroundImage
+                          ? (draftConfig.homePage.hero.mobileBackgroundImage.startsWith('data:') ? 'Custom Mobile File' : draftConfig.homePage.hero.mobileBackgroundImage.split('/').pop())
+                          : 'Inheriting Desktop Background'}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <label className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl cursor-pointer transition shadow-2xs flex items-center gap-1.5">
+                          <Upload size={13} />
+                          <span>{draftConfig.homePage?.hero?.mobileBackgroundImage ? 'Replace Image' : 'Choose Mobile Background Image'}</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onload = (uploadEvt) => {
+                                  const dataUrl = uploadEvt.target.result;
+                                  updateDraft(prev => ({
+                                    ...prev,
+                                    homePage: {
+                                      ...prev.homePage,
+                                      hero: {
+                                        ...prev.homePage?.hero,
+                                        mobileBackgroundImage: dataUrl,
+                                      }
+                                    }
+                                  }));
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                          />
+                        </label>
+
+                        {draftConfig.homePage?.hero?.mobileBackgroundImage && (
+                          <button
+                            type="button"
+                            onClick={() => updateDraft(prev => ({
+                              ...prev,
+                              homePage: {
+                                ...prev.homePage,
+                                hero: {
+                                  ...prev.homePage?.hero,
+                                  mobileBackgroundImage: '',
+                                }
+                              }
+                            }))}
+                            className="px-3 py-1.5 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 text-xs font-bold rounded-xl border border-slate-200 hover:border-red-200 transition flex items-center gap-1 cursor-pointer"
+                          >
+                            <Trash2 size={13} />
+                            <span>Remove Image</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
                 {/* 2. Four KPI Statistic Cards */}
-                <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 space-y-4">
-                  <h3 className="text-sm font-black text-white border-b border-slate-800 pb-3 flex items-center gap-2">
-                    <BarChart3 size={15} className="text-blue-400" />
+                <div className="bg-white border border-[#E5E5E5] rounded-3xl p-6 space-y-4 shadow-2xs">
+                  <h3 className="text-sm font-black text-[#111111] border-b border-[#E5E5E5] pb-3 flex items-center gap-2">
+                    <BarChart3 size={15} className="text-[#A00000]" />
                     <span>4 Hero KPI Statistic Cards</span>
                   </h3>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {(draftConfig.homePage?.statistics?.cards || DEFAULT_CONFIG.homePage.statistics.cards).map((card, idx) => (
-                      <div key={card.id || idx} className="p-4 bg-slate-950/60 rounded-2xl border border-slate-800 space-y-3">
+                      <div key={card.id || idx} className="p-4 bg-[#F5F5F5] rounded-2xl border border-[#E5E5E5] space-y-3">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-black text-amber-400">Card #{idx + 1}</span>
-                          <label className="flex items-center gap-1.5 text-[11px] text-slate-400 font-bold cursor-pointer">
+                          <span className="text-xs font-black text-[#A00000]">KPI Card #{idx + 1}</span>
+                          <label className="flex items-center gap-1.5 text-[11px] text-slate-600 font-bold cursor-pointer">
                             <input
                               type="checkbox"
                               checked={card.visible !== false}
@@ -935,7 +1172,7 @@ export default function SuperAdminDashboard() {
                                   }
                                 }));
                               }}
-                              className="rounded text-amber-500"
+                              className="rounded text-[#A00000]"
                             />
                             Visible
                           </label>
@@ -957,11 +1194,11 @@ export default function SuperAdminDashboard() {
                                   }
                                 }));
                               }}
-                              className="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-white font-black"
+                              className="w-full px-2.5 py-1.5 bg-white border border-[#E5E5E5] rounded-lg text-[#111111] font-black focus:border-[#A00000] outline-none"
                             />
                           </div>
                           <div>
-                            <label className="text-[10px] text-slate-500 font-bold block mb-0.5">Label</label>
+                            <label className="text-[10px] text-slate-500 font-bold block mb-0.5">Title / Label</label>
                             <input
                               type="text"
                               value={card.label || ''}
@@ -976,26 +1213,119 @@ export default function SuperAdminDashboard() {
                                   }
                                 }));
                               }}
-                              className="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-white font-bold"
+                              className="w-full px-2.5 py-1.5 bg-white border border-[#E5E5E5] rounded-lg text-[#111111] font-bold focus:border-[#A00000] outline-none"
                             />
                           </div>
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-slate-500 font-bold block mb-0.5">Subtext Description</label>
+                          <input
+                            type="text"
+                            value={card.desc || card.description || ''}
+                            onChange={(e) => {
+                              const newCards = [...(draftConfig.homePage?.statistics?.cards || DEFAULT_CONFIG.homePage.statistics.cards)];
+                              newCards[idx] = { ...newCards[idx], desc: e.target.value, description: e.target.value };
+                              updateDraft(prev => ({
+                                ...prev,
+                                homePage: {
+                                  ...prev.homePage,
+                                  statistics: { ...prev.homePage?.statistics, cards: newCards }
+                                }
+                              }));
+                            }}
+                            className="w-full px-2.5 py-1.5 bg-white border border-[#E5E5E5] rounded-lg text-[#111111] text-xs font-medium focus:border-[#A00000] outline-none"
+                          />
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                {/* 3. Availability & Outage Screen Controls */}
-                <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 space-y-4">
-                  <h3 className="text-sm font-black text-white border-b border-slate-800 pb-3 flex items-center gap-2">
-                    <Globe size={15} className="text-emerald-400" />
+                {/* 3. Portal Notice & Announcement Banner Controls */}
+                <div className="bg-white border border-[#E5E5E5] rounded-3xl p-6 space-y-4 shadow-2xs">
+                  <h3 className="text-sm font-black text-[#111111] border-b border-[#E5E5E5] pb-3 flex items-center gap-2">
+                    <Megaphone size={15} className="text-[#A00000]" />
+                    <span>Portal Broadcast Notice Banner</span>
+                  </h3>
+
+                  <div className="flex items-center justify-between p-4 bg-[#F5F5F5] rounded-2xl border border-[#E5E5E5]">
+                    <div>
+                      <p className="text-xs font-black text-[#111111]">Portal Banner Active</p>
+                      <p className="text-[11px] text-slate-500">Displays urgent alert banner at the top of the User Portal.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => updateDraft(prev => ({
+                        ...prev,
+                        userPortal: {
+                          ...prev.userPortal,
+                          portalNotice: {
+                            ...prev.userPortal?.portalNotice,
+                            enabled: !prev.userPortal?.portalNotice?.enabled
+                          }
+                        }
+                      }))}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-black cursor-pointer ${draftConfig.userPortal?.portalNotice?.enabled ? 'bg-[#A00000] text-white' : 'bg-white text-slate-600 border border-[#E5E5E5]'}`}
+                    >
+                      {draftConfig.userPortal?.portalNotice?.enabled ? 'Banner Enabled' : 'Banner Disabled'}
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                    <div className="sm:col-span-2">
+                      <label className="block text-slate-600 font-bold mb-1">Notice Message Text</label>
+                      <input
+                        type="text"
+                        value={draftConfig.userPortal?.portalNotice?.message || ''}
+                        placeholder="e.g. Scheduled Maintenance: Water supply service active in Block B."
+                        onChange={(e) => updateDraft(prev => ({
+                          ...prev,
+                          userPortal: {
+                            ...prev.userPortal,
+                            portalNotice: {
+                              ...prev.userPortal?.portalNotice,
+                              message: e.target.value
+                            }
+                          }
+                        }))}
+                        className="w-full px-3.5 py-2 rounded-xl bg-white border border-[#E5E5E5] text-[#111111] font-medium focus:border-[#A00000] outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-600 font-bold mb-1">Banner Type / Style</label>
+                      <select
+                        value={draftConfig.userPortal?.portalNotice?.type || 'info'}
+                        onChange={(e) => updateDraft(prev => ({
+                          ...prev,
+                          userPortal: {
+                            ...prev.userPortal,
+                            portalNotice: {
+                              ...prev.userPortal?.portalNotice,
+                              type: e.target.value
+                            }
+                          }
+                        }))}
+                        className="w-full px-3 py-2 rounded-xl bg-white border border-[#E5E5E5] text-[#111111] font-bold focus:border-[#A00000] outline-none cursor-pointer"
+                      >
+                        <option value="info">ℹ️ Info Notice</option>
+                        <option value="warning">⚠️ Warning Alert</option>
+                        <option value="alert">🚨 Urgent Alert</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Availability & Outage Screen Controls */}
+                <div className="bg-white border border-[#E5E5E5] rounded-3xl p-6 space-y-4 shadow-2xs">
+                  <h3 className="text-sm font-black text-[#111111] border-b border-[#E5E5E5] pb-3 flex items-center gap-2">
+                    <Globe size={15} className="text-[#A00000]" />
                     <span>Portal Online Status & Outage Controls</span>
                   </h3>
 
-                  <div className="flex items-center justify-between p-4 bg-slate-950/60 rounded-2xl border border-slate-800">
+                  <div className="flex items-center justify-between p-4 bg-[#F5F5F5] rounded-2xl border border-[#E5E5E5]">
                     <div>
-                      <p className="text-xs font-black text-white">Portal Active Switch</p>
-                      <p className="text-[11px] text-slate-400">When disabled, shows outage maintenance screen to complainants.</p>
+                      <p className="text-xs font-black text-[#111111]">Portal Active Switch</p>
+                      <p className="text-[11px] text-slate-500">When disabled, shows outage maintenance screen to complainants.</p>
                     </div>
                     <button
                       onClick={() => updateDraft(prev => ({
@@ -1003,7 +1333,7 @@ export default function SuperAdminDashboard() {
                         userPortal: { ...prev.userPortal, portalActive: prev.userPortal?.portalActive === false ? true : false },
                         portalActive: prev.portalActive === false ? true : false
                       }))}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-black cursor-pointer ${draftConfig.userPortal?.portalActive !== false ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/40' : 'bg-red-950 text-red-400 border border-red-500/40'}`}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-black cursor-pointer ${draftConfig.userPortal?.portalActive !== false ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}
                     >
                       {draftConfig.userPortal?.portalActive !== false ? 'Active (Online)' : 'Closed (Outage)'}
                     </button>
@@ -1011,7 +1341,7 @@ export default function SuperAdminDashboard() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                     <div>
-                      <label className="block text-slate-400 font-bold mb-1">Outage Screen Title</label>
+                      <label className="block text-slate-600 font-bold mb-1">Outage Screen Title</label>
                       <input
                         type="text"
                         value={draftConfig.userPortal?.closedNotice?.title || 'Portal Temporarily Closed'}
@@ -1022,11 +1352,11 @@ export default function SuperAdminDashboard() {
                             closedNotice: { ...prev.userPortal?.closedNotice, title: e.target.value }
                           }
                         }))}
-                        className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold"
+                        className="w-full px-3.5 py-2 rounded-xl bg-white border border-[#E5E5E5] text-[#111111] font-bold focus:border-[#A00000] outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-400 font-bold mb-1">Outage Notice Message</label>
+                      <label className="block text-slate-600 font-bold mb-1">Outage Notice Message</label>
                       <input
                         type="text"
                         value={draftConfig.userPortal?.closedNotice?.message || 'Maintenance submission is temporarily paused for upgrades.'}
@@ -1037,7 +1367,132 @@ export default function SuperAdminDashboard() {
                             closedNotice: { ...prev.userPortal?.closedNotice, message: e.target.value }
                           }
                         }))}
-                        className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white"
+                        className="w-full px-3.5 py-2 rounded-xl bg-white border border-[#E5E5E5] text-[#111111] font-medium focus:border-[#A00000] outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 5. Facilities Contact & Emergency Information */}
+                <div className="bg-white border border-[#E5E5E5] rounded-3xl p-6 space-y-4 shadow-2xs">
+                  <h3 className="text-sm font-black text-[#111111] border-b border-[#E5E5E5] pb-3 flex items-center gap-2">
+                    <PhoneCall size={15} className="text-[#A00000]" />
+                    <span>Facilities Contact & Emergency Information</span>
+                  </h3>
+
+                  {/* Facilities Contact & Support Card Form */}
+                  <div className="p-4 bg-[#F5F5F5] rounded-2xl border border-[#E5E5E5] space-y-3">
+                    <span className="text-xs font-black text-[#A00000]">Facilities Contact & Support Card</span>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <label className="block text-slate-600 font-bold mb-1">Card Title</label>
+                        <input
+                          type="text"
+                          value={draftConfig.facilitiesContact?.title || ''}
+                          onChange={(e) => updateDraft(prev => ({
+                            ...prev,
+                            facilitiesContact: { ...prev.facilitiesContact, title: e.target.value }
+                          }))}
+                          className="w-full px-3 py-1.5 rounded-xl bg-white border border-[#E5E5E5] text-[#111111] font-bold focus:border-[#A00000] outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-600 font-bold mb-1">Office Location</label>
+                        <input
+                          type="text"
+                          value={draftConfig.facilitiesContact?.office || ''}
+                          onChange={(e) => updateDraft(prev => ({
+                            ...prev,
+                            facilitiesContact: { ...prev.facilitiesContact, office: e.target.value }
+                          }))}
+                          className="w-full px-3 py-1.5 rounded-xl bg-white border border-[#E5E5E5] text-[#111111] font-bold focus:border-[#A00000] outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <label className="block text-slate-600 font-bold mb-1">Support Email</label>
+                        <input
+                          type="text"
+                          value={draftConfig.facilitiesContact?.email || ''}
+                          onChange={(e) => updateDraft(prev => ({
+                            ...prev,
+                            facilitiesContact: { ...prev.facilitiesContact, email: e.target.value }
+                          }))}
+                          className="w-full px-3 py-1.5 rounded-xl bg-white border border-[#E5E5E5] text-[#111111] font-bold focus:border-[#A00000] outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-600 font-bold mb-1">Office Hours</label>
+                        <input
+                          type="text"
+                          value={draftConfig.facilitiesContact?.hours || ''}
+                          onChange={(e) => updateDraft(prev => ({
+                            ...prev,
+                            facilitiesContact: { ...prev.facilitiesContact, hours: e.target.value }
+                          }))}
+                          className="w-full px-3 py-1.5 rounded-xl bg-white border border-[#E5E5E5] text-[#111111] font-bold focus:border-[#A00000] outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-600 font-bold mb-1 text-xs">Card Description</label>
+                      <textarea
+                        rows={2}
+                        value={draftConfig.facilitiesContact?.description || ''}
+                        onChange={(e) => updateDraft(prev => ({
+                          ...prev,
+                          facilitiesContact: { ...prev.facilitiesContact, description: e.target.value }
+                        }))}
+                        className="w-full px-3 py-1.5 rounded-xl bg-white border border-[#E5E5E5] text-[#111111] text-xs focus:border-[#A00000] outline-none resize-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Emergency Hazards Card Form */}
+                  <div className="p-4 bg-[#FFF5F5] rounded-2xl border border-[#A00000]/20 space-y-3">
+                    <span className="text-xs font-black text-[#A00000]">Emergency Hazards Card</span>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <label className="block text-slate-700 font-bold mb-1">Emergency Card Title</label>
+                        <input
+                          type="text"
+                          value={draftConfig.emergencyHazards?.title || ''}
+                          onChange={(e) => updateDraft(prev => ({
+                            ...prev,
+                            emergencyHazards: { ...prev.emergencyHazards, title: e.target.value }
+                          }))}
+                          className="w-full px-3 py-1.5 rounded-xl bg-white border border-[#E5E5E5] text-[#111111] font-bold focus:border-[#A00000] outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-700 font-bold mb-1">Emergency Helpline</label>
+                        <input
+                          type="text"
+                          value={draftConfig.emergencyHazards?.helpline || ''}
+                          onChange={(e) => updateDraft(prev => ({
+                            ...prev,
+                            emergencyHazards: { ...prev.emergencyHazards, helpline: e.target.value }
+                          }))}
+                          className="w-full px-3 py-1.5 rounded-xl bg-white border border-[#E5E5E5] text-[#A00000] font-black focus:border-[#A00000] outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-700 font-bold mb-1 text-xs">Emergency Description</label>
+                      <textarea
+                        rows={2}
+                        value={draftConfig.emergencyHazards?.description || ''}
+                        onChange={(e) => updateDraft(prev => ({
+                          ...prev,
+                          emergencyHazards: { ...prev.emergencyHazards, description: e.target.value }
+                        }))}
+                        className="w-full px-3 py-1.5 rounded-xl bg-white border border-[#E5E5E5] text-[#111111] text-xs focus:border-[#A00000] outline-none resize-none"
                       />
                     </div>
                   </div>
@@ -1047,22 +1502,22 @@ export default function SuperAdminDashboard() {
 
               {/* Right Column: Interactive Live Preview (5 cols) */}
               <div className="xl:col-span-5 sticky top-20 space-y-4">
-                <div className="bg-slate-900 border border-amber-500/30 rounded-3xl p-5 shadow-2xl space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div className="bg-white border border-[#E5E5E5] rounded-3xl p-5 shadow-2xs space-y-4">
+                  <div className="flex items-center justify-between border-b border-[#E5E5E5] pb-3">
                     <div className="flex items-center gap-2">
-                      <Eye size={16} className="text-amber-400" />
-                      <span className="text-xs font-black text-white">Interactive Live Preview</span>
+                      <Eye size={16} className="text-[#A00000]" />
+                      <span className="text-xs font-black text-[#111111]">Interactive Live User Portal Preview</span>
                     </div>
-                    <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                    <div className="flex items-center gap-1 bg-[#F5F5F5] p-1 rounded-xl border border-[#E5E5E5]">
                       <button
                         onClick={() => setPreviewDevice('desktop')}
-                        className={`p-1.5 rounded-lg text-xs font-bold transition ${previewDevice === 'desktop' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'}`}
+                        className={`p-1.5 rounded-lg text-xs font-bold transition ${previewDevice === 'desktop' ? 'bg-[#A00000] text-white shadow-2xs' : 'text-slate-600 hover:text-[#111111]'}`}
                       >
                         <Laptop size={13} />
                       </button>
                       <button
                         onClick={() => setPreviewDevice('mobile')}
-                        className={`p-1.5 rounded-lg text-xs font-bold transition ${previewDevice === 'mobile' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'}`}
+                        className={`p-1.5 rounded-lg text-xs font-bold transition ${previewDevice === 'mobile' ? 'bg-[#A00000] text-white shadow-2xs' : 'text-slate-600 hover:text-[#111111]'}`}
                       >
                         <Smartphone size={13} />
                       </button>
@@ -1070,25 +1525,56 @@ export default function SuperAdminDashboard() {
                   </div>
 
                   {/* Simulated Frame */}
-                  <div className={`mx-auto transition-all duration-300 rounded-2xl overflow-hidden border border-slate-700 bg-slate-950 p-4 space-y-4 shadow-inner ${previewDevice === 'mobile' ? 'max-w-[320px]' : 'w-full'}`}>
+                  <div className={`mx-auto transition-all duration-300 rounded-2xl overflow-hidden border border-[#E5E5E5] bg-[#111111] text-white p-4 shadow-inner relative ${previewDevice === 'mobile' ? 'max-w-[320px]' : 'w-full'}`}>
                     
+                    {/* Live Background Image rendering in Preview */}
+                    <img
+                      src={
+                        previewDevice === 'mobile'
+                          ? (draftConfig.homePage?.hero?.mobileBackgroundImage || draftConfig.homePage?.hero?.desktopBackgroundImage || draftConfig.homePage?.hero?.backgroundImage || campusBg)
+                          : (draftConfig.homePage?.hero?.desktopBackgroundImage || draftConfig.homePage?.hero?.backgroundImage || campusBg)
+                      }
+                      alt="Live Preview Background"
+                      className="absolute inset-0 w-full h-full object-cover opacity-35 transition-all duration-500 pointer-events-none"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/60 to-black/90 pointer-events-none" />
+
+                    <div className="relative z-10 space-y-4">
+                    {/* Simulated Notice Banner if enabled */}
+                    {draftConfig.userPortal?.portalNotice?.enabled && draftConfig.userPortal?.portalNotice?.message && (
+                      <div className="bg-[#A00000] text-white text-[10px] font-bold p-2 rounded-xl flex items-center gap-1.5">
+                        <Megaphone size={12} className="shrink-0" />
+                        <span className="truncate">{draftConfig.userPortal.portalNotice.message}</span>
+                      </div>
+                    )}
+
                     {/* Simulated Badge */}
-                    <div className="inline-flex items-center gap-1.5 text-[10px] font-bold text-slate-800 bg-white px-2.5 py-1 rounded-full shadow">
-                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: draftConfig.homePage?.hero?.highlightColor || '#DC2626' }} />
+                    <div className="inline-flex items-center gap-1.5 text-[10px] font-bold text-[#111111] bg-white px-2.5 py-1 rounded-full shadow-xs">
+                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: draftConfig.homePage?.hero?.highlightColor || '#A00000' }} />
                       <span className="uppercase tracking-wider font-extrabold">{draftConfig.homePage?.hero?.badgeText || 'OFFICIAL MCC PORTAL'}</span>
                     </div>
 
                     {/* Simulated Title */}
-                    <div>
+                    <div className="space-y-1">
                       <h4 className="text-2xl font-black text-white leading-tight">
                         {draftConfig.homePage?.hero?.titleLine1 || 'Campus'} <br />
-                        <span style={{ color: draftConfig.homePage?.hero?.highlightColor || '#DC2626' }}>
+                        <span style={{ color: draftConfig.homePage?.hero?.highlightColor || '#A00000' }}>
                           {draftConfig.homePage?.hero?.titleLine2 || 'Maintenance'}
                         </span>
                       </h4>
-                      <p className="text-xs font-bold text-slate-300 mt-1">
+                      <p className="text-xs font-bold text-slate-300">
                         {draftConfig.homePage?.hero?.tagline || 'Report. Track. Resolve.'}
                       </p>
+                      {draftConfig.homePage?.hero?.description1 && (
+                        <p className="text-[11px] text-slate-300 pt-1 leading-snug">
+                          {draftConfig.homePage.hero.description1}
+                        </p>
+                      )}
+                      {draftConfig.homePage?.hero?.description2 && (
+                        <p className="text-[10px] text-slate-400 leading-snug">
+                          {draftConfig.homePage.hero.description2}
+                        </p>
+                      )}
                     </div>
 
                     {/* Simulated 4 KPI Cards */}
@@ -1096,16 +1582,36 @@ export default function SuperAdminDashboard() {
                       {(draftConfig.homePage?.statistics?.cards || DEFAULT_CONFIG.homePage.statistics.cards)
                         .filter(c => c.visible !== false)
                         .map((c, i) => (
-                          <div key={i} className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 text-center">
-                            <p className="text-base font-black text-white">{c.value}</p>
-                            <p className="text-[10px] font-bold text-amber-400 truncate">{c.label}</p>
+                          <div key={i} className="p-2.5 rounded-xl bg-white text-[#111111] border border-white/90 text-center shadow-xs">
+                            <p className="text-base font-black text-[#111111]">{c.value}</p>
+                            <p className="text-[10px] font-extrabold text-[#111111] truncate">{c.label}</p>
+                            {(c.desc || c.description) && (
+                              <p className="text-[9px] text-slate-500 font-medium truncate mt-0.5">{c.desc || c.description}</p>
+                            )}
                           </div>
                         ))}
                     </div>
+
+                    {/* Simulated Contact & Emergency Cards */}
+                    <div className="space-y-2 pt-2 border-t border-slate-800 text-[10px]">
+                      <div className="p-2.5 rounded-xl bg-white text-[#111111] space-y-1 shadow-xs">
+                        <p className="font-extrabold text-[#111111]">{draftConfig.facilitiesContact?.title || 'Facilities Contact & Support'}</p>
+                        <p className="text-slate-500 leading-tight line-clamp-2">{draftConfig.facilitiesContact?.description || 'Contact helpdesk.'}</p>
+                        <div className="text-[9px] font-bold text-slate-700 pt-0.5 space-y-0.5">
+                          <p>📍 {draftConfig.facilitiesContact?.office || 'Facilities Office'}</p>
+                          <p>✉️ {draftConfig.facilitiesContact?.email || 'facilities@mcc.edu.in'}</p>
+                        </div>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-[#FFF5F5] text-[#A00000] space-y-1 border border-[#A00000]/20 shadow-xs">
+                        <p className="font-extrabold">{draftConfig.emergencyHazards?.title || 'Emergency Hazards'}</p>
+                        <p className="text-[9px] font-black text-[#A00000]">Helpline: {draftConfig.emergencyHazards?.helpline || '+91 0000-00000'}</p>
+                      </div>
+                    </div>
+                    </div>
                   </div>
 
-                  <p className="text-[11px] text-slate-500 text-center italic">
-                    Updates live as you edit. Click "Publish Live" to push to all portals.
+                  <p className="text-[11px] text-slate-500 text-center font-medium italic">
+                    Updates live as you edit. Click "Publish Live to All Portals" to save.
                   </p>
                 </div>
               </div>
@@ -1330,7 +1836,7 @@ export default function SuperAdminDashboard() {
                     <label className="block text-slate-400 font-bold mb-1">Portal Name</label>
                     <input
                       type="text"
-                      value={draftConfig.branding?.portalName || 'MRF Issue Portal'}
+                      value={draftConfig.branding?.portalName || 'MCC Issue Portal'}
                       onChange={(e) => updateDraft(prev => ({
                         ...prev,
                         branding: { ...prev.branding, portalName: e.target.value }
@@ -1490,7 +1996,6 @@ export default function SuperAdminDashboard() {
                 <div className="flex flex-wrap gap-2.5 max-h-60 overflow-y-auto p-1">
                   {(draftConfig.categories || DEFAULT_CONFIG.categories || INITIAL_CATEGORIES).map((cat) => (
                     <span key={cat.id || cat.label} className="inline-flex items-center gap-2 bg-slate-950 border border-slate-700 px-3.5 py-2 rounded-xl font-bold text-slate-200 shadow-xs">
-                      <span className="text-blue-400">✨</span>
                       <span>{cat.label}</span>
                       {cat.prefix && <span className="text-[10px] text-slate-500 font-mono">({cat.prefix})</span>}
                       <button
@@ -1606,8 +2111,7 @@ export default function SuperAdminDashboard() {
                   <tbody className="divide-y divide-slate-800 font-medium">
                     {(draftConfig.workers || []).map(w => (
                       <tr key={w.id} className="hover:bg-slate-800/40 transition">
-                        <td className="p-4 flex items-center gap-3">
-                          <span className="text-xl p-2 bg-slate-800 rounded-xl">{w.icon || '🔧'}</span>
+                        <td className="p-4">
                           <div>
                             <span className="font-black text-white block text-sm">{w.name}</span>
                             <span className="text-[10px] text-slate-500 font-mono">ID: {w.id}</span>
@@ -1962,8 +2466,8 @@ export default function SuperAdminDashboard() {
             </div>
           </div>
         )}
-
-      </div>
+      </main>
+    </div>
 
       {/* ── MODAL: Add Worker ─────────────────────────────────────── */}
       {showWorkerModal && (
@@ -2010,7 +2514,7 @@ export default function SuperAdminDashboard() {
                   type="email"
                   value={workerForm.email}
                   onChange={(e) => setWorkerForm(prev => ({ ...prev, email: e.target.value }))}
-                  placeholder="worker@mrf.edu"
+                  placeholder="worker@mcc.edu"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 bg-slate-950 text-white"
                 />
               </div>

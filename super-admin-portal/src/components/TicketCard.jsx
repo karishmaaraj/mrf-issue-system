@@ -84,7 +84,7 @@ export default function TicketCard({ ticket, onSelect, onSolveTicket, provided, 
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
             {/* Symmetrical Ticket ID Pill */}
-            <span className="text-xs font-black text-blue-700 bg-blue-50/90 px-2.5 py-0.5 rounded-lg border border-blue-200/80 tracking-tight shadow-2xs group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-600 transition-all duration-200">
+            <span className="text-xs font-black text-[#990000] bg-[#F7EAEA] px-2.5 py-0.5 rounded-lg border border-[#E5E5E5] tracking-tight shadow-2xs group-hover:bg-[#990000] group-hover:text-white group-hover:border-[#990000] transition-all duration-200">
               {ticket.ticketNo}
             </span>
 
