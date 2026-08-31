@@ -11,7 +11,7 @@ import {
   Database, BarChart3, Search, ChevronRight, ExternalLink, X, Save,
   Palette, Monitor, Layout, Sliders, Mail, Settings, Globe,
   Check, Undo, Eye, Smartphone, Laptop, RotateCcw, Sparkles, Activity, PhoneCall, AlertCircle, Menu,
-  Upload, Image as ImageIcon
+  Upload, Image as ImageIcon, ChevronUp, ChevronDown, GripVertical, ListFilter, CheckSquare, Type, Hash, FileText, Radio, Building2
 } from 'lucide-react';
 import campusBg from '../assets/campus_bg.png';
 import {
@@ -19,6 +19,9 @@ import {
   saveSystemConfig,
   fetchSystemConfigFromServer,
   DEFAULT_CONFIG,
+  DEFAULT_SECTIONS,
+  DEFAULT_STARTUP_COMPANIES,
+  getNormalizedFormConfig,
   applyThemeTokens
 } from '../systemConfigStore.js';
 import {
@@ -109,6 +112,7 @@ export default function SuperAdminDashboard() {
   const [categoryForm, setCategoryForm] = useState({ label: '', prefix: '', color: 'amber' });
   const [newDepartment, setNewDepartment] = useState('');
   const [newBlock, setNewBlock] = useState('');
+  const [newCompanyInput, setNewCompanyInput] = useState('');
   const [newProblemInput, setNewProblemInput] = useState('');
   const [ticketToDelete, setTicketToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -116,6 +120,63 @@ export default function SuperAdminDashboard() {
   const showToastMsg = (msg) => {
     setToast(msg);
     setTimeout(() => setToast(null), 4000);
+  };
+
+  const handleAddCompany = (e) => {
+    if (e) e.preventDefault();
+    const companyName = newCompanyInput.trim();
+    if (!companyName) return;
+    const currentCompanies = draftConfig.companies || DEFAULT_STARTUP_COMPANIES;
+    if (currentCompanies.some(c => c.toLowerCase() === companyName.toLowerCase())) {
+      showToastMsg('⚠️ Company already exists!');
+      return;
+    }
+    const updated = [...currentCompanies, companyName];
+    updateDraft(prev => {
+      let nextSections = prev.complaintForm?.sections;
+      if (Array.isArray(nextSections)) {
+        nextSections = nextSections.map(sec => {
+          if (sec.id !== 'sec_role' || !Array.isArray(sec.fields)) return sec;
+          const fields = sec.fields.map(f => f.id === 'company' ? { ...f, options: updated } : f);
+          return { ...sec, fields };
+        });
+      }
+      return {
+        ...prev,
+        companies: updated,
+        complaintForm: {
+          ...prev.complaintForm,
+          sections: nextSections
+        }
+      };
+    });
+    setNewCompanyInput('');
+    showToastMsg(`✅ Added startup company "${companyName}"`);
+  };
+
+  const handleDeleteCompany = (companyToDelete) => {
+    if (!window.confirm(`Are you sure you want to remove startup company "${companyToDelete}" from dropdown options? Existing tickets will retain their saved data.`)) return;
+    const currentCompanies = draftConfig.companies || DEFAULT_STARTUP_COMPANIES;
+    const updated = currentCompanies.filter(c => c !== companyToDelete);
+    updateDraft(prev => {
+      let nextSections = prev.complaintForm?.sections;
+      if (Array.isArray(nextSections)) {
+        nextSections = nextSections.map(sec => {
+          if (sec.id !== 'sec_role' || !Array.isArray(sec.fields)) return sec;
+          const fields = sec.fields.map(f => f.id === 'company' ? { ...f, options: updated } : f);
+          return { ...sec, fields };
+        });
+      }
+      return {
+        ...prev,
+        companies: updated,
+        complaintForm: {
+          ...prev.complaintForm,
+          sections: nextSections
+        }
+      };
+    });
+    showToastMsg(`🗑️ Removed startup company "${companyToDelete}"`);
   };
 
   const [themeHistory, setThemeHistory] = useState([]);
@@ -499,6 +560,7 @@ export default function SuperAdminDashboard() {
     { id: 'brandingTheme', label: 'Theme & Branding', icon: Palette },
     { id: 'adminPortal', label: 'Admin Portal Studio', icon: Layout },
     { id: 'complaintForm', label: 'Complaint Form', icon: Sliders },
+    { id: 'companies', label: 'Startup Companies', icon: Building2, badge: (draftConfig.companies || DEFAULT_STARTUP_COMPANIES).length },
     { id: 'workers', label: 'Staff Roster', icon: Users, badge: (draftConfig.workers || []).length },
     { id: 'categories', label: 'Categories', icon: Layers, badge: (draftConfig.categories || []).length },
     { id: 'announcement', label: 'Broadcast Alerts', icon: Megaphone },
@@ -726,7 +788,7 @@ export default function SuperAdminDashboard() {
                   </div>
                   <div className="flex items-center justify-between p-3 bg-[#F5F5F5] rounded-xl border border-[#E5E5E5]">
                     <span className="text-slate-600 font-medium">Portal Name</span>
-                    <span className="font-bold text-[#111111]">{draftConfig.branding?.portalName || 'MCC Issue Portal'}</span>
+                    <span className="font-bold text-[#111111]">{draftConfig.branding?.portalName || 'MCC FIX HUB'}</span>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-[#F5F5F5] rounded-xl border border-[#E5E5E5]">
                     <span className="text-slate-600 font-medium">User Portal Availability</span>
@@ -761,6 +823,148 @@ export default function SuperAdminDashboard() {
               {/* Left Column: Form Controls (7 cols) */}
               <div className="xl:col-span-7 space-y-6">
                 
+                {/* 0. Color Theme / Visual Theme Section */}
+                <div className="bg-white border border-[#E5E5E5] rounded-3xl p-6 space-y-4 shadow-2xs">
+                  <div className="flex items-center justify-between border-b border-[#E5E5E5] pb-3">
+                    <h3 className="text-sm font-black text-[#111111] flex items-center gap-2">
+                      <Palette size={16} className="text-[#A00000]" />
+                      <span>User Portal Color Theme & Visual Accent</span>
+                    </h3>
+                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                      Active: {getFriendlyColorName(draftConfig.theme?.primaryColor || '#DC2626')}
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-slate-500 font-medium">
+                    Select the dynamic primary & accent color theme for the User Portal. Changes update hero highlights, buttons, navigation states, active badges, and links dynamically.
+                  </p>
+
+                  <div className="p-4 bg-[#F5F5F5] border border-[#E5E5E5] rounded-2xl space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[#111111] font-black flex items-center gap-2 text-xs">
+                        <span>Primary Portal Theme Color</span>
+                        <span className="text-[10px] font-mono text-slate-500">{draftConfig.theme?.primaryColor || '#DC2626'}</span>
+                      </label>
+                    </div>
+
+                    <div className="flex items-center gap-2.5">
+                      <input
+                        type="color"
+                        value={draftConfig.theme?.primaryColor || '#DC2626'}
+                        onChange={(e) => {
+                          const hex = e.target.value;
+                          const found = PRESET_NAMED_COLORS.find(c => c.hex.toLowerCase() === hex.toLowerCase());
+                          const hover = found ? found.hover : hex;
+                          updateDraft(prev => ({
+                            ...prev,
+                            theme: {
+                              ...prev.theme,
+                              primaryColor: hex,
+                              primaryHoverColor: hover,
+                              accentColor: hex,
+                            },
+                            homePage: {
+                              ...prev.homePage,
+                              hero: { ...prev.homePage?.hero, highlightColor: hex }
+                            }
+                          }));
+                          applyThemeTokens({
+                            ...(draftConfig.theme || {}),
+                            primaryColor: hex,
+                            primaryHoverColor: hover,
+                            accentColor: hex,
+                          });
+                        }}
+                        className="w-10 h-10 rounded-xl border-2 border-[#E5E5E5] bg-white cursor-pointer p-0.5 shrink-0"
+                        title="Open Color Picker"
+                      />
+                      <select
+                        value={PRESET_NAMED_COLORS.some(c => c.hex.toLowerCase() === (draftConfig.theme?.primaryColor || '#DC2626').toLowerCase())
+                          ? PRESET_NAMED_COLORS.find(c => c.hex.toLowerCase() === (draftConfig.theme?.primaryColor || '#DC2626').toLowerCase())?.hex
+                          : (draftConfig.theme?.primaryColor || '#DC2626')}
+                        onChange={(e) => {
+                          const hex = e.target.value;
+                          const found = PRESET_NAMED_COLORS.find(c => c.hex.toLowerCase() === hex.toLowerCase());
+                          const hover = found ? found.hover : hex;
+                          updateDraft(prev => ({
+                            ...prev,
+                            theme: {
+                              ...prev.theme,
+                              primaryColor: hex,
+                              primaryHoverColor: hover,
+                              accentColor: hex,
+                            },
+                            homePage: {
+                              ...prev.homePage,
+                              hero: { ...prev.homePage?.hero, highlightColor: hex }
+                            }
+                          }));
+                          applyThemeTokens({
+                            ...(draftConfig.theme || {}),
+                            primaryColor: hex,
+                            primaryHoverColor: hover,
+                            accentColor: hex,
+                          });
+                        }}
+                        className="flex-1 px-3 py-2.5 rounded-xl bg-white border border-[#E5E5E5] text-[#111111] font-bold text-xs cursor-pointer focus:border-[#A00000] outline-none"
+                      >
+                        {PRESET_NAMED_COLORS.map(c => (
+                          <option key={c.hex} value={c.hex}>
+                            {c.emoji} {c.name} ({c.hex})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Quick Pick Swatches Grid */}
+                    <div>
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500 block mb-2">
+                        Quick Pick Color Palette (10 Preset Options):
+                      </span>
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                        {PRESET_NAMED_COLORS.map(c => {
+                          const isSelected = (draftConfig.theme?.primaryColor || '#DC2626').toLowerCase() === c.hex.toLowerCase();
+                          return (
+                            <button
+                              key={c.name}
+                              type="button"
+                              onClick={() => {
+                                updateDraft(prev => ({
+                                  ...prev,
+                                  theme: {
+                                    ...prev.theme,
+                                    primaryColor: c.hex,
+                                    primaryHoverColor: c.hover,
+                                    accentColor: c.hex,
+                                  },
+                                  homePage: {
+                                    ...prev.homePage,
+                                    hero: { ...prev.homePage?.hero, highlightColor: c.hex }
+                                  }
+                                }));
+                                applyThemeTokens({
+                                  ...(draftConfig.theme || {}),
+                                  primaryColor: c.hex,
+                                  primaryHoverColor: c.hover,
+                                  accentColor: c.hex,
+                                });
+                              }}
+                              className={`p-2.5 rounded-xl text-xs font-bold flex items-center gap-2 border transition-all cursor-pointer select-none ${
+                                isSelected
+                                  ? 'bg-slate-900 text-white border-slate-900 shadow-md ring-2 ring-amber-400 scale-[1.03]'
+                                  : 'bg-white border-[#E5E5E5] text-[#111111] hover:border-slate-400 hover:bg-slate-50'
+                              }`}
+                            >
+                              <span className={`w-3.5 h-3.5 rounded-full shrink-0 ${c.bg} border border-black/10 shadow-2xs`} />
+                              <span className="truncate">{c.name}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* 1. Hero Content & Typography */}
                 <div className="bg-white border border-[#E5E5E5] rounded-3xl p-6 space-y-4 shadow-2xs">
                   <h3 className="text-sm font-black text-[#111111] border-b border-[#E5E5E5] pb-3 flex items-center gap-2">
@@ -1836,7 +2040,7 @@ export default function SuperAdminDashboard() {
                     <label className="block text-slate-400 font-bold mb-1">Portal Name</label>
                     <input
                       type="text"
-                      value={draftConfig.branding?.portalName || 'MCC Issue Portal'}
+                      value={draftConfig.branding?.portalName || 'MCC FIX HUB'}
                       onChange={(e) => updateDraft(prev => ({
                         ...prev,
                         branding: { ...prev.branding, portalName: e.target.value }
@@ -1932,43 +2136,449 @@ export default function SuperAdminDashboard() {
           </div>
         )}
 
-        {/* ── TAB 5: COMPLAINT FORM CONTROLS ─────────────────────── */}
-        {activeTab === 'complaintForm' && (
-          <div className="space-y-6 animate-fade-in max-w-5xl">
-            <div className="bg-slate-900/80 p-5 rounded-3xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-black text-white flex items-center gap-2">
-                  <Sliders size={18} className="text-amber-400" />
-                  <span>Complaint Form & Department Lists</span>
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Manage dynamic department streams, campus location blocks, and custom problem types.
-                </p>
+        {/* ── TAB 5: COMPLAINT FORM CONTROLS & DYNAMIC FORM BUILDER ── */}
+        {activeTab === 'complaintForm' && (() => {
+          const normalizedForm = getNormalizedFormConfig(draftConfig.complaintForm);
+          const sections = normalizedForm.sections || [];
+
+          const updateSections = (newSections) => {
+            setDraftConfig(prev => {
+              let updatedDeptOpts = prev.complaintForm?.fields?.department?.options;
+              let updatedBlockOpts = prev.complaintForm?.fields?.location?.blocks;
+              let updatedCompanyOpts = prev.companies;
+
+              newSections.forEach(sec => {
+                if (Array.isArray(sec.fields)) {
+                  sec.fields.forEach(f => {
+                    if (f.id === 'department' && Array.isArray(f.options)) updatedDeptOpts = f.options;
+                    if (f.id === 'block' && Array.isArray(f.options)) updatedBlockOpts = f.options;
+                    if (f.id === 'company' && Array.isArray(f.options)) updatedCompanyOpts = f.options;
+                  });
+                }
+              });
+
+              return {
+                ...prev,
+                companies: updatedCompanyOpts || prev.companies,
+                complaintForm: {
+                  ...prev.complaintForm,
+                  sections: newSections,
+                  fields: {
+                    ...prev.complaintForm?.fields,
+                    department: {
+                      ...prev.complaintForm?.fields?.department,
+                      options: updatedDeptOpts || prev.complaintForm?.fields?.department?.options,
+                    },
+                    location: {
+                      ...prev.complaintForm?.fields?.location,
+                      blocks: updatedBlockOpts || prev.complaintForm?.fields?.location?.blocks,
+                    }
+                  }
+                }
+              };
+            });
+            setHasChanges(true);
+          };
+
+          const handleAddSection = () => {
+            const title = window.prompt('Enter Section Title:', 'NEW SECTION');
+            if (!title || !title.trim()) return;
+            const newSec = {
+              id: `sec_${Date.now()}`,
+              title: title.trim(),
+              enabled: true,
+              fields: []
+            };
+            updateSections([...sections, newSec]);
+          };
+
+          const handleMoveSection = (idx, dir) => {
+            const newIdx = idx + dir;
+            if (newIdx < 0 || newIdx >= sections.length) return;
+            const next = [...sections];
+            const temp = next[idx];
+            next[idx] = next[newIdx];
+            next[newIdx] = temp;
+            updateSections(next);
+          };
+
+          const handleToggleSection = (idx) => {
+            const next = [...sections];
+            next[idx] = { ...next[idx], enabled: !next[idx].enabled };
+            updateSections(next);
+          };
+
+          const handleDeleteSection = (idx) => {
+            if (!window.confirm(`Delete section "${sections[idx].title}" and all its fields?`)) return;
+            const next = sections.filter((_, i) => i !== idx);
+            updateSections(next);
+          };
+
+          const handleUpdateSectionTitle = (idx, newTitle) => {
+            const next = [...sections];
+            next[idx] = { ...next[idx], title: newTitle };
+            updateSections(next);
+          };
+
+          const handleAddField = (secIdx) => {
+            const label = window.prompt('Enter Field Label:', 'New Field');
+            if (!label || !label.trim()) return;
+            const fieldId = label.trim().toLowerCase().replace(/[^a-z0-9]/g, '_') + `_${Date.now().toString().slice(-4)}`;
+            const newField = {
+              id: fieldId,
+              label: label.trim(),
+              type: 'text',
+              required: false,
+              enabled: true,
+              placeholder: `Enter ${label.trim()}`
+            };
+            const next = [...sections];
+            next[secIdx] = {
+              ...next[secIdx],
+              fields: [...(next[secIdx].fields || []), newField]
+            };
+            updateSections(next);
+          };
+
+          const handleUpdateField = (secIdx, fIdx, updates) => {
+            const next = [...sections];
+            const secFields = [...(next[secIdx].fields || [])];
+            let targetField = { ...secFields[fIdx], ...updates };
+
+            if (['select', 'radio', 'checkbox'].includes(targetField.type) && (!targetField.options || targetField.options.length === 0)) {
+              targetField.options = ['Option 1', 'Option 2'];
+            }
+
+            secFields[fIdx] = targetField;
+            next[secIdx] = { ...next[secIdx], fields: secFields };
+            updateSections(next);
+          };
+
+          const handleMoveField = (secIdx, fIdx, dir) => {
+            const next = [...sections];
+            const secFields = [...(next[secIdx].fields || [])];
+            const targetIdx = fIdx + dir;
+            if (targetIdx < 0 || targetIdx >= secFields.length) return;
+            const temp = secFields[fIdx];
+            secFields[fIdx] = secFields[targetIdx];
+            secFields[targetIdx] = temp;
+            next[secIdx] = { ...next[secIdx], fields: secFields };
+            updateSections(next);
+          };
+
+          const handleDeleteField = (secIdx, fIdx) => {
+            const next = [...sections];
+            const secFields = next[secIdx].fields.filter((_, i) => i !== fIdx);
+            next[secIdx] = { ...next[secIdx], fields: secFields };
+            updateSections(next);
+          };
+
+          const handleAddOption = (secIdx, fIdx, optText) => {
+            if (!optText || !optText.trim()) return;
+            const next = [...sections];
+            const secFields = [...(next[secIdx].fields || [])];
+            const currentOpts = secFields[fIdx].options || [];
+            secFields[fIdx] = { ...secFields[fIdx], options: [...currentOpts, optText.trim()] };
+            next[secIdx] = { ...next[secIdx], fields: secFields };
+            updateSections(next);
+          };
+
+          const handleRemoveOption = (secIdx, fIdx, optIdx) => {
+            const next = [...sections];
+            const secFields = [...(next[secIdx].fields || [])];
+            const currentOpts = secFields[fIdx].options || [];
+            secFields[fIdx] = { ...secFields[fIdx], options: currentOpts.filter((_, i) => i !== optIdx) };
+            next[secIdx] = { ...next[secIdx], fields: secFields };
+            updateSections(next);
+          };
+
+          const handleResetSections = () => {
+            if (!window.confirm('Reset form sections and fields to default setup?')) return;
+            updateSections(DEFAULT_SECTIONS);
+          };
+
+          return (
+            <div className="space-y-6 animate-fade-in max-w-5xl">
+              {/* Header */}
+              <div className="bg-slate-900/80 p-5 rounded-3xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-black text-white flex items-center gap-2">
+                    <Sliders size={18} className="text-amber-400" />
+                    <span>Dynamic Complaint Form Builder</span>
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Add, rename, reorder, and configure form sections, fields, field types, and dynamic options. Changes sync live across portals.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={handleAddSection}
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-black rounded-2xl shadow-lg shadow-blue-500/25 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                  >
+                    <Plus size={15} className="stroke-[3]" />
+                    <span>+ Add Section</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleResetSections}
+                    className="inline-flex items-center gap-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl border border-slate-700 transition cursor-pointer"
+                    title="Reset to default sections"
+                  >
+                    <RotateCcw size={13} />
+                    <span>Reset Default</span>
+                  </button>
+                </div>
               </div>
 
-              {/* Add Features / New Problem Button */}
-              <button
-                type="button"
-                onClick={() => setShowCategoryModal(true)}
-                className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-black rounded-2xl shadow-lg shadow-blue-500/25 hover:scale-105 active:scale-95 transition-all cursor-pointer select-none shrink-0"
-                title="Add a custom problem or issue feature to the user complaint form"
-              >
-                <Plus size={15} className="stroke-[3]" />
-                <span>+ Add Features / New Problem</span>
-              </button>
-            </div>
+              {/* Form Sections list */}
+              <div className="space-y-5">
+                {sections.map((sec, secIdx) => (
+                  <div
+                    key={sec.id || secIdx}
+                    className={`bg-slate-900/80 border rounded-3xl p-5 space-y-4 transition-all ${
+                      sec.enabled ? 'border-slate-800' : 'border-slate-800/50 opacity-60 bg-slate-950/40'
+                    }`}
+                  >
+                    {/* Section Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+                      <div className="flex items-center gap-2 flex-1">
+                        <div className="flex flex-col text-slate-500">
+                          <button
+                            type="button"
+                            disabled={secIdx === 0}
+                            onClick={() => handleMoveSection(secIdx, -1)}
+                            className="hover:text-amber-400 disabled:opacity-30 disabled:hover:text-slate-500 cursor-pointer"
+                          >
+                            <ChevronUp size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={secIdx === sections.length - 1}
+                            onClick={() => handleMoveSection(secIdx, 1)}
+                            className="hover:text-amber-400 disabled:opacity-30 disabled:hover:text-slate-500 cursor-pointer"
+                          >
+                            <ChevronDown size={14} />
+                          </button>
+                        </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-xs">
-              
-              {/* Problem Features & Categories Manager */}
-              <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 space-y-4 lg:col-span-2">
+                        <span className="text-xs font-black text-amber-400 font-mono">SECTION {secIdx + 1}</span>
+
+                        <input
+                          type="text"
+                          value={sec.title}
+                          onChange={(e) => handleUpdateSectionTitle(secIdx, e.target.value)}
+                          className="bg-slate-950 border border-slate-700 px-3 py-1.5 rounded-xl font-extrabold text-sm text-white focus:outline-none focus:border-amber-400 flex-1 max-w-sm"
+                          placeholder="Section Title"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleSection(secIdx)}
+                          className={`px-3 py-1.5 rounded-xl font-extrabold text-xs flex items-center gap-1.5 transition cursor-pointer ${
+                            sec.enabled
+                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                              : 'bg-slate-800 text-slate-400 border border-slate-700'
+                          }`}
+                        >
+                          <div className={`w-2 h-2 rounded-full ${sec.enabled ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
+                          <span>{sec.enabled ? 'ENABLED' : 'DISABLED'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteSection(secIdx)}
+                          className="p-1.5 rounded-xl bg-red-950/40 text-red-400 hover:bg-red-900/60 border border-red-900/50 transition cursor-pointer"
+                          title="Delete Section"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Fields inside Section */}
+                    <div className="space-y-3 pl-2 sm:pl-4">
+                      {(!sec.fields || sec.fields.length === 0) && (
+                        <p className="text-xs text-slate-500 italic py-2">No fields in this section yet. Click "+ Add Field" below to add one.</p>
+                      )}
+
+                      {(sec.fields || []).map((field, fIdx) => (
+                        <div
+                          key={field.id || fIdx}
+                          className={`bg-slate-950 border rounded-2xl p-3.5 space-y-3 ${
+                            field.enabled ? 'border-slate-800 hover:border-slate-700' : 'border-slate-900 opacity-50'
+                          }`}
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="flex items-center gap-2 flex-1 min-w-[240px]">
+                              <div className="flex flex-col text-slate-500">
+                                <button
+                                  type="button"
+                                  disabled={fIdx === 0}
+                                  onClick={() => handleMoveField(secIdx, fIdx, -1)}
+                                  className="hover:text-amber-400 disabled:opacity-30 cursor-pointer"
+                                >
+                                  <ChevronUp size={12} />
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={fIdx === (sec.fields.length - 1)}
+                                  onClick={() => handleMoveField(secIdx, fIdx, 1)}
+                                  className="hover:text-amber-400 disabled:opacity-30 cursor-pointer"
+                                >
+                                  <ChevronDown size={12} />
+                                </button>
+                              </div>
+
+                              {/* Label Input */}
+                              <div className="flex-1">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">Field Label</label>
+                                <input
+                                  type="text"
+                                  value={field.label}
+                                  onChange={(e) => handleUpdateField(secIdx, fIdx, { label: e.target.value })}
+                                  className="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-xl font-bold text-xs text-white focus:outline-none focus:border-amber-400"
+                                />
+                              </div>
+
+                              {/* Type Select */}
+                              <div className="w-36">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">Field Type</label>
+                                <select
+                                  value={field.type || 'text'}
+                                  onChange={(e) => handleUpdateField(secIdx, fIdx, { type: e.target.value })}
+                                  className="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-xl font-bold text-xs text-amber-300 focus:outline-none focus:border-amber-400 cursor-pointer"
+                                >
+                                  <option value="text">Text Input</option>
+                                  <option value="email">Email</option>
+                                  <option value="phone">Phone</option>
+                                  <option value="number">Number</option>
+                                  <option value="select">Dropdown (Select)</option>
+                                  <option value="radio">Radio Group</option>
+                                  <option value="checkbox">Checkbox</option>
+                                  <option value="textarea">Textarea</option>
+                                  <option value="file">File Upload</option>
+                                </select>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                              {/* Required Toggle */}
+                              <label className="flex items-center gap-1.5 text-xs text-slate-300 font-bold cursor-pointer select-none">
+                                <input
+                                  type="checkbox"
+                                  checked={!!field.required}
+                                  onChange={(e) => handleUpdateField(secIdx, fIdx, { required: e.target.checked })}
+                                  className="rounded border-slate-700 text-amber-500 focus:ring-amber-500 bg-slate-900 w-4 h-4"
+                                />
+                                <span>Required</span>
+                              </label>
+
+                              {/* Enabled Toggle */}
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateField(secIdx, fIdx, { enabled: !field.enabled })}
+                                className={`px-2.5 py-1 rounded-xl text-[11px] font-extrabold cursor-pointer transition ${
+                                  field.enabled ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' : 'bg-slate-800 text-slate-500 border border-slate-700'
+                                }`}
+                              >
+                                {field.enabled ? 'ON' : 'OFF'}
+                              </button>
+
+                              {/* Delete Field */}
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteField(secIdx, fIdx)}
+                                className="text-red-400 hover:text-red-300 p-1 hover:bg-red-950/50 rounded-lg transition cursor-pointer"
+                                title="Delete field"
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Options Manager if field type has options */}
+                          {['select', 'radio', 'checkbox'].includes(field.type) && (
+                            <div className="pt-2 border-t border-slate-800/80 space-y-2">
+                              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                                Configured Options ({field.options?.length || 0})
+                              </label>
+
+                              <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1 bg-slate-900/60 rounded-xl border border-slate-800">
+                                {(field.options || []).map((opt, optIdx) => (
+                                  <span key={optIdx} className="inline-flex items-center gap-1 bg-slate-950 border border-slate-700 px-2.5 py-1 rounded-lg text-xs text-slate-200 font-medium">
+                                    <span>{opt}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveOption(secIdx, fIdx, optIdx)}
+                                      className="text-red-400 hover:text-red-300 ml-1 p-0.5 rounded hover:bg-red-950"
+                                    >
+                                      <X size={11} />
+                                    </button>
+                                  </span>
+                                ))}
+                              </div>
+
+                              {/* Quick Add Option */}
+                              <div className="flex gap-2">
+                                <input
+                                  type="text"
+                                  placeholder="Add option..."
+                                  id={`add_opt_${secIdx}_${fIdx}`}
+                                  className="px-3 py-1 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white placeholder:text-slate-600 flex-1"
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      handleAddOption(secIdx, fIdx, e.target.value);
+                                      e.target.value = '';
+                                    }
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const input = document.getElementById(`add_opt_${secIdx}_${fIdx}`);
+                                    if (input) {
+                                      handleAddOption(secIdx, fIdx, input.value);
+                                      input.value = '';
+                                    }
+                                  }}
+                                  className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs cursor-pointer shadow"
+                                >
+                                  + Option
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+
+                      <button
+                        type="button"
+                        onClick={() => handleAddField(secIdx)}
+                        className="w-full py-2.5 border-2 border-dashed border-slate-800 hover:border-amber-400/50 bg-slate-950/40 hover:bg-slate-950 text-slate-400 hover:text-amber-400 rounded-2xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer mt-2"
+                      >
+                        <Plus size={14} className="stroke-[3]" />
+                        <span>Add Field to {sec.title}</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Problem Categories Manager */}
+              <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
                   <div>
                     <h3 className="text-sm font-black text-white flex items-center gap-2">
                       <Sparkles size={16} className="text-blue-400" />
                       <span>Issue Problem Categories & Features</span>
                     </h3>
-                    <p className="text-[11px] text-slate-400">These problem types and feature categories appear dynamically in the User Complaint Form.</p>
+                    <p className="text-[11px] text-slate-400">These problem types appear as category chips in the Complaint Form.</p>
                   </div>
                   <button
                     type="button"
@@ -1976,7 +2586,7 @@ export default function SuperAdminDashboard() {
                     className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs shadow-md transition cursor-pointer self-start sm:self-auto"
                   >
                     <Plus size={13} className="stroke-[3]" />
-                    <span>+ Add Features / New Problem</span>
+                    <span>+ Add Category</span>
                   </button>
                 </div>
                 
@@ -1985,11 +2595,11 @@ export default function SuperAdminDashboard() {
                     type="text"
                     value={newProblemInput}
                     onChange={(e) => setNewProblemInput(e.target.value)}
-                    placeholder="Quick add problem feature (e.g. AC Not Cooling, Smart Board Fault, Window Repair)"
+                    placeholder="Quick add category (e.g. AC Not Cooling, Smart Board Fault)"
                     className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder:text-slate-500"
                   />
                   <button type="submit" className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shadow-md hover:scale-105 transition shrink-0">
-                    <Plus size={14} className="stroke-[3]" /> Add Problem
+                    <Plus size={14} className="stroke-[3]" /> Add
                   </button>
                 </form>
 
@@ -2010,65 +2620,88 @@ export default function SuperAdminDashboard() {
                   ))}
                 </div>
               </div>
+            </div>
+          );
+        })()}
 
-              {/* Department List Manager */}
-              <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 space-y-4">
-                <h3 className="text-sm font-black text-white border-b border-slate-800 pb-3">Department Streams List</h3>
-                
-                <form onSubmit={handleAddDepartment} className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newDepartment}
-                    onChange={(e) => setNewDepartment(e.target.value)}
-                    placeholder="Add new department (e.g. Physics)"
-                    className="flex-1 px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder:text-slate-500"
-                  />
-                  <button type="submit" className="px-3.5 py-2 bg-amber-500 text-slate-950 font-bold rounded-xl flex items-center gap-1 cursor-pointer shrink-0">
-                    <Plus size={14} /> Add
-                  </button>
-                </form>
+        {/* ── TAB: STARTUP COMPANIES MANAGEMENT ─────────────────────── */}
+        {activeTab === 'companies' && (
+          <div className="space-y-6 animate-fade-in max-w-5xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/80 p-5 rounded-3xl border border-slate-800">
+              <div>
+                <h2 className="text-lg font-black text-white flex items-center gap-2">
+                  <Building2 size={18} className="text-amber-400" />
+                  <span>Startup Companies Management</span>
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Manage startup companies dynamically. Companies configured here automatically populate the Company dropdown in the Complaint Form for Startup classification.
+                </p>
+              </div>
+            </div>
 
-                <div className="flex flex-wrap gap-2 max-h-56 overflow-y-auto p-1">
-                  {(draftConfig.complaintForm?.fields?.department?.options || DEFAULT_CONFIG.complaintForm.fields.department.options).map((dept) => (
-                    <span key={dept} className="inline-flex items-center gap-1.5 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-xl font-bold text-slate-200">
-                      <span>{dept}</span>
-                      <button onClick={() => handleRemoveDepartment(dept)} className="text-red-400 hover:text-red-300 ml-1">
-                        <X size={12} />
-                      </button>
-                    </span>
-                  ))}
-                </div>
+            {/* Add New Company Card */}
+            <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 space-y-4">
+              <h3 className="text-sm font-black text-white flex items-center gap-2 border-b border-slate-800 pb-3">
+                <Plus size={16} className="text-amber-400" />
+                <span>Add New Startup Company</span>
+              </h3>
+              
+              <form onSubmit={handleAddCompany} className="flex gap-2">
+                <input
+                  type="text"
+                  value={newCompanyInput}
+                  onChange={(e) => setNewCompanyInput(e.target.value)}
+                  placeholder="Enter startup company name (e.g. Nexus Tech Ventures, BioHealth Innovations)..."
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder:text-slate-500 font-medium text-xs focus:outline-none focus:border-amber-400"
+                />
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs flex items-center gap-1.5 cursor-pointer shadow-md transition-all hover:scale-105 active:scale-95 shrink-0"
+                >
+                  <Plus size={15} className="stroke-[3]" />
+                  <span>Add Company</span>
+                </button>
+              </form>
+            </div>
+
+            {/* Existing Companies Grid / List */}
+            <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 className="text-sm font-black text-white flex items-center gap-2">
+                  <Building2 size={16} className="text-blue-400" />
+                  <span>Active Startup Companies ({(draftConfig.companies || DEFAULT_STARTUP_COMPANIES).length})</span>
+                </h3>
+                <span className="text-[10px] text-slate-400 font-mono">Live Sync Enabled</span>
               </div>
 
-              {/* Campus Blocks Manager */}
-              <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 space-y-4">
-                <h3 className="text-sm font-black text-white border-b border-slate-800 pb-3">Campus Blocks & Locations</h3>
-                
-                <form onSubmit={handleAddBlock} className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newBlock}
-                    onChange={(e) => setNewBlock(e.target.value)}
-                    placeholder="Add new block (e.g. Science Block)"
-                    className="flex-1 px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder:text-slate-500"
-                  />
-                  <button type="submit" className="px-3.5 py-2 bg-blue-500 text-white font-bold rounded-xl flex items-center gap-1 cursor-pointer shrink-0">
-                    <Plus size={14} /> Add
-                  </button>
-                </form>
+              {(!draftConfig.companies || draftConfig.companies.length === 0) && (
+                <p className="text-xs text-slate-500 italic py-3">No companies configured yet. Add a new company above.</p>
+              )}
 
-                <div className="flex flex-wrap gap-2 max-h-56 overflow-y-auto p-1">
-                  {(draftConfig.complaintForm?.fields?.location?.blocks || DEFAULT_CONFIG.complaintForm.fields.location.blocks).map((blk) => (
-                    <span key={blk} className="inline-flex items-center gap-1.5 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-xl font-bold text-slate-200">
-                      <span>{blk}</span>
-                      <button onClick={() => handleRemoveBlock(blk)} className="text-red-400 hover:text-red-300 ml-1">
-                        <X size={12} />
-                      </button>
-                    </span>
-                  ))}
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {(draftConfig.companies || DEFAULT_STARTUP_COMPANIES).map((comp, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between p-3.5 bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-2xl transition group"
+                  >
+                    <div className="flex items-center gap-2.5 truncate">
+                      <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 font-black text-xs shrink-0">
+                        {comp.charAt(0).toUpperCase()}
+                      </div>
+                      <span className="text-xs font-extrabold text-slate-200 truncate">{comp}</span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteCompany(comp)}
+                      className="p-1.5 rounded-xl text-red-400 hover:text-red-300 hover:bg-red-950/60 border border-transparent hover:border-red-900/50 transition cursor-pointer shrink-0"
+                      title={`Remove "${comp}"`}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
               </div>
-
             </div>
           </div>
         )}

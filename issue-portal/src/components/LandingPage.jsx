@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
 import Navbar from './Navbar.jsx';
 import campusBg from '../assets/campus_bg.png';
 import campusIllustration from '../assets/campus_illustration.png';
-import { getSystemConfig, fetchSystemConfigFromServer } from '../systemConfigStore.js';
+import { getSystemConfig, fetchSystemConfigFromServer, applyThemeTokens } from '../systemConfigStore.js';
 import {
   ClipboardList, PlusCircle, Shield, Clock, BadgeCheck, Mail,
   Wrench, AlertCircle, PhoneCall, ChevronRight,
@@ -82,7 +82,13 @@ export default function LandingPage() {
   }, []);
 
   useEffect(() => {
-    document.title = 'MCC Issue Portal — Campus Facilities';
+    if (systemConfig?.theme) {
+      applyThemeTokens(systemConfig.theme);
+    }
+  }, [systemConfig]);
+
+  useEffect(() => {
+    document.title = 'MCC FIX HUB — Campus Facilities';
 
     fetchSystemConfigFromServer().then(cfg => {
       if (cfg) setSystemConfig(cfg);
@@ -490,7 +496,7 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-medium">
           <div className="flex items-center gap-2 text-white font-bold">
             <ClipboardList size={16} className="text-[#800000]" />
-            <span>MCC Issue Portal</span>
+            <span>MCC FIX HUB</span>
             <span className="text-[#6B6B6B] font-normal">— Campus Complaint System</span>
           </div>
           <p className="text-[#6B6B6B]">© 2026 Campus Facilities Dept. All rights reserved.</p>

@@ -174,13 +174,103 @@ export default function AdminDashboard() {
   };
 
   const handleExport = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(tickets, null, 2));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `mcc_tickets_export_${Date.now()}.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
+    if (!tickets || tickets.length === 0) {
+      showToastMsg('No tickets available to export.');
+      return;
+    }
+
+    const headers = [
+      'Ticket ID',
+      'User Name',
+      'Email',
+      'Phone',
+      'User Type',
+      'Department',
+      'Location/Block',
+      'Room/Area',
+      'Issue Category',
+      'Priority',
+      'Description',
+      'Assigned Worker',
+      'Status',
+      'Created Date/Time',
+      'Worker Completion Date/Time',
+      'User Confirmation/Resolution',
+      'Rejection/Override Reason'
+    ];
+
+    const escapeCSV = (val) => {
+      if (val === undefined || val === null) return '""';
+      const str = String(val).replace(/"/g, '""');
+      return `"${str}"`;
+    };
+
+    const formatDate = (iso) => {
+      if (!iso) return '';
+      try {
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return String(iso);
+        return d.toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'medium' });
+      } catch {
+        return String(iso);
+      }
+    };
+
+    const rows = tickets.map(t => {
+      const ticketId = t.ticketNo || '';
+      const name = t.name || '';
+      const email = t.email || '';
+      const phone = t.phone || '';
+      const userType = (t.userType || '') + (t.studentStream ? ` (${t.studentStream}${t.studentLevel ? ' ' + t.studentLevel : ''})` : '');
+      const department = t.department || '';
+      const block = t.block || '';
+      const roomNo = t.roomNo || '';
+      const issueCategory = t.issueCategory || '';
+      const priority = t.priority || 'Normal';
+      const description = t.description || '';
+      const assignedWorker = t.assignedWorker || 'Unassigned';
+      const status = t.status || '';
+      const createdDate = formatDate(t.createdAt);
+      const completionDate = formatDate(t.workerCompletedAt || t.completedAt);
+      const resolutionInfo = t.completedBy ? `Resolved by ${t.completedBy}` : (t.completedDate ? `Completed on ${t.completedDate}` : '');
+      const rejectionOrOverride = t.rejectionReason ? `Rejection: ${t.rejectionReason}` : (t.adminOverrideReason ? `Override: ${t.adminOverrideReason}` : '');
+
+      return [
+        escapeCSV(ticketId),
+        escapeCSV(name),
+        escapeCSV(email),
+        escapeCSV(phone),
+        escapeCSV(userType),
+        escapeCSV(department),
+        escapeCSV(block),
+        escapeCSV(roomNo),
+        escapeCSV(issueCategory),
+        escapeCSV(priority),
+        escapeCSV(description),
+        escapeCSV(assignedWorker),
+        escapeCSV(status),
+        escapeCSV(createdDate),
+        escapeCSV(completionDate),
+        escapeCSV(resolutionInfo),
+        escapeCSV(rejectionOrOverride)
+      ].join(',');
+    });
+
+    const csvContent = '\uFEFF' + [headers.map(escapeCSV).join(','), ...rows].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const dateStr = new Date().toISOString().split('T')[0];
+    const fileName = `MRF_Tickets_${dateStr}.csv`;
+
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    showToastMsg(`Exported ${tickets.length} ticket(s) to ${fileName}`);
   };
 
   const { Unsolved: allUnsolved, Ongoing: allOngoing, Completed: allCompleted } = useMemo(() => {
@@ -198,30 +288,36 @@ export default function AdminDashboard() {
     }
 
     if (filterStatus !== 'All') {
-      filtered = filtered.filter(t => t.status === filterStatus);
+      if (filterStatus === 'Completed') {
+        filtered = filtered.filter(t => t.status === 'Completed' || t.status === 'Resolved');
+      } else if (filterStatus === 'Ongoing') {
+        filtered = filtered.filter(t => t.status === 'Ongoing' || t.status === 'Awaiting User Confirmation' || t.status === 'Reopened');
+      } else {
+        filtered = filtered.filter(t => t.status === filterStatus);
+      }
     }
 
     if (filterType !== 'All') {
-      filtered = filtered.filter(t => t.userType === filterType);
+      filtered = filtered.filter(t => t.userType === filterType || (filterType === 'Unit' && (t.userType === 'Unit' || t.userType === 'Unit / Office')));
     }
 
     if (filterUrgent) {
       filtered = filtered.filter(t => {
         if (t.isUrgent) return true;
-        if (t.status === 'Completed') return false;
+        if (t.status === 'Completed' || t.status === 'Resolved' || t.status === 'Archived') return false;
         return (Date.now() - new Date(t.createdAt).getTime()) > 48 * 36e5;
       });
     }
 
     return {
       Unsolved: filtered.filter(t => t.status === 'Unsolved'),
-      Ongoing: filtered.filter(t => t.status === 'Ongoing'),
-      Completed: filtered.filter(t => t.status === 'Completed'),
+      Ongoing: filtered.filter(t => t.status === 'Ongoing' || t.status === 'Awaiting User Confirmation' || t.status === 'Reopened'),
+      Completed: filtered.filter(t => t.status === 'Completed' || t.status === 'Resolved'),
     };
   }, [tickets, search, filterStatus, filterType, filterUrgent]);
 
   const activeTicketForTracker = useMemo(() => {
-    const pending = tickets.filter(t => t.status !== 'Completed');
+    const pending = tickets.filter(t => t.status !== 'Completed' && t.status !== 'Resolved' && t.status !== 'Archived');
     return pending.length > 0 ? pending[pending.length - 1] : tickets[tickets.length - 1] || null;
   }, [tickets]);
 
@@ -290,7 +386,7 @@ export default function AdminDashboard() {
 
             <button
               onClick={handleExport}
-              title="Export Tickets Data to JSON"
+              title="Export Tickets Data to CSV (Excel)"
               className="hidden sm:flex items-center gap-1.5 text-xs text-[#111111] hover:text-[#A00000] hover:bg-[#FFF5F5] font-bold px-3.5 py-2 rounded-xl border border-[#E5E5E5] hover:border-[#A00000]/30 transition-all duration-200 active:scale-95 bg-white shadow-2xs cursor-pointer"
             >
               <Download size={14} className="text-slate-500" />
@@ -375,7 +471,7 @@ export default function AdminDashboard() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {dynamicWorkers.map(w => {
-                  const assignedTickets = tickets.filter(t => t.assignedWorker === w.name && t.status !== 'Completed');
+                  const assignedTickets = tickets.filter(t => t.assignedWorker === w.name && t.status !== 'Completed' && t.status !== 'Resolved' && t.status !== 'Archived');
                   const isBusy = assignedTickets.length > 0;
                   const pendingUnassigned = tickets.filter(t => t.status === 'Unsolved' || !t.assignedWorker);
 
@@ -400,8 +496,8 @@ export default function AdminDashboard() {
                         {/* Active Work Load Status & Direct Email "Send" Button */}
                         <div className="pt-1 flex items-center justify-between gap-2">
                           <span className={`inline-flex items-center gap-1.5 text-xs font-black px-2.5 py-1 rounded-full border shadow-2xs transition-all duration-300 ${isBusy
-                              ? 'bg-amber-50 text-amber-800 border-amber-200/80 animate-pulse'
-                              : 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+                            ? 'bg-amber-50 text-amber-800 border-amber-200/80 animate-pulse'
+                            : 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
                             }`}>
                             <span className={`w-2 h-2 rounded-full ${isBusy ? 'bg-amber-500 animate-ping' : 'bg-emerald-500'}`} />
                             {isBusy ? `${assignedTickets.length} Task${assignedTickets.length > 1 ? 's' : ''}` : 'Available'}
@@ -475,19 +571,19 @@ export default function AdminDashboard() {
                     </p>
                   </div>
                   <span className="text-[10px] font-black text-[#A00000] bg-[#FFF5F5] border border-[#A00000]/30 px-3 py-1 rounded-full shrink-0 shadow-2xs">
-                    {tickets.filter(t => t.assignedWorker && t.status !== 'Completed').length} Active Dispatches
+                    {tickets.filter(t => t.assignedWorker && t.status !== 'Completed' && t.status !== 'Resolved' && t.status !== 'Archived').length} Active Dispatches
                   </span>
                 </div>
 
                 <div className="divide-y divide-slate-100">
-                  {tickets.filter(t => t.assignedWorker && t.status !== 'Completed').length === 0 ? (
+                  {tickets.filter(t => t.assignedWorker && t.status !== 'Completed' && t.status !== 'Resolved' && t.status !== 'Archived').length === 0 ? (
                     <div className="py-8 text-center space-y-1.5">
                       <span className="text-3xl animate-float-gentle inline-block">📭</span>
                       <p className="text-xs font-bold text-slate-700">No active work dispatches right now</p>
                       <p className="text-[11px] text-slate-400">Use the dispatch dropdowns in the roster section above to assign complaints.</p>
                     </div>
                   ) : (
-                    tickets.filter(t => t.assignedWorker && t.status !== 'Completed').map(t => {
+                    tickets.filter(t => t.assignedWorker && t.status !== 'Completed' && t.status !== 'Resolved' && t.status !== 'Archived').map(t => {
                       const workerObj = dynamicWorkers.find(w => w.name === t.assignedWorker);
                       return (
                         <div key={t.ticketNo} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/80 rounded-2xl px-3 transition-all duration-200 group">
@@ -539,7 +635,7 @@ export default function AdminDashboard() {
                           <span className="font-black text-slate-800 shrink-0">{t.ticketNo}</span>
                           <span className="text-slate-600 font-semibold truncate">{t.name}</span>
                         </div>
-                        <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full shrink-0 ${t.status === 'Completed' ? 'bg-[#FFF5F5] text-[#A00000] border border-[#A00000]/30' : t.status === 'Ongoing' ? 'badge-ongoing' : 'badge-unsolved'
+                        <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full shrink-0 ${(t.status === 'Completed' || t.status === 'Resolved') ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : (t.status === 'Ongoing' || t.status === 'Awaiting User Confirmation' || t.status === 'Reopened') ? 'badge-ongoing' : 'badge-unsolved'
                           }`}>
                           {t.status}
                         </span>
@@ -551,8 +647,8 @@ export default function AdminDashboard() {
             </div>
 
             {/* Search & Filters */}
-            <div className="bg-white rounded-3xl border border-slate-200/90 p-4 sm:p-5 shadow-sm flex flex-wrap gap-3 items-center">
-              <div className="relative flex-1 min-w-[220px]">
+            <div className="bg-white rounded-3xl border border-slate-200/90 p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center">
+              <div className="relative flex-1 min-w-[200px] w-full sm:w-auto">
                 <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10" />
                 <input
                   type="search"
@@ -560,44 +656,46 @@ export default function AdminDashboard() {
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   placeholder="Search by Ticket #, Name, Dept, Block, Description…"
-                  className="input-field !pl-10 text-sm"
+                  className="input-field !pl-10 text-sm w-full"
                 />
               </div>
 
-              <div className="flex items-center gap-1.5">
-                <SlidersHorizontal size={14} className="text-slate-400" />
-                <select
-                  value={filterStatus}
-                  onChange={e => setFilterStatus(e.target.value)}
-                  className="input-field text-xs py-2 w-auto font-bold cursor-pointer"
-                  aria-label="Filter by status"
-                >
-                  <option value="All">All Statuses</option>
-                  <option value="Unsolved">Unsolved</option>
-                  <option value="Ongoing">Ongoing</option>
-                  <option value="Completed">Completed</option>
-                </select>
-              </div>
+              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap w-full sm:w-auto">
+                <div className="flex-1 min-w-[120px] flex items-center gap-1.5 bg-slate-50 px-2.5 rounded-xl border border-slate-200">
+                  <SlidersHorizontal size={14} className="text-slate-400 shrink-0" />
+                  <select
+                    value={filterStatus}
+                    onChange={e => setFilterStatus(e.target.value)}
+                    className="bg-transparent text-xs py-2 w-full font-bold cursor-pointer outline-none border-none"
+                    aria-label="Filter by status"
+                  >
+                    <option value="All">All Statuses</option>
+                    <option value="Unsolved">Unsolved</option>
+                    <option value="Ongoing">Ongoing</option>
+                    <option value="Completed">Completed</option>
+                  </select>
+                </div>
 
-              <div className="flex items-center gap-1.5">
-                <Filter size={14} className="text-slate-400" />
-                <select
-                  value={filterType}
-                  onChange={e => setFilterType(e.target.value)}
-                  className="input-field text-xs py-2 w-auto font-bold cursor-pointer"
-                  aria-label="Filter by user type"
-                >
-                  <option value="All">All Types</option>
-                  <option value="Student">Student</option>
-                  <option value="Staff">Staff</option>
-                  <option value="Unit">Unit</option>
-                </select>
-              </div>
+                <div className="flex-1 min-w-[120px] flex items-center gap-1.5 bg-slate-50 px-2.5 rounded-xl border border-slate-200">
+                  <Filter size={14} className="text-slate-400 shrink-0" />
+                  <select
+                    value={filterType}
+                    onChange={e => setFilterType(e.target.value)}
+                    className="bg-transparent text-xs py-2 w-full font-bold cursor-pointer outline-none border-none"
+                    aria-label="Filter by user type"
+                  >
+                    <option value="All">All Types</option>
+                    <option value="Student">Student</option>
+                    <option value="Staff">Staff</option>
+                    <option value="Unit">Unit</option>
+                  </select>
+                </div>
 
-              <button
-                onClick={() => setFilterUrgent(v => !v)}
-                className={`flex items-center gap-1.5 text-xs font-black px-4 py-2 rounded-xl border transition-all duration-200 cursor-pointer shadow-2xs active:scale-95 ${filterUrgent
-                  ? 'bg-red-500 text-white border-red-500 shadow-md shadow-red-500/25 animate-pulse'
+                <button
+                  type="button"
+                  onClick={() => setFilterUrgent(v => !v)}
+                  className={`flex items-center justify-center gap-1.5 text-xs font-black px-4 py-2 rounded-xl border transition-all duration-200 cursor-pointer shadow-2xs active:scale-95 shrink-0 ${filterUrgent
+                    ? 'bg-red-500 text-white border-red-500 shadow-md shadow-red-500/25 animate-pulse'
                   : 'bg-white text-slate-600 border-slate-200 hover:border-red-400 hover:text-red-500'
                   }`}
               >
@@ -617,6 +715,7 @@ export default function AdminDashboard() {
                   Clear filters
                 </button>
               )}
+              </div>
             </div>
 
             {/* Modern Kanban Board */}

@@ -135,8 +135,8 @@ function StatCard({
 export default function StatsBar({ tickets = [], activeCategory, onSelectCategory }) {
   const total     = tickets.length;
   const unsolved  = tickets.filter(t => t.status === 'Unsolved').length;
-  const ongoing   = tickets.filter(t => t.status === 'Ongoing').length;
-  const completed = tickets.filter(t => t.status === 'Completed').length;
+  const ongoing   = tickets.filter(t => t.status === 'Ongoing' || t.status === 'Awaiting User Confirmation' || t.status === 'Reopened').length;
+  const completed = tickets.filter(t => t.status === 'Completed' || t.status === 'Resolved').length;
   const pending   = unsolved + ongoing;
   const urgent    = tickets.filter(isTicketUrgent).length;
   const rate      = total > 0 ? Math.round((completed / total) * 100) : 0;

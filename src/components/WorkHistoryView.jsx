@@ -375,7 +375,7 @@ export default function WorkHistoryView({
         /* Card Grid View */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {displayedTickets.map(ticket => {
-            const isCompleted = ticket.status === 'Completed';
+            const isCompleted = ticket.status === 'Completed' || ticket.status === 'Resolved';
             const isUrgent = isTicketUrgent(ticket);
 
             return (
@@ -485,7 +485,7 @@ export default function WorkHistoryView({
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {displayedTickets.map(ticket => {
-                  const isCompleted = ticket.status === 'Completed';
+                  const isCompleted = ticket.status === 'Completed' || ticket.status === 'Resolved';
                   const isUrgent = isTicketUrgent(ticket);
 
                   return (

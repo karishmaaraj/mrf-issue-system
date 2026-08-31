@@ -3,7 +3,7 @@
  * Features smooth spring modal scale-in, animated urgent switch, status progress feedback, and photo zoom.
  */
 import React, { useState } from 'react';
-import { updateTicket } from '../ticketsStore.js';
+import { updateTicket, adminOverrideTicket } from '../ticketsStore.js';
 import { sendCompletionEmail } from '../emailService.js';
 import {
   X, User, Mail, Building2, MapPin, FileText, Wrench,
@@ -14,8 +14,11 @@ import { WORKER_LIST } from '../constants.js';
 
 const STATUS_FLOW = {
   Unsolved: { next: 'Ongoing',   label: 'Mark as Ongoing',   color: 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-amber-500/25', icon: ArrowRight },
-  Ongoing:  { next: 'Completed', label: 'Mark as Completed', color: 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 shadow-emerald-500/25', icon: CheckCircle2 },
+  Ongoing:  { next: 'Awaiting User Confirmation', label: 'Mark Work Completed', color: 'bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 shadow-sky-500/25', icon: CheckCircle2 },
+  'Awaiting User Confirmation': null,
+  Resolved: null,
   Completed: null,
+  Reopened: { next: 'Ongoing', label: 'Reassign & Set Ongoing', color: 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-purple-500/25', icon: Wrench },
 };
 
 function DetailRow({ icon: Icon, label, value, mono }) {
@@ -45,31 +48,33 @@ export default function TicketDetailModal({ ticket: initialTicket, onClose, onUp
   const [saving, setSaving]         = useState(false);
   const [emailSent, setEmailSent]   = useState(false);
   const [imgZoomed, setImgZoomed]   = useState(false);
+  const [overrideReason, setOverrideReason] = useState('');
 
   const effectiveWorker = worker === '__custom__' ? customWorker : worker;
 
   const handleStatusChange = async (nextStatus) => {
     setSaving(true);
     const updates = { status: nextStatus };
-    if (nextStatus === 'Completed') {
-      updates.completedAt = new Date().toISOString();
+    if (nextStatus === 'Awaiting User Confirmation') {
+      updates.workerCompletedAt = new Date().toISOString();
       updates.completedDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
       updates.completedTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
       updates.completedBy = ticket.assignedWorker || 'Facilities Admin';
     }
     const updated = await updateTicket(ticket.ticketNo, updates);
     setTicket(updated);
-    onUpdate(updated);
+    if (onUpdate) onUpdate(updated);
     setSaving(false);
+  };
 
-    if (nextStatus === 'Completed') {
-      await sendCompletionEmail({
-        to_email: ticket.email,
-        to_name: ticket.name,
-        ticket_no: ticket.ticketNo,
-      });
-      setEmailSent(true);
-    }
+  const handleAdminOverride = async () => {
+    if (!overrideReason.trim()) return;
+    setSaving(true);
+    const updated = await adminOverrideTicket(ticket.ticketNo, 'Campus Facilities Admin', overrideReason.trim());
+    setTicket(updated);
+    if (onUpdate) onUpdate(updated);
+    setSaving(false);
+    setOverrideReason('');
   };
 
   const handleAssign = async () => {
@@ -77,17 +82,17 @@ export default function TicketDetailModal({ ticket: initialTicket, onClose, onUp
     setSaving(true);
     const updated = await updateTicket(ticket.ticketNo, {
       assignedWorker: effectiveWorker,
-      status: ticket.status === 'Unsolved' ? 'Ongoing' : ticket.status,
+      status: (ticket.status === 'Unsolved' || ticket.status === 'Reopened') ? 'Ongoing' : ticket.status,
     });
     setTicket(updated);
-    onUpdate(updated);
+    if (onUpdate) onUpdate(updated);
     setSaving(false);
   };
 
   const handleToggleUrgent = () => {
     const updated = updateTicket(ticket.ticketNo, { isUrgent: !ticket.isUrgent });
     setTicket(updated);
-    onUpdate(updated);
+    if (onUpdate) onUpdate(updated);
   };
 
   const flow = STATUS_FLOW[ticket.status];
@@ -108,11 +113,13 @@ export default function TicketDetailModal({ ticket: initialTicket, onClose, onUp
               <span className={`text-xs font-black px-3 py-1 rounded-full shadow-2xs ${
                 ticket.status === 'Unsolved'  ? 'badge-unsolved'  :
                 ticket.status === 'Ongoing'   ? 'badge-ongoing'   :
+                ticket.status === 'Awaiting User Confirmation' ? 'bg-sky-100 text-sky-800 border border-sky-300' :
+                ticket.status === 'Reopened'  ? 'bg-purple-100 text-purple-900 border border-purple-300' :
                                                'badge-completed'
               }`}>
                 {ticket.status}
               </span>
-              {(ticket.isUrgent || (ticket.status !== 'Completed' && (Date.now() - new Date(ticket.createdAt).getTime()) > 48 * 36e5)) && (
+              {(ticket.isUrgent || (ticket.status !== 'Resolved' && ticket.status !== 'Completed' && (Date.now() - new Date(ticket.createdAt).getTime()) > 48 * 36e5)) && (
                 <span className="flex items-center gap-1.5 text-xs text-red-600 bg-red-50 border border-red-200 px-2.5 py-0.5 rounded-full font-black animate-pulse shadow-2xs">
                   <AlertTriangle size={12} className="animate-bounce" /> Urgent
                 </span>
@@ -159,6 +166,28 @@ export default function TicketDetailModal({ ticket: initialTicket, onClose, onUp
               </div>
             )}
 
+            {ticket.status === 'Reopened' && (
+              <div className="bg-purple-50 border border-purple-200 rounded-2xl p-4 space-y-1 text-purple-900">
+                <div className="flex items-center gap-2 text-xs font-black uppercase text-purple-800">
+                  <AlertTriangle size={14} className="text-purple-600 animate-bounce" /> User Reported Issue Not Fixed
+                </div>
+                <p className="text-xs text-purple-900 font-bold mt-1">
+                  Rejection Reason: <span className="font-medium underline italic">"{ticket.rejectionReason || 'No details provided'}"</span>
+                </p>
+              </div>
+            )}
+
+            {ticket.whatsappDeliveryStatus === 'UNDELIVERED_INVALID_PHONE' && ticket.status === 'Awaiting User Confirmation' && (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 space-y-1 text-amber-900">
+                <div className="flex items-center gap-2 text-xs font-black uppercase text-amber-800">
+                  <AlertTriangle size={14} className="text-amber-600" /> WhatsApp Verification Undelivered
+                </div>
+                <p className="text-xs text-amber-800 font-medium">
+                  Complainant phone number ({ticket.phone || 'N/A'}) was missing or invalid for WhatsApp. Ticket remains in Awaiting User Confirmation until confirmed or Admin Override applied below.
+                </p>
+              </div>
+            )}
+
             <div className="bg-slate-50/80 rounded-2xl p-3 border border-slate-100">
               <DetailRow icon={User}      label="Name"        value={ticket.name} />
               <DetailRow icon={Mail}      label="Email"       value={ticket.email} mono />
@@ -172,12 +201,28 @@ export default function TicketDetailModal({ ticket: initialTicket, onClose, onUp
               <DetailRow icon={FileText}  label="Description" value={ticket.description} />
               <DetailRow icon={Wrench}    label="Assigned Worker" value={ticket.assignedWorker} />
               <DetailRow icon={Calendar}  label="Submitted"   value={fmt(ticket.createdAt)} />
-              {ticket.status === 'Completed' && (
+              {(ticket.status === 'Resolved' || ticket.status === 'Completed') && (
                 <>
                   <DetailRow icon={CheckCircle2} label="Completed Date" value={ticket.completedDate || (ticket.completedAt ? new Date(ticket.completedAt).toLocaleDateString() : fmt(ticket.updatedAt))} />
                   <DetailRow icon={Clock} label="Completed Time" value={ticket.completedTime || (ticket.completedAt ? new Date(ticket.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null)} />
                   <DetailRow icon={User} label="Resolved By" value={ticket.completedBy || ticket.assignedWorker || 'Maintenance Staff'} />
                 </>
+              )}
+              {ticket.adminOverrideReason && (
+                <DetailRow icon={Shield} label="Admin Override Reason" value={`"${ticket.adminOverrideReason}" by ${ticket.adminOverrideBy || 'Admin'}`} />
+              )}
+              {ticket.customFields && Object.keys(ticket.customFields).length > 0 && (
+                <div className="pt-2 border-t border-slate-200">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5 px-2">Additional Configured Form Fields</p>
+                  {Object.entries(ticket.customFields).map(([k, v]) => {
+                    if (['name', 'email', 'phone', 'userType', 'studentStream', 'studentLevel', 'department', 'block', 'roomNo', 'issueCategory', 'description', 'priority', 'photo', 'photoName'].includes(k)) return null;
+                    if (v === undefined || v === null || v === '') return null;
+                    const formattedKey = k.replace(/^sec_|^field_/, '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                    return (
+                      <DetailRow key={k} icon={Sparkles} label={formattedKey} value={Array.isArray(v) ? v.join(', ') : v.toString()} />
+                    );
+                  })}
+                </div>
               )}
               <DetailRow icon={Calendar}  label="Last Updated" value={fmt(ticket.updatedAt)} />
             </div>
@@ -207,7 +252,7 @@ export default function TicketDetailModal({ ticket: initialTicket, onClose, onUp
                   </select>
                   <button
                     type="button"
-                    onClick={handleSaveWorker}
+                    onClick={handleAssign}
                     className="px-4 py-2.5 bg-blue-600 text-white text-xs font-black rounded-xl hover:bg-blue-700 active:scale-95 transition-all shadow-sm shrink-0 cursor-pointer"
                   >
                     Save
@@ -225,36 +270,41 @@ export default function TicketDetailModal({ ticket: initialTicket, onClose, onUp
                 )}
               </div>
 
-              {/* Urgent Toggle */}
-              <div className="flex items-center justify-between pt-1">
-                <div>
-                  <p className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                    <AlertTriangle size={13} className="text-red-500 animate-bounce" /> Flag as Urgent
+              {/* Admin Override Section for Awaiting User Confirmation & Reopened */}
+              {(ticket.status === 'Awaiting User Confirmation' || ticket.status === 'Reopened') && (
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
+                      <Shield size={14} className="text-amber-700" /> Explicit Admin Override
+                    </h4>
+                    <span className="text-[10px] bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full font-bold">Manual Resolution</span>
+                  </div>
+                  <p className="text-[11px] text-amber-800 font-medium">
+                    Enter a mandatory reason below to manually set status to <strong className="font-black text-amber-950">Resolved</strong>:
                   </p>
-                  <p className="text-[11px] text-slate-500 font-medium">
-                    Tickets older than 48h are automatically highlighted.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleToggleUrgent}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer shadow-inner ${
-                    ticket.isUrgent ? 'bg-red-500' : 'bg-slate-300'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition-transform duration-200 ${
-                      ticket.isUrgent ? 'translate-x-6' : 'translate-x-1'
-                    }`}
+                  <input
+                    type="text"
+                    value={overrideReason}
+                    onChange={(e) => setOverrideReason(e.target.value)}
+                    placeholder="e.g. User confirmed fixed in person at Facilities Desk..."
+                    className="w-full text-xs p-2.5 rounded-xl border border-amber-300 bg-white font-medium"
                   />
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    onClick={handleAdminOverride}
+                    disabled={saving || !overrideReason.trim()}
+                    className="w-full bg-amber-600 hover:bg-amber-700 text-white font-black text-xs py-2.5 rounded-xl transition shadow-sm disabled:opacity-50 cursor-pointer"
+                  >
+                    {saving ? 'Saving...' : 'Apply Admin Override (Resolve Ticket)'}
+                  </button>
+                </div>
+              )}
 
               {/* Status Advance Button */}
-              {flow ? (
+              {flow && (
                 <button
                   type="button"
-                  onClick={handleStatusAdvance}
+                  onClick={() => handleStatusChange(flow.next)}
                   disabled={saving}
                   className={`w-full text-white font-black py-3 rounded-2xl transition-all duration-200
                     flex items-center justify-center gap-2 text-sm shadow-md active:scale-98 cursor-pointer ${flow.color}
@@ -269,13 +319,7 @@ export default function TicketDetailModal({ ticket: initialTicket, onClose, onUp
                     </>
                   )}
                 </button>
-              ) : (
-                <div className="flex items-center justify-center gap-2 text-emerald-700 bg-emerald-100/90 border border-emerald-200 rounded-2xl py-3 text-sm font-black shadow-xs">
-                  <CheckCircle2 size={18} className="text-emerald-600 animate-pop-badge" />
-                  Issue Resolved & Closed
-                </div>
               )}
-
               {emailSent && (
                 <p className="text-xs text-emerald-700 text-center flex items-center justify-center gap-1.5 animate-slide-up font-bold">
                   <CheckCircle2 size={13} />
@@ -308,3 +352,4 @@ export default function TicketDetailModal({ ticket: initialTicket, onClose, onUp
     </>
   );
 }
+

@@ -63,8 +63,8 @@ function EmptyState({ colId }) {
 export default function KanbanBoard({ tickets, onTicketSelect, onSolveTicket, onTicketsChange }) {
   const grouped = {
     Unsolved:  tickets.filter(t => t.status === 'Unsolved'),
-    Ongoing:   tickets.filter(t => t.status === 'Ongoing'),
-    Completed: tickets.filter(t => t.status === 'Completed'),
+    Ongoing:   tickets.filter(t => t.status === 'Ongoing' || t.status === 'Awaiting User Confirmation' || t.status === 'Reopened'),
+    Completed: tickets.filter(t => t.status === 'Completed' || t.status === 'Resolved'),
   };
 
   const onDragEnd = (result) => {

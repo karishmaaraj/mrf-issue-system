@@ -37,7 +37,11 @@ function getEventIcon(type) {
     case 'DISPATCHED':
       return { icon: Send, color: 'bg-cyan-600 text-white shadow-cyan-500/30' };
     case 'WORKER_COMPLETED':
+      return { icon: CheckCircle2, color: 'bg-sky-600 text-white shadow-sky-500/30' };
+    case 'USER_CONFIRMED':
       return { icon: CheckCircle2, color: 'bg-emerald-600 text-white shadow-emerald-500/30' };
+    case 'USER_REJECTED':
+      return { icon: AlertTriangle, color: 'bg-purple-600 text-white shadow-purple-500/30' };
     case 'SOLVED':
       return { icon: Shield, color: 'bg-teal-600 text-white shadow-teal-500/30' };
     default:
@@ -74,7 +78,7 @@ export default function WorkTimelineModal({ ticket, onClose }) {
       });
     }
 
-    if (ticket.status === 'Completed' || ticket.completedAt) {
+    if (ticket.status === 'Completed' || ticket.status === 'Resolved' || ticket.completedAt) {
       historyEvents.push({
         id: 'h-3',
         type: 'WORKER_COMPLETED',
@@ -98,7 +102,7 @@ export default function WorkTimelineModal({ ticket, onClose }) {
   // Sort events chronologically
   historyEvents.sort((a, b) => new Date(a.timestamp || 0) - new Date(b.timestamp || 0));
 
-  const isCompleted = ticket.status === 'Completed';
+  const isCompleted = ticket.status === 'Completed' || ticket.status === 'Resolved';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-fade-in">

@@ -17,6 +17,14 @@ export const INITIAL_WORKERS = [
   { id: 'w5', name: 'Biju Thomas', role: 'Sanitation Lead', email: 'lalitharasi496@gmail.com', icon: '🧹', active: true, phone: '+91 98405 56789' },
 ];
 
+export const DEFAULT_STARTUP_COMPANIES = [
+  'MCC Innovation Hub',
+  'Nexus Tech Ventures',
+  'GreenGrid Solar Solutions',
+  'BioHealth Innovations',
+  'Quantum AI Labs'
+];
+
 export const INITIAL_CATEGORIES = [
   { id: 'cat1', label: 'Electrical', prefix: 'Electrical issue: ', active: true, color: 'amber' },
   { id: 'cat2', label: 'Plumbing', prefix: 'Plumbing issue: ', active: true, color: 'cyan' },
@@ -27,14 +35,163 @@ export const INITIAL_CATEGORIES = [
   { id: 'cat7', label: 'Others', prefix: 'Other issue: ', active: true, color: 'rose' },
 ];
 
+export const DEFAULT_SECTIONS = [
+  {
+    id: 'sec_personal',
+    title: 'Personal Information',
+    enabled: true,
+    fields: [
+      { id: 'name', label: 'Full Name', type: 'text', required: true, enabled: true, placeholder: 'Enter your full name' },
+      { id: 'email', label: 'Email Address', type: 'email', required: true, enabled: true, placeholder: 'student@mcc.edu.in' },
+      { id: 'phone', label: 'Phone Number', type: 'phone', required: false, enabled: true, placeholder: '+91 9876543210' },
+    ]
+  },
+  {
+    id: 'sec_role',
+    title: 'Role & Classification',
+    enabled: true,
+    fields: [
+      {
+        id: 'userType',
+        label: 'User Classification',
+        type: 'select',
+        required: true,
+        enabled: true,
+        options: ['Student', 'Staff', 'Unit / Office']
+      },
+      {
+        id: 'studentStream',
+        label: 'Stream',
+        type: 'select',
+        required: true,
+        enabled: true,
+        options: ['Aided', 'SFS (Self-Financing)']
+      },
+      {
+        id: 'studentLevel',
+        label: 'Level',
+        type: 'select',
+        required: true,
+        enabled: true,
+        options: ['UG (Undergraduate)', 'PG (Postgraduate)']
+      },
+      {
+        id: 'department',
+        label: 'Department',
+        type: 'select',
+        required: true,
+        enabled: true,
+        options: [
+          'Computer Applications (BCA)',
+          'Computer Science',
+          'Commerce',
+          'Economics',
+          'Chemistry',
+          'Physics',
+          'English',
+          'Mathematics',
+          'Physical Education',
+          'Administrative Office',
+          'Hostel / Residential',
+          'General Campus'
+        ]
+      },
+      {
+        id: 'company',
+        label: 'Company',
+        type: 'select',
+        required: true,
+        enabled: true,
+        options: DEFAULT_STARTUP_COMPANIES
+      }
+    ]
+  },
+  {
+    id: 'sec_location',
+    title: 'Location Details',
+    enabled: true,
+    fields: [
+      {
+        id: 'block',
+        label: 'Block / Building',
+        type: 'select',
+        required: true,
+        enabled: true,
+        options: ['A', 'B', 'C', 'D', 'Main Building', 'Science Block', 'MCC Innovation Park', 'Hostels']
+      },
+      { id: 'roomNo', label: 'Room / Area No.', type: 'text', required: false, enabled: true, placeholder: 'e.g. Room 204, Lab 3' }
+    ]
+  },
+  {
+    id: 'sec_issue',
+    title: 'Issue Details',
+    enabled: true,
+    fields: [
+      {
+        id: 'issueCategory',
+        label: 'Issue Category',
+        type: 'select',
+        required: true,
+        enabled: true,
+        options: ['Electrical', 'Plumbing', 'IT / Network', 'Civil / Infra', 'Sanitation', 'Accessibility', 'Others']
+      },
+      {
+        id: 'priority',
+        label: 'Priority Level',
+        type: 'radio',
+        required: true,
+        enabled: true,
+        options: ['Normal', 'High', 'Critical']
+      },
+      { id: 'description', label: 'Description', type: 'textarea', required: true, enabled: true, placeholder: 'Describe the complaint in detail...' },
+      { id: 'photoUpload', label: 'Upload Photo', type: 'file', required: false, enabled: true }
+    ]
+  }
+];
+
+export function getNormalizedFormConfig(complaintForm) {
+  if (!complaintForm) {
+    return { sections: DEFAULT_SECTIONS };
+  }
+
+  let sections = complaintForm.sections;
+  if (!Array.isArray(sections) || sections.length === 0) {
+    const userTypeOpts = complaintForm.fields?.userType?.options || DEFAULT_SECTIONS[1].fields[0].options;
+    const deptOpts = complaintForm.fields?.department?.options || DEFAULT_SECTIONS[1].fields[1].options;
+    const blockOpts = complaintForm.fields?.location?.blocks || DEFAULT_SECTIONS[2].fields[0].options;
+
+    sections = DEFAULT_SECTIONS.map(sec => {
+      const secCopy = { ...sec, fields: sec.fields.map(f => ({ ...f })) };
+      if (secCopy.id === 'sec_role') {
+        const userTypeField = secCopy.fields.find(f => f.id === 'userType');
+        if (userTypeField && Array.isArray(userTypeOpts)) userTypeField.options = userTypeOpts;
+
+        const deptField = secCopy.fields.find(f => f.id === 'department');
+        if (deptField && Array.isArray(deptOpts)) deptField.options = deptOpts;
+      }
+      if (secCopy.id === 'sec_location') {
+        const blockField = secCopy.fields.find(f => f.id === 'block');
+        if (blockField && Array.isArray(blockOpts)) blockField.options = blockOpts;
+      }
+      return secCopy;
+    });
+  }
+
+  return {
+    ...complaintForm,
+    sections,
+  };
+}
+
 export const DEFAULT_CONFIG = {
   version: '2.0.0',
   lastPublished: new Date().toISOString(),
   publishedBy: 'Super Admin',
+  companies: DEFAULT_STARTUP_COMPANIES,
 
   // 1. BRANDING
   branding: {
-    portalName: 'MCC Issue Portal',
+    portalName: 'MCC FIX HUB',
     portalSubtitle: 'Campus Maintenance Tracking System',
     organizationName: 'Madras Christian College',
     shortOrgName: 'MCC',
@@ -114,11 +271,12 @@ export const DEFAULT_CONFIG = {
 
   // 5. COMPLAINT FORM CONTROLS
   complaintForm: {
+    sections: DEFAULT_SECTIONS,
     fields: {
       name: { label: 'Full Name', placeholder: 'Enter your full name', required: true, visible: true },
       email: { label: 'Official / Personal Email', placeholder: 'student@mcc.edu.in', required: true, visible: true },
       phone: { label: 'Phone Number', placeholder: '10-digit mobile number', required: true, visible: true },
-      userType: { label: 'User Classification', options: ['Student', 'Staff', 'Unit'], required: true, visible: true },
+      userType: { label: 'User Classification', options: ['Student', 'Staff', 'Unit / Office', 'Startup'], required: true, visible: true },
       department: {
         label: 'Department / Stream',
         options: [
@@ -244,21 +402,30 @@ function deepMerge(target, source) {
   return output;
 }
 
+function hexToRgb(hex) {
+  if (!hex) return '220, 38, 38';
+  let c = String(hex).replace('#', '');
+  if (c.length === 3) c = c.split('').map(x => x + x).join('');
+  const num = parseInt(c, 16);
+  if (isNaN(num)) return '220, 38, 38';
+  return `${(num >> 16) & 255}, ${(num >> 8) & 255}, ${num & 255}`;
+}
+
 /**
  * Applies dynamic CSS theme custom properties to :root
  */
 export function applyThemeTokens(theme) {
   if (typeof document === 'undefined' || !theme) return;
   const root = document.documentElement;
-  if (theme.primaryColor) {
-    root.style.setProperty('--primary-color', theme.primaryColor);
-  }
-  if (theme.primaryHoverColor) {
-    root.style.setProperty('--primary-hover', theme.primaryHoverColor);
-  }
-  if (theme.accentColor) {
-    root.style.setProperty('--accent-color', theme.accentColor);
-  }
+  const primary = theme.primaryColor || '#DC2626';
+  const hover = theme.primaryHoverColor || theme.primaryColor || '#B91C1C';
+  const accent = theme.accentColor || primary;
+
+  root.style.setProperty('--primary-color', primary);
+  root.style.setProperty('--primary-hover', hover);
+  root.style.setProperty('--accent-color', accent);
+  root.style.setProperty('--primary-color-rgb', hexToRgb(primary));
+
   if (theme.borderRadius) {
     root.style.setProperty('--theme-radius', theme.borderRadius);
   }

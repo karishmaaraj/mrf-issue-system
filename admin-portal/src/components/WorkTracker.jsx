@@ -9,8 +9,8 @@ export default function WorkTracker({ ticket, compact = false }) {
   if (!ticket) return null;
 
   const isUnsolved  = ticket.status === 'Unsolved';
-  const isOngoing   = ticket.status === 'Ongoing';
-  const isCompleted = ticket.status === 'Completed';
+  const isOngoing   = ticket.status === 'Ongoing' || ticket.status === 'Awaiting User Confirmation' || ticket.status === 'Reopened';
+  const isCompleted = ticket.status === 'Completed' || ticket.status === 'Resolved';
 
   // Step 2 status
   const step2Active = isOngoing;

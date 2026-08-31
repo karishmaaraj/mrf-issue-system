@@ -17,7 +17,7 @@ export default function Navbar() {
         <Link to="/" className="flex items-center gap-3.5 group">
           <CollegeLogo className="h-14 sm:h-16 w-auto shrink-0 transition-transform group-hover:scale-105" />
           <div>
-            <p className="font-extrabold text-[#171717] text-base sm:text-lg leading-tight group-hover:text-[#800000] transition">MCC ISSUE PORTAL</p>
+            <p className="font-extrabold text-[#171717] text-base sm:text-lg leading-tight group-hover:text-[#800000] transition">MCC FIX HUB</p>
             <p className="text-[11px] sm:text-xs text-[#6B6B6B] font-medium leading-tight">Campus Maintenance Tracking System</p>
           </div>
         </Link>

@@ -201,6 +201,8 @@ export async function createTicket(formData) {
     status: 'Unsolved',
     isUrgent: formData.priority === 'Critical',
     assignedWorker: null,
+    customFields: formData.customFields || {},
+    formData: formData,
     createdAt: now,
     updatedAt: now,
   };
@@ -313,10 +315,36 @@ export async function deleteTicket(ticketNo) {
   return { success: true, tickets: filtered };
 }
 
+export async function adminOverrideTicket(ticketNo, adminName, reason) {
+  const serverUrl = getTicketsApiUrl();
+  try {
+    const res = await fetch(`${serverUrl}/${encodeURIComponent(ticketNo)}/admin-override`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminName, reason }),
+    });
+
+    if (res.ok) {
+      const updated = await res.json();
+      await fetchTicketsFromServer();
+      return updated;
+    }
+  } catch (e) {
+    console.warn('Sync server error during admin override', e);
+  }
+  return updateTicket(ticketNo, {
+    status: 'Resolved',
+    adminOverrideBy: adminName,
+    adminOverrideReason: reason,
+    userVerifiedAt: new Date().toISOString(),
+  });
+}
+
 export function isTicketUrgent(ticket) {
   if (ticket.isUrgent) return true;
-  if (ticket.status === 'Completed') return false;
+  if (ticket.status === 'Completed' || ticket.status === 'Resolved' || ticket.status === 'Archived') return false;
   const ageHours = (Date.now() - new Date(ticket.createdAt).getTime()) / 36e5;
   return ageHours > 48;
 }
+
 

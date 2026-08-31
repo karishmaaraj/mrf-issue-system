@@ -55,6 +55,13 @@
       "phone": "+91 98401 77889"
     }
   ],
+  "companies": [
+    "MCC Innovation Hub",
+    "Nexus Tech Ventures",
+    "GreenGrid Solar Solutions",
+    "BioHealth Innovations",
+    "Quantum AI Labs"
+  ],
   "categories": [
     {
       "id": "cat1",
@@ -123,10 +130,10 @@
     "lastUpdated": "2026-08-14T09:45:13.935Z"
   },
   "version": "2.0.0",
-  "lastPublished": "2026-08-20T07:28:22.052Z",
+  "lastPublished": "2026-08-27T11:39:25.019Z",
   "publishedBy": "Super Admin",
   "branding": {
-    "portalName": "MCC Issue Portal",
+    "portalName": "MCC FIX HUB",
     "portalSubtitle": "MCC Unified Central Campus Maintenance System",
     "organizationName": "Madras Christian College",
     "shortOrgName": "MCC",
@@ -180,6 +187,8 @@
       "description1": "Report maintenance issues across classrooms, labs, hostels, water coolers, and campus infrastructure.",
       "description2": "Track resolution progress in real-time with automatic email alerts to admins and workers.",
       "backgroundImage": "",
+      "desktopBackgroundImage": "/campus_bg.png",
+      "mobileBackgroundImage": "",
       "enableKenBurns": true,
       "overlayOpacity": 0.85
     },
@@ -228,6 +237,198 @@
     }
   },
   "complaintForm": {
+    "sections": [
+      {
+        "id": "sec_personal",
+        "title": "Personal Information",
+        "enabled": true,
+        "fields": [
+          {
+            "id": "name",
+            "label": "Full Name",
+            "type": "text",
+            "required": true,
+            "enabled": true,
+            "placeholder": "Enter your full name"
+          },
+          {
+            "id": "email",
+            "label": "Email Address",
+            "type": "email",
+            "required": true,
+            "enabled": true,
+            "placeholder": "student@mcc.edu.in"
+          },
+          {
+            "id": "phone",
+            "label": "Phone Number",
+            "type": "phone",
+            "required": false,
+            "enabled": true,
+            "placeholder": "+91 9876543210"
+          }
+        ]
+      },
+      {
+        "id": "sec_role",
+        "title": "Role & Classification",
+        "enabled": true,
+        "fields": [
+          {
+            "id": "userType",
+            "label": "User Classification",
+            "type": "select",
+            "required": true,
+            "enabled": true,
+            "options": [
+              "Student",
+              "Staff",
+              "Unit / Office",
+              "Startup"
+            ]
+          },
+          {
+            "id": "studentStream",
+            "label": "Stream",
+            "type": "select",
+            "required": true,
+            "enabled": true,
+            "options": [
+              "Aided",
+              "SFS (Self-Financing)"
+            ]
+          },
+          {
+            "id": "studentLevel",
+            "label": "Level",
+            "type": "select",
+            "required": true,
+            "enabled": true,
+            "options": [
+              "UG (Undergraduate)",
+              "PG (Postgraduate)"
+            ]
+          },
+          {
+            "id": "department",
+            "label": "Department",
+            "type": "select",
+            "required": true,
+            "enabled": true,
+            "options": [
+              "Computer Applications (BCA)",
+              "Computer Science",
+              "Commerce",
+              "Economics",
+              "Chemistry",
+              "Physics",
+              "English",
+              "Mathematics",
+              "Physical Education",
+              "Administrative Office",
+              "Hostel / Residential",
+              "General Campus"
+            ]
+          },
+          {
+            "id": "company",
+            "label": "Company",
+            "type": "select",
+            "required": true,
+            "enabled": true,
+            "options": [
+              "MCC Innovation Hub",
+              "Nexus Tech Ventures",
+              "GreenGrid Solar Solutions",
+              "BioHealth Innovations",
+              "Quantum AI Labs"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "sec_location",
+        "title": "Location Details",
+        "enabled": true,
+        "fields": [
+          {
+            "id": "block",
+            "label": "Block / Building",
+            "type": "select",
+            "required": true,
+            "enabled": true,
+            "options": [
+              "Main Building",
+              "Science Block",
+              "MCC Innovation Park",
+              "Hostels",
+              "Block A",
+              "Block B",
+              "Block C",
+              "Block D"
+            ]
+          },
+          {
+            "id": "roomNo",
+            "label": "Room / Area No.",
+            "type": "text",
+            "required": false,
+            "enabled": true,
+            "placeholder": "e.g. Room 204, Lab 3"
+          }
+        ]
+      },
+      {
+        "id": "sec_issue",
+        "title": "Issue Details",
+        "enabled": true,
+        "fields": [
+          {
+            "id": "issueCategory",
+            "label": "Issue Category",
+            "type": "select",
+            "required": true,
+            "enabled": true,
+            "options": [
+              "Electrical",
+              "Plumbing",
+              "IT / Network",
+              "Civil / Infra",
+              "Sanitation",
+              "Accessibility",
+              "Others"
+            ]
+          },
+          {
+            "id": "priority",
+            "label": "Priority Level",
+            "type": "radio",
+            "required": true,
+            "enabled": true,
+            "options": [
+              "Normal",
+              "High",
+              "Critical"
+            ]
+          },
+          {
+            "id": "description",
+            "label": "Description",
+            "type": "textarea",
+            "required": true,
+            "enabled": true,
+            "placeholder": "Describe the complaint in detail..."
+          },
+          {
+            "id": "photoUpload",
+            "label": "Upload Photo",
+            "type": "file",
+            "required": false,
+            "enabled": true
+          }
+        ]
+      }
+    ],
     "fields": {
       "name": {
         "label": "Full Name",
@@ -279,14 +480,14 @@
       "location": {
         "label": "Campus Block & Room",
         "blocks": [
-          "A",
-          "B",
-          "C",
-          "D",
           "Main Building",
           "Science Block",
           "MCC Innovation Park",
-          "Hostels"
+          "Hostels",
+          "Block A",
+          "Block B",
+          "Block C",
+          "Block D"
         ],
         "required": true,
         "visible": true
@@ -375,5 +576,17 @@
     "enableSmtpDispatch": true,
     "enableAnnouncements": true,
     "enableHeroKenBurns": true
+  },
+  "facilitiesContact": {
+    "title": "Facilities Contact & Support",
+    "description": "If you have urgent inquiries regarding a previously submitted complaint, contact the campus facilities helpdesk.",
+    "office": "Campus Maintenance Office, Ground Floor, Admin Block",
+    "email": "mcc-support@campus.edu",
+    "hours": "Monday – Saturday (8:30 AM – 5:00 PM)"
+  },
+  "emergencyHazards": {
+    "title": "Emergency Hazards",
+    "description": "For critical emergencies such as active electrical fires, major gas leaks, structural collapse, or severe flooding, please contact security immediately.",
+    "helpline": "+91 0000-00000"
   }
 }

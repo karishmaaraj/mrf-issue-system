@@ -74,7 +74,7 @@ export default function WorkTimelineModal({ ticket, onClose }) {
       });
     }
 
-    if (ticket.status === 'Completed' || ticket.completedAt) {
+    if (ticket.status === 'Completed' || ticket.status === 'Resolved' || ticket.completedAt) {
       historyEvents.push({
         id: 'h-3',
         type: 'WORKER_COMPLETED',
@@ -98,7 +98,7 @@ export default function WorkTimelineModal({ ticket, onClose }) {
   // Sort events chronologically
   historyEvents.sort((a, b) => new Date(a.timestamp || 0) - new Date(b.timestamp || 0));
 
-  const isCompleted = ticket.status === 'Completed';
+  const isCompleted = ticket.status === 'Completed' || ticket.status === 'Resolved';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-fade-in">

@@ -308,3 +308,32 @@
   -webkit-overflow-scrolling: touch;
 }
 
+/* ────────────────────────────────────────────────────────────
+   Dynamic Theme Utility Classes (Driven by CSS Variables)
+──────────────────────────────────────────────────────────── */
+:root {
+  --primary-color: #DC2626;
+  --primary-hover: #B91C1C;
+  --accent-color: #2563EB;
+  --primary-color-rgb: 220, 38, 38;
+}
+
+.bg-theme-primary {
+  background-color: var(--primary-color, #DC2626) !important;
+}
+.hover\:bg-theme-hover:hover {
+  background-color: var(--primary-hover, #B91C1C) !important;
+}
+.text-theme-primary {
+  color: var(--primary-color, #DC2626) !important;
+}
+.border-theme-primary {
+  border-color: var(--primary-color, #DC2626) !important;
+}
+.bg-theme-soft {
+  background-color: rgba(var(--primary-color-rgb, 220, 38, 38), 0.08) !important;
+}
+.border-theme-soft {
+  border-color: rgba(var(--primary-color-rgb, 220, 38, 38), 0.25) !important;
+}
+

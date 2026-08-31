@@ -31,20 +31,20 @@ export default function WorkHistoryView({
   // Dynamic counts calculated directly from real database records
   const totalCount     = tickets.length;
   const unsolvedCount  = tickets.filter(t => t.status === 'Unsolved').length;
-  const ongoingCount   = tickets.filter(t => t.status === 'Ongoing').length;
-  const pendingCount   = unsolvedCount + ongoingCount;
+  const ongoingCount   = tickets.filter(t => t.status === 'Ongoing' || t.status === 'Awaiting User Confirmation' || t.status === 'Reopened').length;
+  const pendingCount   = tickets.filter(t => t.status !== 'Completed' && t.status !== 'Resolved').length;
   const urgentCount    = tickets.filter(isTicketUrgent).length;
-  const completedCount = tickets.filter(t => t.status === 'Completed').length;
+  const completedCount = tickets.filter(t => t.status === 'Completed' || t.status === 'Resolved').length;
 
   // Filter tickets by the active main card category
   const baseFilteredTickets = useMemo(() => {
     switch (activeCategory) {
       case 'PENDING':
-        return tickets.filter(t => t.status === 'Unsolved' || t.status === 'Ongoing');
+        return tickets.filter(t => t.status !== 'Completed' && t.status !== 'Resolved');
       case 'URGENT':
         return tickets.filter(isTicketUrgent);
       case 'COMPLETED':
-        return tickets.filter(t => t.status === 'Completed');
+        return tickets.filter(t => t.status === 'Completed' || t.status === 'Resolved');
       case 'TOTAL':
       default:
         return tickets;
@@ -375,7 +375,7 @@ export default function WorkHistoryView({
         /* Card Grid View */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {displayedTickets.map(ticket => {
-            const isCompleted = ticket.status === 'Completed';
+            const isCompleted = ticket.status === 'Completed' || ticket.status === 'Resolved';
             const isUrgent = isTicketUrgent(ticket);
 
             return (
@@ -485,7 +485,7 @@ export default function WorkHistoryView({
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {displayedTickets.map(ticket => {
-                  const isCompleted = ticket.status === 'Completed';
+                  const isCompleted = ticket.status === 'Completed' || ticket.status === 'Resolved';
                   const isUrgent = isTicketUrgent(ticket);
 
                   return (

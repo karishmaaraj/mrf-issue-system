@@ -32,6 +32,20 @@ const STATUS_THEME = {
     dot: 'bg-amber-500 animate-ping',
     glow: 'animate-ongoing-glow bg-gradient-to-b from-amber-50/20 to-white',
   },
+  'Awaiting User Confirmation': {
+    border: 'hover:border-sky-400/80',
+    topBar: 'bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-600',
+    badge: 'bg-sky-50 text-sky-800 border-sky-200 shadow-sky-500/10',
+    dot: 'bg-sky-500 animate-pulse',
+    glow: 'bg-gradient-to-b from-sky-50/20 to-white',
+  },
+  Resolved: {
+    border: 'hover:border-emerald-400/80',
+    topBar: 'bg-gradient-to-r from-emerald-400 via-teal-500 to-emerald-600',
+    badge: 'bg-emerald-50 text-emerald-800 border-emerald-200 shadow-emerald-500/10',
+    dot: 'bg-emerald-500',
+    glow: 'bg-white',
+  },
   Completed: {
     border: 'hover:border-emerald-400/80',
     topBar: 'bg-gradient-to-r from-emerald-400 via-teal-500 to-emerald-600',
@@ -39,12 +53,20 @@ const STATUS_THEME = {
     dot: 'bg-emerald-500',
     glow: 'bg-white',
   },
+  Reopened: {
+    border: 'hover:border-purple-400/80',
+    topBar: 'bg-gradient-to-r from-purple-500 via-rose-500 to-red-600',
+    badge: 'bg-purple-50 text-purple-900 border-purple-300 shadow-purple-500/10',
+    dot: 'bg-purple-600 animate-bounce',
+    glow: 'bg-gradient-to-b from-purple-50/30 to-white',
+  },
 };
+
 
 export default function TicketCard({ ticket, onSelect, onSolveTicket, provided, snapshot }) {
   const urgent = isTicketUrgent(ticket);
-  const isCompleted = ticket.status === 'Completed';
-  const isOngoing = ticket.status === 'Ongoing';
+  const isCompleted = ticket.status === 'Completed' || ticket.status === 'Resolved';
+  const isOngoing = ticket.status === 'Ongoing' || ticket.status === 'Awaiting User Confirmation' || ticket.status === 'Reopened';
   const [solving, setSolving] = useState(false);
 
   const theme = STATUS_THEME[ticket.status] || STATUS_THEME.Unsolved;
