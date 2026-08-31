@@ -16,10 +16,13 @@ import { getTickets, updateTicket, fetchTicketsFromServer } from '../ticketsStor
 import { sendCompletionEmail, sendWorkerAssignmentEmail } from '../emailService.js';
 import { getSystemConfig, fetchSystemConfigFromServer } from '../systemConfigStore.js';
 import CollegeLogo from './CollegeLogo.jsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 import {
   LogOut, RefreshCw, Search, LayoutDashboard, Filter,
   SlidersHorizontal, Shield, CheckCircle2, Users, Activity, Download, Wrench, Send, Sparkles, Mail, History,
-  Crown, Megaphone
+  Crown, Megaphone, FileText, FileSpreadsheet
 } from 'lucide-react';
 
 import { WORKERS } from '../constants.js';
@@ -173,37 +176,146 @@ export default function AdminDashboard() {
     setSelectedTicket(updated);
   };
 
-  const handleExport = () => {
+  const handleExportPDF = () => {
     if (!tickets || tickets.length === 0) {
-      showToastMsg('No tickets available to export.');
+      showToast('No tickets available to export.');
       return;
     }
 
-    const headers = [
-      'Ticket ID',
-      'User Name',
-      'Email',
-      'Phone',
-      'User Type',
-      'Department',
-      'Location/Block',
-      'Room/Area',
-      'Issue Category',
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    const timeFormatted = now.toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'medium' });
+
+    const total = tickets.length;
+    const unsolved = tickets.filter(t => t.status === 'Unsolved').length;
+    const ongoing = tickets.filter(t => t.status === 'Ongoing' || t.status === 'Awaiting User Confirmation' || t.status === 'Reopened').length;
+    const completed = tickets.filter(t => t.status === 'Completed' || t.status === 'Resolved').length;
+
+    // Header Banner
+    doc.setFillColor(160, 0, 0); // MCC Primary Maroon #A00000
+    doc.rect(0, 0, 297, 22, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text('MCC FIX HUB — Campus Facilities Management Report', 14, 12);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text(`Generated: ${timeFormatted}`, 283, 12, { align: 'right' });
+
+    // Summary Subheader
+    doc.setTextColor(30, 41, 59);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.text(`Report Summary: Total: ${total} | Unsolved: ${unsolved} | In Progress: ${ongoing} | Solved & Closed: ${completed}`, 14, 29);
+
+    const tableHeaders = [[
+      'Ticket #',
+      'Complainant & Contact',
+      'Dept & Class',
+      'Category & Location',
       'Priority',
       'Description',
       'Assigned Worker',
       'Status',
-      'Created Date/Time',
-      'Worker Completion Date/Time',
-      'User Confirmation/Resolution',
-      'Rejection/Override Reason'
-    ];
+      'Date Logged',
+      'Custom Fields'
+    ]];
 
-    const escapeCSV = (val) => {
-      if (val === undefined || val === null) return '""';
-      const str = String(val).replace(/"/g, '""');
-      return `"${str}"`;
-    };
+    const tableRows = tickets.map(t => {
+      const ticketNo = t.ticketNo || '';
+      const userTypeInfo = (t.userType || 'Student') + (t.studentStream ? ` (${t.studentStream}${t.studentLevel ? ' ' + t.studentLevel : ''})` : '');
+      const complainant = `${t.name || 'N/A'}\n${t.email || ''}\n${t.phone || ''}`.trim();
+      const deptClass = `${t.department || 'General'}\n[${userTypeInfo}]`;
+      const location = `${t.issueCategory || 'General'}\n${t.block || 'Campus'} (Rm ${t.roomNo || 'N/A'})`;
+      const priority = t.priority || 'Normal';
+      const description = t.description || 'No description provided';
+      const worker = t.assignedWorker || 'Unassigned';
+      const status = t.status || 'Unsolved';
+
+      let createdDate = '';
+      if (t.createdAt) {
+        try {
+          const d = new Date(t.createdAt);
+          createdDate = isNaN(d.getTime()) ? String(t.createdAt) : d.toLocaleDateString('en-IN');
+        } catch {
+          createdDate = String(t.createdAt);
+        }
+      }
+
+      // Format custom fields as key: value lines
+      let customFieldsText = '';
+      if (t.customFields && typeof t.customFields === 'object' && !Array.isArray(t.customFields)) {
+        customFieldsText = Object.entries(t.customFields)
+          .filter(([k, v]) => k && v !== undefined && v !== null && String(v).trim() !== '')
+          .map(([k, v]) => `${k}: ${v}`)
+          .join('\n');
+      }
+
+      return [
+        ticketNo,
+        complainant,
+        deptClass,
+        location,
+        priority,
+        description,
+        worker,
+        status,
+        createdDate,
+        customFieldsText || '—'
+      ];
+    });
+
+    autoTable(doc, {
+      head: tableHeaders,
+      body: tableRows,
+      startY: 33,
+      theme: 'grid',
+      headStyles: {
+        fillColor: [160, 0, 0],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 8,
+        halign: 'center'
+      },
+      bodyStyles: {
+        fontSize: 7.5,
+        textColor: [30, 41, 59],
+        cellPadding: 2.5,
+      },
+      columnStyles: {
+        0: { cellWidth: 18, fontStyle: 'bold', halign: 'center' },
+        1: { cellWidth: 32 },
+        2: { cellWidth: 28 },
+        3: { cellWidth: 28 },
+        4: { cellWidth: 16, halign: 'center' },
+        5: { cellWidth: 55 },
+        6: { cellWidth: 22 },
+        7: { cellWidth: 22, halign: 'center' },
+        8: { cellWidth: 18, halign: 'center' },
+        9: { cellWidth: 30 },
+      },
+      didDrawPage: (data) => {
+        const pageCount = doc.internal.getNumberOfPages();
+        doc.setFontSize(8);
+        doc.setTextColor(100, 116, 139);
+        doc.text(`Page ${pageCount}`, data.settings.margin.left, doc.internal.pageSize.height - 7);
+        doc.text('MCC FIX HUB — Official Facilities Maintenance Export', 283, doc.internal.pageSize.height - 7, { align: 'right' });
+      }
+    });
+
+    const fileName = `MCC_FIX_HUB_Tickets_${dateStr}.pdf`;
+    doc.save(fileName);
+    showToast(`Exported ${tickets.length} ticket(s) to ${fileName}`);
+  };
+
+  const handleExportExcel = () => {
+    if (!tickets || tickets.length === 0) {
+      showToast('No tickets available to export.');
+      return;
+    }
 
     const formatDate = (iso) => {
       if (!iso) return '';
@@ -216,61 +328,73 @@ export default function AdminDashboard() {
       }
     };
 
-    const rows = tickets.map(t => {
-      const ticketId = t.ticketNo || '';
-      const name = t.name || '';
-      const email = t.email || '';
-      const phone = t.phone || '';
-      const userType = (t.userType || '') + (t.studentStream ? ` (${t.studentStream}${t.studentLevel ? ' ' + t.studentLevel : ''})` : '');
-      const department = t.department || '';
-      const block = t.block || '';
-      const roomNo = t.roomNo || '';
-      const issueCategory = t.issueCategory || '';
-      const priority = t.priority || 'Normal';
-      const description = t.description || '';
-      const assignedWorker = t.assignedWorker || 'Unassigned';
-      const status = t.status || '';
-      const createdDate = formatDate(t.createdAt);
-      const completionDate = formatDate(t.workerCompletedAt || t.completedAt);
-      const resolutionInfo = t.completedBy ? `Resolved by ${t.completedBy}` : (t.completedDate ? `Completed on ${t.completedDate}` : '');
-      const rejectionOrOverride = t.rejectionReason ? `Rejection: ${t.rejectionReason}` : (t.adminOverrideReason ? `Override: ${t.adminOverrideReason}` : '');
+    // Dynamically discover all unique customField keys across all tickets
+    const customKeysSet = new Set();
+    tickets.forEach(t => {
+      if (t.customFields && typeof t.customFields === 'object' && !Array.isArray(t.customFields)) {
+        Object.keys(t.customFields).forEach(k => {
+          if (k && k.trim()) customKeysSet.add(k.trim());
+        });
+      }
+    });
+    const customKeys = Array.from(customKeysSet);
 
-      return [
-        escapeCSV(ticketId),
-        escapeCSV(name),
-        escapeCSV(email),
-        escapeCSV(phone),
-        escapeCSV(userType),
-        escapeCSV(department),
-        escapeCSV(block),
-        escapeCSV(roomNo),
-        escapeCSV(issueCategory),
-        escapeCSV(priority),
-        escapeCSV(description),
-        escapeCSV(assignedWorker),
-        escapeCSV(status),
-        escapeCSV(createdDate),
-        escapeCSV(completionDate),
-        escapeCSV(resolutionInfo),
-        escapeCSV(rejectionOrOverride)
-      ].join(',');
+    const rows = tickets.map(t => {
+      const userTypeFull = (t.userType || '') + (t.studentStream ? ` (${t.studentStream}${t.studentLevel ? ' ' + t.studentLevel : ''})` : '');
+
+      const baseRow = {
+        'Ticket ID': t.ticketNo || '',
+        'User Name': t.name || '',
+        'Email': t.email || '',
+        'Phone': t.phone || '',
+        'User Type / Stream': userTypeFull,
+        'Department': t.department || '',
+        'Location / Block': t.block || '',
+        'Room / Area': t.roomNo || '',
+        'Issue Category': t.issueCategory || '',
+        'Priority': t.priority || 'Normal',
+        'Description': t.description || '',
+        'Assigned Worker': t.assignedWorker || 'Unassigned',
+        'Status': t.status || 'Unsolved',
+        'Created Date/Time': formatDate(t.createdAt),
+        'Worker Completion Date/Time': formatDate(t.workerCompletedAt || t.completedAt),
+        'User Confirmation Date/Time': formatDate(t.userConfirmedAt),
+        'Resolution Info': t.completedBy ? `Resolved by ${t.completedBy}` : (t.completedDate ? `Completed on ${t.completedDate}` : ''),
+        'Rejection / Override Reason': t.rejectionReason ? `Rejection: ${t.rejectionReason}` : (t.adminOverrideReason ? `Override: ${t.adminOverrideReason}` : '')
+      };
+
+      // Append dynamic custom fields columns
+      customKeys.forEach(key => {
+        const val = t.customFields ? t.customFields[key] : undefined;
+        baseRow[`Custom: ${key}`] = (val !== undefined && val !== null) ? String(val) : '';
+      });
+
+      return baseRow;
     });
 
-    const csvContent = '\uFEFF' + [headers.map(escapeCSV).join(','), ...rows].join('\r\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+
+    // Auto-compute column widths
+    if (rows.length > 0) {
+      const colKeys = Object.keys(rows[0]);
+      worksheet['!cols'] = colKeys.map(key => {
+        let maxLen = key.length;
+        rows.forEach(r => {
+          const valStr = String(r[key] || '');
+          if (valStr.length > maxLen) maxLen = Math.min(valStr.length, 50);
+        });
+        return { wch: Math.max(maxLen + 3, 12) };
+      });
+    }
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'MCC Tickets');
+
     const dateStr = new Date().toISOString().split('T')[0];
-    const fileName = `MRF_Tickets_${dateStr}.csv`;
+    const fileName = `MCC_FIX_HUB_Tickets_${dateStr}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
 
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', fileName);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-
-    showToastMsg(`Exported ${tickets.length} ticket(s) to ${fileName}`);
+    showToast(`Exported ${tickets.length} ticket(s) to ${fileName}`);
   };
 
   const { Unsolved: allUnsolved, Ongoing: allOngoing, Completed: allCompleted } = useMemo(() => {
@@ -385,12 +509,21 @@ export default function AdminDashboard() {
             </button>
 
             <button
-              onClick={handleExport}
-              title="Export Tickets Data to CSV (Excel)"
+              onClick={handleExportPDF}
+              title="Export Tickets Report to PDF Document"
               className="hidden sm:flex items-center gap-1.5 text-xs text-[#111111] hover:text-[#A00000] hover:bg-[#FFF5F5] font-bold px-3.5 py-2 rounded-xl border border-[#E5E5E5] hover:border-[#A00000]/30 transition-all duration-200 active:scale-95 bg-white shadow-2xs cursor-pointer"
             >
-              <Download size={14} className="text-slate-500" />
-              Export Data
+              <FileText size={14} className="text-[#A00000]" />
+              Export PDF
+            </button>
+
+            <button
+              onClick={handleExportExcel}
+              title="Export Tickets Data to Excel (.xlsx)"
+              className="hidden sm:flex items-center gap-1.5 text-xs text-[#111111] hover:text-[#A00000] hover:bg-[#FFF5F5] font-bold px-3.5 py-2 rounded-xl border border-[#E5E5E5] hover:border-[#A00000]/30 transition-all duration-200 active:scale-95 bg-white shadow-2xs cursor-pointer"
+            >
+              <FileSpreadsheet size={14} className="text-emerald-600" />
+              Export Excel
             </button>
 
             <button
