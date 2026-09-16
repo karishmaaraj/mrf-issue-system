@@ -11,6 +11,7 @@ export default function App() {
     <Router basename="/admin">
       <Routes>
         <Route path="/" element={<AdminDashboard />} />
+        <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/super-admin" element={<SuperAdminDashboard />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

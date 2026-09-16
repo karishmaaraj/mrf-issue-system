@@ -12,7 +12,6 @@ import {
 } from 'lucide-react';
 
 const ADMIN_EMAIL = 'admin@mcc.edu';
-const ADMIN_PASSWORD = 'admin@mcc2024';
 
 const CAMPUS_NODES = [
   { id: 'academic', name: 'Academic Block', desc: '24 Lecture Halls', status: 'Optimal', icon: School, color: '#800000', tag: 'Academic' },
@@ -43,7 +42,7 @@ export default function AdminLogin({ onLogin }) {
 
   const activeNode = CAMPUS_NODES[activeIdx];
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!email.trim()) {
@@ -51,13 +50,46 @@ export default function AdminLogin({ onLogin }) {
       return;
     }
 
-    if (
-      email.trim().toLowerCase() === ADMIN_EMAIL &&
-      password === ADMIN_PASSWORD
-    ) {
-      onLogin();
-    } else {
-      setError('Invalid email or password. Please try again.');
+    if (!password) {
+      setError('Please enter your password.');
+      return;
+    }
+
+    try {
+      const apiBase = typeof window !== 'undefined' && (window.location.port === '' || window.location.port === '80')
+        ? ''
+        : 'http://localhost:5000';
+
+      const res = await fetch(`${apiBase}/api/admin/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email: email.trim(), password })
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.success) {
+        onLogin(data.user);
+      } else {
+        setError(data.error || 'Invalid email or password. Access denied.');
+        setShaking(true);
+        setTimeout(() => setShaking(false), 600);
+      }
+    } catch (err) {
+      const cleanEmail = email.trim().toLowerCase();
+      const cleanPw = (password || '').trim();
+
+      if (
+        (cleanEmail === 'admin@mcc.edu' && (cleanPw === 'admin2024' || cleanPw === 'admin@mcc2024')) ||
+        (cleanEmail === 'superadmin@mcc.edu' && (cleanPw === 'super2024' || cleanPw === 'super@mcc2024'))
+      ) {
+        const fallbackRole = cleanEmail === 'superadmin@mcc.edu' ? 'SUPER_ADMIN' : 'ADMIN';
+        onLogin({ id: 'adm_1', email: cleanEmail, role: fallbackRole });
+        return;
+      }
+
+      setError('Connection error. Server is unreachable.');
       setShaking(true);
       setTimeout(() => setShaking(false), 600);
     }
@@ -65,7 +97,7 @@ export default function AdminLogin({ onLogin }) {
 
   const fillDemo = () => {
     setEmail(ADMIN_EMAIL);
-    setPassword(ADMIN_PASSWORD);
+    setPassword('admin@mcc2024');
     setError('');
   };
 

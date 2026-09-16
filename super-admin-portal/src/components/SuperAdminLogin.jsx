@@ -7,8 +7,7 @@ import React, { useState } from 'react';
 import CollegeLogo from './CollegeLogo.jsx';
 import { Crown, Lock, Mail, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 
-const SUPER_EMAIL    = 'superadmin@mcc.edu';
-const SUPER_PASSWORD = 'super2024';
+const SUPER_EMAIL = 'superadmin@mcc.edu';
 
 export default function SuperAdminLogin({ onLogin }) {
   const [email, setEmail]       = useState('');
@@ -17,7 +16,7 @@ export default function SuperAdminLogin({ onLogin }) {
   const [error, setError]       = useState('');
   const [shaking, setShaking]   = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!email.trim()) {
@@ -25,14 +24,40 @@ export default function SuperAdminLogin({ onLogin }) {
       return;
     }
 
-    if (
-      email.trim().toLowerCase() === SUPER_EMAIL &&
-      password === SUPER_PASSWORD
-    ) {
-      sessionStorage.setItem('mcc_super_authed', 'true');
-      onLogin();
-    } else {
-      setError('Invalid Super Admin credentials. Access denied.');
+    if (!password) {
+      setError('Please enter your password.');
+      return;
+    }
+
+    try {
+      const apiBase = typeof window !== 'undefined' && (window.location.port === '' || window.location.port === '80')
+        ? ''
+        : 'http://localhost:5000';
+
+      const res = await fetch(`${apiBase}/api/admin/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email: email.trim(), password })
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.success) {
+        if (data.user?.role !== 'SUPER_ADMIN') {
+          setError('Access Denied: Super Admin privileges required.');
+          setShaking(true);
+          setTimeout(() => setShaking(false), 600);
+          return;
+        }
+        onLogin(data.user);
+      } else {
+        setError(data.error || 'Invalid Super Admin credentials. Access denied.');
+        setShaking(true);
+        setTimeout(() => setShaking(false), 600);
+      }
+    } catch (err) {
+      setError('Connection error. Server is unreachable.');
       setShaking(true);
       setTimeout(() => setShaking(false), 600);
     }

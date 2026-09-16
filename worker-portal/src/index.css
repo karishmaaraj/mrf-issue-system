@@ -1,0 +1,339 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ────────────────────────────────────────────────────────────
+   Global Base Styles — MCC Institutional Theme
+──────────────────────────────────────────────────────────── */
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+    max-width: 100vw;
+    overflow-x: hidden;
+    width: 100%;
+  }
+
+  body {
+    background-color: #F8F8F8;
+    color: #171717;
+    @apply min-h-screen selection:bg-[#800000] selection:text-white;
+  }
+}
+
+/* ────────────────────────────────────────────────────────────
+   Custom Scrollbar
+──────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background-color: #F8F8F8;
+}
+::-webkit-scrollbar-thumb {
+  background-color: #E5E5E5;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: #800000;
+}
+
+/* ────────────────────────────────────────────────────────────
+   Modern Animations & Micro-Interactions Keyframes
+──────────────────────────────────────────────────────────── */
+@keyframes floatGentle {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-6px) rotate(0.8deg); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(128, 0, 0, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(128, 0, 0, 0);
+  }
+}
+
+@keyframes urgentBorderPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 1.5px rgba(128, 0, 0, 0.6), 0 8px 24px -4px rgba(128, 0, 0, 0.15);
+    border-color: rgba(128, 0, 0, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 2.5px rgba(128, 0, 0, 0.9), 0 16px 36px -4px rgba(128, 0, 0, 0.35);
+    border-color: rgba(128, 0, 0, 1);
+  }
+}
+
+@keyframes ongoingBorderGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 1px rgba(197, 138, 0, 0.3), 0 4px 16px -2px rgba(197, 138, 0, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 0 2px rgba(197, 138, 0, 0.6), 0 8px 24px -2px rgba(197, 138, 0, 0.22);
+  }
+}
+
+@keyframes shimmerSlide {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes gradientFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes scaleInSubtle {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes popBadge {
+  0% { transform: scale(0.85); }
+  50% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+
+@keyframes subtleWiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-8deg); }
+  75% { transform: rotate(8deg); }
+}
+
+/* ────────────────────────────────────────────────────────────
+   Sculpted Cards & Hover Effects
+──────────────────────────────────────────────────────────── */
+.sculpted-card {
+  border-radius: 1.25rem;
+  background: #FFFFFF;
+  position: relative;
+  transition: all 0.25s ease-out;
+  border: 1px solid #E5E5E5;
+  box-shadow: 0 4px 14px -3px rgba(23, 23, 23, 0.04);
+}
+
+.sculpted-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px -8px rgba(23, 23, 23, 0.08);
+  border-color: rgba(128, 0, 0, 0.4);
+}
+
+.card-shine-effect {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 1;
+}
+
+.card-shine-effect::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    60deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 65%
+  );
+  transform: translateX(-100%) rotate(35deg);
+  transition: transform 0.75s ease-out;
+}
+
+.sculpted-card:hover .card-shine-effect::after {
+  transform: translateX(100%) rotate(35deg);
+}
+
+/* Helper Animation Utility Classes */
+.animate-float-gentle {
+  animation: floatGentle 5s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 2.5s ease-in-out infinite;
+}
+
+.animate-urgent-glow {
+  animation: urgentBorderPulse 2.2s ease-in-out infinite;
+}
+
+.animate-ongoing-glow {
+  animation: ongoingBorderGlow 3s ease-in-out infinite;
+}
+
+.card-shimmer-bar {
+  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(247,234,234,0.8) 50%, rgba(255,255,255,0) 100%);
+  background-size: 200% 100%;
+  animation: shimmerSlide 2.5s infinite;
+}
+
+.animate-gradient-flow {
+  background-size: 200% 200%;
+  animation: gradientFlow 4s ease infinite;
+}
+
+.animate-slide-up {
+  animation: slideInUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-scale-in {
+  animation: scaleInSubtle 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-pop-badge {
+  animation: popBadge 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.group:hover .group-hover-wiggle {
+  animation: subtleWiggle 0.4s ease-in-out;
+}
+
+/* ────────────────────────────────────────────────────────────
+   Header Panel
+──────────────────────────────────────────────────────────── */
+.glass-panel {
+  background: #FFFFFF;
+  border-bottom: 1px solid #E5E5E5;
+}
+
+/* ────────────────────────────────────────────────────────────
+   Kanban Drag Highlights
+──────────────────────────────────────────────────────────── */
+.kanban-col-dragging-over {
+  @apply ring-2 ring-inset ring-[#800000] bg-[#F7EAEA]/50;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ticket-card-dragging {
+  @apply shadow-2xl rotate-2 opacity-95 scale-[1.04] ring-2 ring-[#800000]/40;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+/* ────────────────────────────────────────────────────────────
+   Status Badges
+──────────────────────────────────────────────────────────── */
+.badge-unsolved {
+  background-color: #F7EAEA;
+  color: #800000;
+  border: 1px solid #E5E5E5;
+}
+
+.badge-ongoing {
+  background-color: #FEF3C7;
+  color: #C58A00;
+  border: 1px solid #FDE68A;
+}
+
+.badge-completed {
+  background-color: #F0FDF4;
+  color: #159447;
+  border: 1px solid #BBF7D0;
+}
+
+/* ────────────────────────────────────────────────────────────
+   Form Field Inputs
+──────────────────────────────────────────────────────────── */
+.input-field {
+  @apply w-full px-4 py-2.5 rounded-xl border border-[#E5E5E5] bg-white
+         text-sm text-[#171717] placeholder:text-[#888888]
+         focus:bg-white focus:outline-none focus:ring-4 focus:ring-red-900/10 focus:border-[#800000]
+         transition duration-200;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.02);
+}
+
+.input-label {
+  @apply flex items-center gap-1.5 text-xs font-bold text-[#171717] uppercase tracking-wide mb-1.5;
+}
+
+/* Responsive Helper Utilities */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.responsive-modal-container {
+  width: min(95vw, 680px);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.responsive-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ────────────────────────────────────────────────────────────
+   Dynamic Theme Utility Classes (Driven by CSS Variables)
+──────────────────────────────────────────────────────────── */
+:root {
+  --primary-color: #DC2626;
+  --primary-hover: #B91C1C;
+  --accent-color: #2563EB;
+  --primary-color-rgb: 220, 38, 38;
+}
+
+.bg-theme-primary {
+  background-color: var(--primary-color, #DC2626) !important;
+}
+.hover\:bg-theme-hover:hover {
+  background-color: var(--primary-hover, #B91C1C) !important;
+}
+.text-theme-primary {
+  color: var(--primary-color, #DC2626) !important;
+}
+.border-theme-primary {
+  border-color: var(--primary-color, #DC2626) !important;
+}
+.bg-theme-soft {
+  background-color: rgba(var(--primary-color-rgb, 220, 38, 38), 0.08) !important;
+}
+.border-theme-soft {
+  border-color: rgba(var(--primary-color-rgb, 220, 38, 38), 0.25) !important;
+}
+

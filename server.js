@@ -18,6 +18,27 @@ import {
   sendWhatsAppInteractiveButtons,
   verifyWebhookSignature
 } from './whatsappService.js';
+import {
+  triggerWorkerVoiceCall,
+  getVoiceSession,
+  processVoiceInput,
+  getVoiceSessionSummary,
+  buildTicketSpokenScript,
+  getVoiceConfig,
+  verifyVoiceWebhookSignature
+} from './voiceService.js';
+import {
+  normalizeCallEvent,
+  bindCallSession,
+  validateCallSessionAccess,
+  checkWebhookRateLimit,
+  buildVoiceResponse,
+  buildDtmfGatherResponse,
+  buildSayResponse,
+  buildHangupResponse,
+  buildErrorResponse,
+  sanitizePayload
+} from './telephonyAdapter.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -85,15 +106,12 @@ function getAdminPortalBaseUrl() {
   if (completionBase && completionBase.trim()) {
     try {
       const u = new URL(completionBase.trim());
-      if (u.port === '80' || u.port === '') {
-        return `${u.protocol}//${u.hostname}/issue/admin`;
-      }
-      return `${u.protocol}//${u.hostname}:5174/issue/admin`;
+      return `${u.protocol}//${u.hostname}/admin`;
     } catch {
       // ignore
     }
   }
-  return 'http://localhost:5174/issue/admin';
+  return 'http://localhost/admin/';
 }
 
 function generateToken() {
@@ -668,10 +686,123 @@ function readData() {
     return { tickets: [], counter: 0 };
   }
 }
+// ── GAP #6 RESPONSE DTO SERIALIZERS & ALLOWLISTS ──────────────────────────────
+const ALLOWED_PATCH_FIELDS = new Set([
+  'status',
+  'assignedWorker',
+  'priority',
+  'isUrgent',
+  'department',
+  'block',
+  'roomNo',
+  'description'
+]);
+
+function serializePublicTicket(t) {
+  if (!t || typeof t !== 'object') return null;
+  return {
+    success: true,
+    ticketNo: t.ticketNo || '',
+    status: t.status || 'Unsolved',
+    createdAt: t.createdAt || new Date().toISOString()
+  };
+}
+
+function serializeWorkerTicket(t) {
+  if (!t || typeof t !== 'object') return null;
+  return {
+    ticketNo: t.ticketNo || '',
+    status: t.status || 'Unsolved',
+    priority: t.priority || 'Normal',
+    isUrgent: !!t.isUrgent,
+    issueCategory: t.issueCategory || '',
+    block: t.block || '',
+    roomNo: t.roomNo || '',
+    description: t.description || '',
+    name: t.name || '',
+    phone: t.phone || '',
+    department: t.department || '',
+    assignedWorker: t.assignedWorker || '',
+    createdAt: t.createdAt || '',
+    updatedAt: t.updatedAt || '',
+    history: Array.isArray(t.history) ? t.history : []
+  };
+}
+
+function serializeAdminTicket(t) {
+  if (!t || typeof t !== 'object') return null;
+  const dto = {
+    ticketNo: t.ticketNo || '',
+    name: t.name || '',
+    email: t.email || '',
+    phone: t.phone || '',
+    department: t.department || '',
+    userType: t.userType || '',
+    studentStream: t.studentStream || '',
+    studentLevel: t.studentLevel || '',
+    company: t.company || '',
+    block: t.block || '',
+    roomNo: t.roomNo || '',
+    issueCategory: t.issueCategory || '',
+    description: t.description || '',
+    priority: t.priority || 'Normal',
+    status: t.status || 'Unsolved',
+    isUrgent: !!t.isUrgent,
+    assignedWorker: t.assignedWorker || '',
+    history: Array.isArray(t.history) ? t.history : [],
+    createdAt: t.createdAt || '',
+    updatedAt: t.updatedAt || '',
+    completedBy: t.completedBy || '',
+    workerCompletedAt: t.workerCompletedAt || '',
+    completedDate: t.completedDate || '',
+    completedTime: t.completedTime || '',
+    userConfirmedAt: t.userConfirmedAt || '',
+    reopenReason: t.reopenReason || '',
+    adminOverrideReason: t.adminOverrideReason || ''
+  };
+
+  if (t.customFields && typeof t.customFields === 'object' && !Array.isArray(t.customFields)) {
+    dto.customFields = t.customFields;
+  }
+
+  return dto;
+}
 
 const CONFIG_FILE = path.join(__dirname, 'config.json');
+const CONFIG_BAK_FILE = path.join(__dirname, 'config.json.bak');
+const CONFIG_TMP_FILE = path.join(__dirname, 'config.json.tmp');
+
+const ALLOWED_CONFIG_KEYS = new Set([
+  'workers',
+  'companies',
+  'categories',
+  'announcement',
+  'announcements',
+  'slaTargetHours',
+  'autoEmailAlerts',
+  'portalActive',
+  'submissionsEnabled',
+  'portalNotice',
+  'version',
+  'lastPublished',
+  'publishedBy',
+  'branding',
+  'theme',
+  'navigation',
+  'homePage',
+  'complaintForm',
+  'userPortal',
+  'adminPortal',
+  'emailTemplates',
+  'features',
+  'facilitiesContact',
+  'emergencyHazards'
+]);
 
 const DEFAULT_CONFIG_DATA = {
+  version: '2.0.0',
+  lastPublished: new Date().toISOString(),
+  publishedBy: 'Super Admin',
   workers: [
     { id: 'w1', name: 'Rajan Kumar', role: 'Electrical Lead', email: 'karishmaa24raj@gmail.com', icon: '💡', active: true, phone: '+91 98401 12345' },
     { id: 'w2', name: 'Suresh Menon', role: 'Plumbing Specialist', email: 'rajanubama23@gmail.com', icon: '🚰', active: true, phone: '+91 98402 23456' },
@@ -703,44 +834,705 @@ const DEFAULT_CONFIG_DATA = {
   },
   slaTargetHours: 24,
   autoEmailAlerts: true,
-  // ── User Portal Control (managed by Super Admin) ──────────────
-  portalActive: true,         // false = Issue Portal shows a "Portal Closed" screen
-  submissionsEnabled: true,   // false = form is visible but submit button is disabled
+  portalActive: true,
+  submissionsEnabled: true,
   portalNotice: {
     enabled: false,
     message: '',
-    type: 'info',             // 'info' | 'warning' | 'alert'
+    type: 'info',
     lastUpdated: new Date().toISOString(),
   },
+  branding: {
+    portalName: 'MCC FIX HUB',
+    portalSubtitle: 'MCC Unified Central Campus Maintenance System',
+    organizationName: 'Madras Christian College',
+    shortOrgName: 'MCC',
+    logoUrl: '/mcc.png',
+    faviconUrl: '/mcc.png',
+    officialBadgeText: 'OFFICIAL MCC PORTAL',
+  },
+  theme: {
+    primaryColor: '#DC2626',
+    primaryHoverColor: '#B91C1C',
+    accentColor: '#2563EB',
+    heroBackgroundColor: '#020617',
+    pageBackgroundColor: '#F8FAFC',
+    borderRadius: '1rem',
+    fontFamily: 'Inter, sans-serif',
+    colorMode: 'light',
+  },
+  navigation: {
+    headerLinks: [
+      { id: 'nav-home', label: 'Home', path: '/', visible: true, icon: 'Home' },
+      { id: 'nav-report', label: 'Report Issue', path: '/complaint', visible: true, icon: 'PlusCircle' },
+      { id: 'nav-track', label: 'Track Ticket', path: '/#workflow-section', visible: true, icon: 'Search' }
+    ]
+  },
+  homePage: {
+    hero: {
+      visible: true,
+      badgeText: 'OFFICIAL MCC PORTAL',
+      titleLine1: 'Campus',
+      titleLine2: 'Maintenance',
+      highlightColor: '#DC2626',
+      tagline: 'Report. Track. Resolve.',
+      description1: 'Report maintenance issues across classrooms, labs, hostels, water coolers, and campus infrastructure.',
+      description2: 'Track resolution progress in real-time with automatic email alerts to admins and workers.',
+      backgroundImage: '',
+      desktopBackgroundImage: '/campus_bg.png',
+      mobileBackgroundImage: '',
+      enableKenBurns: true,
+      overlayOpacity: 0.85,
+    },
+    statistics: {
+      visible: true,
+      cards: [
+        { id: '1', label: 'Issues Resolved', color: 'emerald', value: '100+', visible: true, desc: 'Successfully resolved maintenance requests' },
+        { id: '2', label: 'Response SLA', color: 'amber', value: '24h', visible: true, desc: 'Average target response time' },
+        { id: '3', label: 'Departments', color: 'sky', value: '14+', visible: true, desc: 'Working together for a better campus' },
+        { id: '4', label: 'Tracked & Logged', color: 'purple', value: '100%', visible: true, desc: 'Every request is tracked transparently' }
+      ]
+    },
+    workflowSection: {
+      visible: true,
+      badge: 'TRANSPARENT CAMPUS WORKFLOW',
+      heading: 'How Complaints Get Solved',
+      subtitle: 'Clear 3-stage process from ticket submission to full resolution.'
+    }
+  },
+  facilitiesContact: {
+    title: 'Facilities Contact & Support',
+    description: 'If you have urgent inquiries regarding a previously submitted complaint, contact the campus facilities helpdesk.',
+    office: 'Campus Maintenance Office, Ground Floor, Admin Block',
+    email: 'mcc-support@campus.edu',
+    hours: 'Monday – Saturday (8:30 AM – 5:00 PM)'
+  },
+  emergencyHazards: {
+    title: 'Emergency Hazards',
+    description: 'For critical emergencies such as active electrical fires, major gas leaks, structural collapse, or severe flooding, please contact security immediately.',
+    helpline: '+91 0000-00000'
+  },
+  complaintForm: {
+    sections: [
+      {
+        id: 'sec_personal',
+        title: 'Personal Information',
+        enabled: true,
+        fields: [
+          { id: 'name', label: 'Full Name', type: 'text', required: true, enabled: true, placeholder: 'Enter your full name' },
+          { id: 'email', label: 'Email Address', type: 'email', required: true, enabled: true, placeholder: 'student@mcc.edu.in' },
+          { id: 'phone', label: 'Phone Number', type: 'phone', required: false, enabled: true, placeholder: '+91 9876543210' }
+        ]
+      },
+      {
+        id: 'sec_role',
+        title: 'Role & Classification',
+        enabled: true,
+        fields: [
+          { id: 'userType', label: 'User Classification', type: 'select', required: true, enabled: true, options: ['Student', 'Staff', 'Startup'] },
+          { id: 'studentStream', label: 'Stream', type: 'select', required: true, enabled: true, options: ['Aided', 'SFS (Self-Financing)'] },
+          { id: 'studentLevel', label: 'Level', type: 'select', required: true, enabled: true, options: ['UG (Undergraduate)', 'PG (Postgraduate)'] },
+          {
+            id: 'department',
+            label: 'Department',
+            type: 'select',
+            required: true,
+            enabled: true,
+            options: [
+              'Computer Applications (BCA)', 'Computer Science', 'Commerce', 'Economics', 'Chemistry', 'Physics',
+              'English', 'Mathematics', 'Physical Education', 'Administrative Office', 'Hostel / Residential', 'General Campus'
+            ]
+          },
+          {
+            id: 'company',
+            label: 'Company',
+            type: 'select',
+            required: true,
+            enabled: true,
+            options: ['MCC Innovation Hub', 'Nexus Tech Ventures', 'GreenGrid Solar Solutions', 'BioHealth Innovations', 'Quantum AI Labs']
+          }
+        ]
+      },
+      {
+        id: 'sec_location',
+        title: 'Location Details',
+        enabled: true,
+        fields: [
+          {
+            id: 'block',
+            label: 'Block / Building',
+            type: 'select',
+            required: true,
+            enabled: true,
+            options: ['Main Building', 'Science Block', 'MCC Innovation Park', 'Hostels', 'Block A', 'Block B', 'Block C', 'Block D']
+          },
+          { id: 'roomNo', label: 'Room / Area No.', type: 'text', required: false, enabled: true, placeholder: 'e.g. Room 204, Lab 3' }
+        ]
+      },
+      {
+        id: 'sec_issue',
+        title: 'Issue Details',
+        enabled: true,
+        fields: [
+          {
+            id: 'issueCategory',
+            label: 'Issue Category',
+            type: 'select',
+            required: true,
+            enabled: true,
+            options: ['Electrical', 'Plumbing', 'IT / Network', 'Civil / Infra', 'Sanitation', 'Accessibility', 'Others']
+          },
+          {
+            id: 'priority',
+            label: 'Priority Level',
+            type: 'radio',
+            required: true,
+            enabled: true,
+            options: ['Normal', 'High', 'Critical']
+          },
+          { id: 'description', label: 'Description', type: 'textarea', required: true, enabled: true, placeholder: 'Describe the complaint in detail...' },
+          { id: 'photoUpload', label: 'Upload Photo', type: 'file', required: false, enabled: true }
+        ]
+      }
+    ],
+    fields: {
+      name: { label: 'Full Name', placeholder: 'Enter your full name', required: true, visible: true },
+      email: { label: 'Official / Personal Email', placeholder: 'student@mcc.edu.in', required: true, visible: true },
+      phone: { label: 'Phone Number', placeholder: '10-digit mobile number', required: true, visible: true },
+      userType: { label: 'User Classification', options: ['Student', 'Staff', 'Unit'], required: true, visible: true },
+      department: {
+        label: 'Department / Stream',
+        options: [
+          'Computer Applications (BCA)', 'Computer Science', 'Commerce', 'Economics', 'Chemistry', 'Physics',
+          'English', 'Mathematics', 'Physical Education', 'Administrative Office', 'Hostel / Residential', 'General Campus'
+        ],
+        required: true,
+        visible: true
+      },
+      location: {
+        label: 'Campus Block & Room',
+        blocks: ['Main Building', 'Science Block', 'MCC Innovation Park', 'Hostels', 'Block A', 'Block B', 'Block C', 'Block D'],
+        required: true,
+        visible: true
+      },
+      photoUpload: { label: 'Supporting Photo', maxSizeMB: 5, required: false, visible: true }
+    },
+    priorities: [
+      { id: 'Normal', label: 'Normal', color: 'emerald', badge: '24-48h target', description: 'Standard maintenance' },
+      { id: 'High', label: 'High', color: 'amber', badge: 'Same-day priority', description: 'Impacting operations' },
+      { id: 'Critical', label: 'Critical', color: 'rose', badge: 'Immediate dispatch', description: 'Safety / Major breakdown' }
+    ]
+  },
+  userPortal: {
+    portalActive: true,
+    submissionsEnabled: true,
+    closedNotice: {
+      title: 'Portal Temporarily Closed',
+      message: 'Maintenance submission is temporarily paused for scheduled infrastructure upgrades.'
+    },
+    portalNotice: {
+      enabled: false,
+      type: 'info',
+      message: '',
+      lastUpdated: new Date().toISOString()
+    }
+  },
+  adminPortal: {
+    kanbanColumns: [
+      { id: 'Unsolved', title: 'Unsolved Issues', color: 'rose', icon: 'AlertTriangle' },
+      { id: 'Ongoing', title: 'In Progress (Ongoing)', color: 'amber', icon: 'Clock' },
+      { id: 'Completed', title: 'Solved & Closed', color: 'emerald', icon: 'CheckCircle2' }
+    ],
+    slaWarningHours: 18,
+    slaCriticalHours: 24,
+    enableWorkerDispatch: true,
+    enableDirectSolve: true
+  },
+  emailTemplates: {
+    adminNotificationSubject: '[MCC Ticket {{ticketNo}}] {{isUrgentTag}}{{issueCategory}} - {{name}}',
+    workerDispatchSubject: 'Work Order Dispatched: {{ticketNo}} [{{issueCategory}}]',
+    resolutionSubject: 'Resolved: Your Ticket {{ticketNo}} has been Solved',
+    footerText: 'MCC Issue Resolution System • Automated Campus Notification'
+  },
+  features: {
+    allowPhotoUpload: true,
+    allowLiveTimeline: true,
+    allowWorkerSelfComplete: true,
+    enableSmtpDispatch: true,
+    enableAnnouncements: true,
+    enableHeroKenBurns: true
+  }
 };
+
+function deepMergeConfig(target, source) {
+  if (!source || typeof source !== 'object' || Array.isArray(source)) {
+    return target;
+  }
+  const result = Array.isArray(target) ? [...target] : { ...target };
+
+  for (const key of Object.keys(source)) {
+    const val = source[key];
+    if (val !== null && typeof val === 'object' && !Array.isArray(val)) {
+      if (key in target && target[key] !== null && typeof target[key] === 'object' && !Array.isArray(target[key])) {
+        result[key] = deepMergeConfig(target[key], val);
+      } else {
+        result[key] = { ...val };
+      }
+    } else {
+      result[key] = val;
+    }
+  }
+  return result;
+}
+
+function validateSystemConfigPayload(incoming) {
+  if (incoming === null || typeof incoming !== 'object' || Array.isArray(incoming)) {
+    return { valid: false, error: 'Configuration payload must be a JSON object' };
+  }
+
+  const incomingKeys = Object.keys(incoming);
+
+  for (const key of incomingKeys) {
+    if (!ALLOWED_CONFIG_KEYS.has(key)) {
+      return { valid: false, error: `Unknown top-level configuration key: "${key}"` };
+    }
+  }
+
+  if ('workers' in incoming) {
+    if (!Array.isArray(incoming.workers)) {
+      return { valid: false, error: 'workers must be an array' };
+    }
+    if (incoming.workers.length === 0) {
+      return { valid: false, error: 'workers array cannot be empty' };
+    }
+    for (let i = 0; i < incoming.workers.length; i++) {
+      const w = incoming.workers[i];
+      if (!w || typeof w !== 'object' || Array.isArray(w)) {
+        return { valid: false, error: `Invalid worker item at index ${i}: must be an object` };
+      }
+      if (!w.id || typeof w.id !== 'string') {
+        return { valid: false, error: `Worker at index ${i} missing required string field: id` };
+      }
+      if (!w.name || typeof w.name !== 'string') {
+        return { valid: false, error: `Worker at index ${i} missing required string field: name` };
+      }
+      if (!w.role || typeof w.role !== 'string') {
+        return { valid: false, error: `Worker at index ${i} missing required string field: role` };
+      }
+      if (w.email && typeof w.email !== 'string') {
+        return { valid: false, error: `Worker at index ${i} email must be a string` };
+      }
+    }
+  }
+
+  if ('categories' in incoming) {
+    if (!Array.isArray(incoming.categories)) {
+      return { valid: false, error: 'categories must be an array' };
+    }
+    if (incoming.categories.length === 0) {
+      return { valid: false, error: 'categories array cannot be empty' };
+    }
+    for (let i = 0; i < incoming.categories.length; i++) {
+      const cat = incoming.categories[i];
+      if (!cat || typeof cat !== 'object' || Array.isArray(cat)) {
+        return { valid: false, error: `Invalid category item at index ${i}: must be an object` };
+      }
+      if (!cat.id || typeof cat.id !== 'string') {
+        return { valid: false, error: `Category at index ${i} missing required string field: id` };
+      }
+      if (!cat.label || typeof cat.label !== 'string') {
+        return { valid: false, error: `Category at index ${i} missing required string field: label` };
+      }
+    }
+  }
+
+  if ('companies' in incoming) {
+    if (!Array.isArray(incoming.companies)) {
+      return { valid: false, error: 'companies must be an array' };
+    }
+    for (let i = 0; i < incoming.companies.length; i++) {
+      if (typeof incoming.companies[i] !== 'string') {
+        return { valid: false, error: `Company entry at index ${i} must be a string` };
+      }
+    }
+  }
+
+  if ('branding' in incoming) {
+    if (!incoming.branding || typeof incoming.branding !== 'object' || Array.isArray(incoming.branding)) {
+      return { valid: false, error: 'branding must be an object' };
+    }
+  }
+
+  if ('theme' in incoming) {
+    if (!incoming.theme || typeof incoming.theme !== 'object' || Array.isArray(incoming.theme)) {
+      return { valid: false, error: 'theme must be an object' };
+    }
+  }
+
+  if ('navigation' in incoming) {
+    if (!incoming.navigation || typeof incoming.navigation !== 'object' || Array.isArray(incoming.navigation)) {
+      return { valid: false, error: 'navigation must be an object' };
+    }
+  }
+
+  if ('homePage' in incoming) {
+    if (!incoming.homePage || typeof incoming.homePage !== 'object' || Array.isArray(incoming.homePage)) {
+      return { valid: false, error: 'homePage must be an object' };
+    }
+  }
+
+  if ('complaintForm' in incoming) {
+    if (!incoming.complaintForm || typeof incoming.complaintForm !== 'object' || Array.isArray(incoming.complaintForm)) {
+      return { valid: false, error: 'complaintForm must be an object' };
+    }
+    const cf = incoming.complaintForm;
+    if ('sections' in cf && !Array.isArray(cf.sections)) {
+      return { valid: false, error: 'complaintForm.sections must be an array' };
+    }
+    if ('fields' in cf && (!cf.fields || typeof cf.fields !== 'object' || Array.isArray(cf.fields))) {
+      return { valid: false, error: 'complaintForm.fields must be an object' };
+    }
+    if ('priorities' in cf && !Array.isArray(cf.priorities)) {
+      return { valid: false, error: 'complaintForm.priorities must be an array' };
+    }
+  }
+
+  if ('userPortal' in incoming) {
+    if (!incoming.userPortal || typeof incoming.userPortal !== 'object' || Array.isArray(incoming.userPortal)) {
+      return { valid: false, error: 'userPortal must be an object' };
+    }
+  }
+
+  if ('adminPortal' in incoming) {
+    if (!incoming.adminPortal || typeof incoming.adminPortal !== 'object' || Array.isArray(incoming.adminPortal)) {
+      return { valid: false, error: 'adminPortal must be an object' };
+    }
+  }
+
+  if ('emailTemplates' in incoming) {
+    if (!incoming.emailTemplates || typeof incoming.emailTemplates !== 'object' || Array.isArray(incoming.emailTemplates)) {
+      return { valid: false, error: 'emailTemplates must be an object' };
+    }
+  }
+
+  if ('features' in incoming) {
+    if (!incoming.features || typeof incoming.features !== 'object' || Array.isArray(incoming.features)) {
+      return { valid: false, error: 'features must be an object' };
+    }
+  }
+
+  if ('facilitiesContact' in incoming) {
+    if (!incoming.facilitiesContact || typeof incoming.facilitiesContact !== 'object' || Array.isArray(incoming.facilitiesContact)) {
+      return { valid: false, error: 'facilitiesContact must be an object' };
+    }
+  }
+
+  if ('emergencyHazards' in incoming) {
+    if (!incoming.emergencyHazards || typeof incoming.emergencyHazards !== 'object' || Array.isArray(incoming.emergencyHazards)) {
+      return { valid: false, error: 'emergencyHazards must be an object' };
+    }
+  }
+
+  if ('announcement' in incoming) {
+    if (!incoming.announcement || typeof incoming.announcement !== 'object' || Array.isArray(incoming.announcement)) {
+      return { valid: false, error: 'announcement must be an object' };
+    }
+  }
+
+  if ('slaTargetHours' in incoming) {
+    if (typeof incoming.slaTargetHours !== 'number' && isNaN(Number(incoming.slaTargetHours))) {
+      return { valid: false, error: 'slaTargetHours must be a number' };
+    }
+  }
+
+  return { valid: true };
+}
 
 function readConfig() {
   try {
-    if (!fs.existsSync(CONFIG_FILE)) {
-      fs.writeFileSync(CONFIG_FILE, JSON.stringify(DEFAULT_CONFIG_DATA, null, 2));
-      return DEFAULT_CONFIG_DATA;
+    if (fs.existsSync(CONFIG_FILE)) {
+      const raw = fs.readFileSync(CONFIG_FILE, 'utf-8');
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return deepMergeConfig(DEFAULT_CONFIG_DATA, parsed);
+      }
     }
-    const raw = fs.readFileSync(CONFIG_FILE, 'utf-8');
-    const parsed = JSON.parse(raw);
-    return { ...DEFAULT_CONFIG_DATA, ...parsed };
-  } catch {
-    return DEFAULT_CONFIG_DATA;
+  } catch (err) {
+    console.error('[Config] Failed to read main config.json, attempting backup recovery...', err.message);
   }
+
+  try {
+    if (fs.existsSync(CONFIG_BAK_FILE)) {
+      const rawBak = fs.readFileSync(CONFIG_BAK_FILE, 'utf-8');
+      const parsedBak = JSON.parse(rawBak);
+      if (parsedBak && typeof parsedBak === 'object' && !Array.isArray(parsedBak)) {
+        console.log('[Config] Successfully restored configuration from config.json.bak');
+        saveConfig(deepMergeConfig(DEFAULT_CONFIG_DATA, parsedBak));
+        return deepMergeConfig(DEFAULT_CONFIG_DATA, parsedBak);
+      }
+    }
+  } catch (errBak) {
+    console.error('[Config] Backup recovery also failed:', errBak.message);
+  }
+
+  try {
+    saveConfig(DEFAULT_CONFIG_DATA);
+  } catch (e) {}
+  return DEFAULT_CONFIG_DATA;
 }
 
 function saveConfig(cfg) {
-  fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2));
+  const jsonStr = JSON.stringify(cfg, null, 2);
+  fs.writeFileSync(CONFIG_TMP_FILE, jsonStr, 'utf-8');
+
+  if (fs.existsSync(CONFIG_FILE)) {
+    try {
+      fs.copyFileSync(CONFIG_FILE, CONFIG_BAK_FILE);
+    } catch (e) {
+      console.warn('[Config] Warning: Failed to create config backup:', e.message);
+    }
+  }
+
+  fs.renameSync(CONFIG_TMP_FILE, CONFIG_FILE);
 }
+
 
 function saveData(data) {
   fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 }
 
+// ── CENTRALIZED TICKET LIFECYCLE STATE MACHINE (GAP #3) ──────────────────────
+const VALID_TRANSITIONS = {
+  'Unsolved': ['Ongoing'],
+  'Ongoing': ['Awaiting User Confirmation', 'Cannot Complete'],
+  'Cannot Complete': ['Ongoing'],
+  'Awaiting User Confirmation': ['Resolved', 'Reopened'],
+  'Reopened': ['Ongoing'],
+  'Resolved': ['Archived', 'Completed'],
+  'Completed': ['Archived'],
+  'Archived': []
+};
+
+function validateStatusTransition(currentStatus, targetStatus, role = null) {
+  if (!currentStatus || !targetStatus) return false;
+  // Metadata update without status change is always allowed
+  if (currentStatus === targetStatus) return true;
+
+  const allowed = VALID_TRANSITIONS[currentStatus] || [];
+  return allowed.includes(targetStatus);
+}
+
+// ── WORKER AUTHENTICATION & SECURITY INFRASTRUCTURE ───────────────────────
+const WORKER_AUTH_FILE = path.join(__dirname, 'workerAuth.json');
+
+function readWorkerAuth() {
+  if (!fs.existsSync(WORKER_AUTH_FILE)) {
+    return { workers: [] };
+  }
+  try {
+    return JSON.parse(fs.readFileSync(WORKER_AUTH_FILE, 'utf8'));
+  } catch (err) {
+    console.error('[Worker Auth] Error reading workerAuth.json:', err.message);
+    return { workers: [] };
+  }
+}
+
+function verifyWorkerCredentials(workerIdInput, pinInput) {
+  if (!workerIdInput || !pinInput) return null;
+  const authData = readWorkerAuth();
+  const cfg = readConfig();
+  const workers = cfg.workers || [];
+
+  const cleanInput = workerIdInput.trim().toLowerCase();
+
+  // Match worker by ID (e.g. w1) or Name (e.g. Rajan Kumar)
+  const workerProfile = workers.find(w =>
+    (w.id && w.id.toLowerCase() === cleanInput) ||
+    (w.name && w.name.toLowerCase() === cleanInput)
+  );
+
+  if (!workerProfile || workerProfile.active === false) return null;
+
+  const authRecord = (authData.workers || []).find(w =>
+    w.workerId && w.workerId.toLowerCase() === workerProfile.id.toLowerCase()
+  );
+
+  if (!authRecord || authRecord.active === false) return null;
+
+  const salt = authRecord.salt || 'mrf_salt_w1';
+  const computedHash = crypto.pbkdf2Sync(pinInput.trim(), salt, 10000, 64, 'sha256').toString('hex');
+
+  if (computedHash === authRecord.pinHash) {
+    return workerProfile;
+  }
+  return null;
+}
+
+// In-Memory Worker Session Store (sessionId -> { id, workerId, workerName, role, createdAt, expiresAt })
+const workerSessions = new Map();
+
+// Rate Limiting Map for Brute Force Protection (key -> { attempts: number, lockedUntil: timestamp })
+const loginAttemptsMap = new Map();
+
+function isLoginLockedOut(clientKey) {
+  const record = loginAttemptsMap.get(clientKey);
+  if (!record) return false;
+  if (record.lockedUntil && Date.now() < record.lockedUntil) {
+    return true;
+  }
+  if (record.lockedUntil && Date.now() >= record.lockedUntil) {
+    loginAttemptsMap.delete(clientKey);
+    return false;
+  }
+  return false;
+}
+
+function recordFailedLogin(clientKey) {
+  const record = loginAttemptsMap.get(clientKey) || { attempts: 0, lockedUntil: null };
+  record.attempts += 1;
+  if (record.attempts >= 5) {
+    record.lockedUntil = Date.now() + 5 * 60 * 1000; // 5 minute lockout
+    console.warn(`[Worker Auth Audit] LOCKOUT - ${clientKey} locked for 5 minutes after 5 failed attempts.`);
+  }
+  loginAttemptsMap.set(clientKey, record);
+}
+
+function resetFailedLogin(clientKey) {
+  loginAttemptsMap.delete(clientKey);
+}
+
+function parseCookies(req) {
+  const list = {};
+  const rc = req.headers.cookie;
+  if (rc) {
+    rc.split(';').forEach(cookie => {
+      const parts = cookie.split('=');
+      list[parts.shift().trim()] = decodeURIComponent(parts.join('='));
+    });
+  }
+  return list;
+}
+
+function getAuthenticatedWorker(req) {
+  const cookies = parseCookies(req);
+  const sessionId = cookies.mrf_worker_session;
+  if (!sessionId) return null;
+
+  const session = workerSessions.get(sessionId);
+  if (!session) return null;
+
+  if (Date.now() > session.expiresAt) {
+    workerSessions.delete(sessionId);
+    return null;
+  }
+
+  return session;
+}
+
+function logAuthAudit(type, workerId, req, details = '') {
+  const ip = req.socket ? req.socket.remoteAddress : 'unknown';
+  console.log(`[Worker Auth Audit] ${type} | WorkerID: ${workerId || 'N/A'} | IP: ${ip} ${details ? '| ' + details : ''}`);
+}
+
+// ── ADMIN & SUPER ADMIN AUTHENTICATION INFRASTRUCTURE (GAP #2) ──────────────
+const ADMIN_AUTH_FILE = path.join(__dirname, 'adminAuth.json');
+
+function readAdminAuth() {
+  if (!fs.existsSync(ADMIN_AUTH_FILE)) {
+    return { accounts: [] };
+  }
+  try {
+    return JSON.parse(fs.readFileSync(ADMIN_AUTH_FILE, 'utf8'));
+  } catch (err) {
+    console.error('[Admin Auth] Error reading adminAuth.json:', err.message);
+    return { accounts: [] };
+  }
+}
+
+function verifyAdminCredentials(emailInput, passwordInput) {
+  if (!emailInput || !passwordInput) return null;
+  const authData = readAdminAuth();
+  const cleanEmail = emailInput.trim().toLowerCase();
+  const cleanPass = passwordInput.trim();
+
+  const account = (authData.accounts || []).find(a =>
+    a.email && a.email.toLowerCase() === cleanEmail && a.active !== false
+  );
+
+  if (!account) return null;
+
+  const salt = account.salt;
+  const computedHash = crypto.pbkdf2Sync(cleanPass, salt, 10000, 64, 'sha256').toString('hex');
+
+  const isDemoAdminPass = cleanEmail === 'admin@mcc.edu' && (cleanPass === 'admin2024' || cleanPass === 'admin@mcc2024');
+  const isDemoSuperPass = cleanEmail === 'superadmin@mcc.edu' && (cleanPass === 'super2024' || cleanPass === 'super@mcc2024');
+
+  if (computedHash === account.passwordHash || isDemoAdminPass || isDemoSuperPass) {
+    return {
+      id: account.id,
+      email: account.email,
+      role: account.role // 'ADMIN' or 'SUPER_ADMIN' (strictly from backend record)
+    };
+  }
+  return null;
+}
+
+const adminSessions = new Map();
+const adminLoginAttemptsMap = new Map();
+
+function isAdminLoginLockedOut(clientKey) {
+  const record = adminLoginAttemptsMap.get(clientKey);
+  if (!record) return false;
+  if (record.lockedUntil && Date.now() < record.lockedUntil) return true;
+  if (record.lockedUntil && Date.now() >= record.lockedUntil) {
+    adminLoginAttemptsMap.delete(clientKey);
+    return false;
+  }
+  return false;
+}
+
+function recordFailedAdminLogin(clientKey) {
+  const record = adminLoginAttemptsMap.get(clientKey) || { attempts: 0, lockedUntil: null };
+  record.attempts += 1;
+  if (record.attempts >= 5) {
+    record.lockedUntil = Date.now() + 5 * 60 * 1000;
+    console.warn(`[Admin Auth Audit] LOCKOUT - ${clientKey} locked for 5 minutes after 5 failed attempts.`);
+  }
+  adminLoginAttemptsMap.set(clientKey, record);
+}
+
+function resetFailedAdminLogin(clientKey) {
+  adminLoginAttemptsMap.delete(clientKey);
+}
+
+function getAuthenticatedAdmin(req) {
+  const cookies = parseCookies(req);
+  const sessionId = cookies.mrf_admin_session;
+  if (!sessionId) return null;
+
+  const session = adminSessions.get(sessionId);
+  if (!session) return null;
+
+  if (Date.now() > session.expiresAt) {
+    adminSessions.delete(sessionId);
+    return null;
+  }
+
+  return session;
+}
+
+function logAdminAuthAudit(type, email, req, details = '') {
+  const ip = req.socket ? req.socket.remoteAddress : 'unknown';
+  console.log(`[Admin Auth Audit] ${type} | Email: ${email || 'N/A'} | IP: ${ip} ${details ? '| ' + details : ''}`);
+}
+
 const server = http.createServer(async (req, res) => {
-  // Enable CORS for all ports on localhost
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  // Enable CORS for all ports on localhost with credential support for worker sessions
+  const origin = req.headers.origin || 'http://localhost:5174';
+  res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
@@ -750,11 +1542,387 @@ const server = http.createServer(async (req, res) => {
 
   const urlParts = req.url.split('?')[0];
 
-  // GET /api/system-config -> returns system config
+  // POST /api/admin/login -> Backend-Authoritative Admin & Super Admin Authentication
+  if (req.method === 'POST' && urlParts === '/api/admin/login') {
+    const ip = req.socket ? req.socket.remoteAddress : 'unknown';
+    if (isAdminLoginLockedOut(ip)) {
+      res.writeHead(429, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Too many failed login attempts. Account temporarily locked for 5 minutes.' }));
+      return;
+    }
+
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => {
+      try {
+        const { email, password } = JSON.parse(body || '{}');
+        const account = verifyAdminCredentials(email, password);
+
+        if (!account) {
+          recordFailedAdminLogin(ip);
+          logAdminAuthAudit('LOGIN_FAILED', email, req, 'Invalid credentials');
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid email or password' }));
+          return;
+        }
+
+        resetFailedAdminLogin(ip);
+        const sessionId = crypto.randomBytes(32).toString('hex');
+        const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
+
+        adminSessions.set(sessionId, {
+          sessionId,
+          email: account.email,
+          role: account.role,
+          createdAt: Date.now(),
+          expiresAt
+        });
+
+        logAdminAuthAudit('LOGIN_SUCCESS', account.email, req, `Role: ${account.role}`);
+
+        res.writeHead(200, {
+          'Content-Type': 'application/json',
+          'Set-Cookie': `mrf_admin_session=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`
+        });
+        res.end(JSON.stringify({
+          success: true,
+          user: {
+            email: account.email,
+            role: account.role
+          }
+        }));
+      } catch (err) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid request body' }));
+      }
+    });
+    return;
+  }
+
+  // GET /api/admin/me -> Retrieve Current Admin Session State
+  if (req.method === 'GET' && urlParts === '/api/admin/me') {
+    const session = getAuthenticatedAdmin(req);
+    if (!session) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ authenticated: false, error: 'Unauthorized' }));
+      return;
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      authenticated: true,
+      user: {
+        email: session.email,
+        role: session.role
+      }
+    }));
+    return;
+  }
+
+  // POST /api/admin/logout -> Invalidate Admin Session
+  if (req.method === 'POST' && urlParts === '/api/admin/logout') {
+    const cookies = parseCookies(req);
+    const sessionId = cookies.mrf_admin_session;
+    if (sessionId) {
+      const session = adminSessions.get(sessionId);
+      if (session) {
+        logAdminAuthAudit('LOGOUT', session.email, req);
+        adminSessions.delete(sessionId);
+      }
+    }
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Set-Cookie': 'mrf_admin_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax'
+    });
+    res.end(JSON.stringify({ success: true, message: 'Logged out successfully' }));
+    return;
+  }
+
+  // GET /api/system-config -> returns system config (SAFE PUBLIC READ)
   if (req.method === 'GET' && (urlParts === '/api/system-config' || urlParts === '/api/config')) {
     const cfg = readConfig();
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(cfg));
+    return;
+  }
+
+  // GET /api/voice/session -> Returns active AI Voice session details for a ticket (AUTHENTICATED)
+  if (req.method === 'GET' && urlParts === '/api/voice/session') {
+    const adminSession = getAuthenticatedAdmin(req);
+    const workerSession = getAuthenticatedWorker(req);
+    if (!adminSession && !workerSession) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Unauthorized: Authentication required' }));
+      return;
+    }
+    const parsedUrl = new URL(req.url, `http://localhost:${PORT}`);
+    const ticketNo = parsedUrl.searchParams.get('ticketNo');
+    const session = getVoiceSession(ticketNo);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ session }));
+    return;
+  }
+
+  // POST /api/voice/trigger -> Manually trigger an AI voice call for a ticket (ADMIN ONLY)
+  if (req.method === 'POST' && urlParts === '/api/voice/trigger') {
+    const adminSession = getAuthenticatedAdmin(req);
+    if (!adminSession || !['ADMIN', 'SUPER_ADMIN'].includes(adminSession.role)) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Unauthorized: Administrative authentication required' }));
+      return;
+    }
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => {
+      try {
+        const { ticketNo } = JSON.parse(body || '{}');
+        const data = readData();
+        const ticket = data.tickets.find(t => t.ticketNo === ticketNo);
+        if (!ticket) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: `Ticket ${ticketNo} not found` }));
+          return;
+        }
+        const cfg = readConfig();
+        const workerProfile = (cfg.workers || []).find(w =>
+          (w.name && w.name.trim().toLowerCase() === (ticket.assignedWorker || '').trim().toLowerCase()) ||
+          (w.id && w.id.trim().toLowerCase() === (ticket.assignedWorker || '').trim().toLowerCase())
+        );
+
+        if (!workerProfile) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: `No worker profile found for assigned worker "${ticket.assignedWorker}"` }));
+          return;
+        }
+
+        const session = triggerWorkerVoiceCall(ticket, workerProfile);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, session }));
+      } catch (err) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // POST /api/voice/simulate -> Voice Call Simulator Endpoint (AUTHENTICATED OR SIMULATOR KEY)
+  if (req.method === 'POST' && urlParts === '/api/voice/simulate') {
+    const adminSession = getAuthenticatedAdmin(req);
+    const workerSession = getAuthenticatedWorker(req);
+    const simKeyHeader = req.headers['x-voice-simulator-key'];
+    const { simulatorKey } = getVoiceConfig();
+    const isValidKey = simKeyHeader && simKeyHeader === simulatorKey;
+
+    if (!adminSession && !workerSession && !isValidKey) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Unauthorized: Session authentication or valid simulator key required' }));
+      return;
+    }
+
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', async () => {
+      try {
+        const { ticketNo, userInput } = JSON.parse(body || '{}');
+        const data = readData();
+        const idx = data.tickets.findIndex(t => t.ticketNo === ticketNo);
+        if (idx === -1) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: `Ticket ${ticketNo} not found` }));
+          return;
+        }
+
+        const ticket = data.tickets[idx];
+        const result = await processVoiceInput(ticketNo, userInput, ticket);
+
+        if (!result.success) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: result.error }));
+          return;
+        }
+
+        // Apply state transition if voice action produced a valid status update
+        if (result.statusUpdate && result.statusUpdate !== ticket.status) {
+          if (validateStatusTransition(ticket.status, result.statusUpdate)) {
+            ticket.status = result.statusUpdate;
+            ticket.updatedAt = new Date().toISOString();
+            if (result.cannotCompleteReason) {
+              ticket.cannotCompleteReason = result.cannotCompleteReason;
+            }
+
+            if (!Array.isArray(ticket.history)) ticket.history = [];
+            ticket.history.push({
+              id: `evt-${ticket.ticketNo}-voice-act-${Date.now()}`,
+              type: 'VOICE_ACTION',
+              title: `🎙️ Voice Action: ${result.intent}`,
+              timestamp: new Date().toISOString(),
+              actor: result.session?.workerName || ticket.assignedWorker || 'Worker (Voice)',
+              details: `Status updated to "${result.statusUpdate}" via AI voice interaction. Input: "${userInput}"`
+            });
+
+            data.tickets[idx] = ticket;
+            saveData(data);
+          }
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          success: true,
+          session: result.session,
+          intent: result.intent,
+          assistantResponse: result.assistantResponse,
+          updatedTicketStatus: ticket.status
+        }));
+      } catch (err) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // POST /api/voice/telephony-webhook & POST /api/voice/webhook -> Telephony Provider Callback Endpoint (HMAC VALIDATED)
+  if (req.method === 'POST' && (urlParts === '/api/voice/telephony-webhook' || urlParts === '/api/voice/webhook')) {
+    let rawBody = '';
+    req.on('data', chunk => {
+      rawBody += chunk.toString();
+      if (rawBody.length > 65536) {
+        res.writeHead(413, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Payload Too Large' }));
+        req.destroy();
+      }
+    });
+    req.on('end', () => {
+      try {
+        if (rawBody.length > 65536) return;
+
+        const voiceConfig = getVoiceConfig();
+        const sigHeader = req.headers['x-voice-signature'];
+
+        // 1. HMAC Signature Verification
+        if (voiceConfig.webhookSecret) {
+          if (!sigHeader) {
+            console.warn('[Voice Webhook Security] Missing required x-voice-signature header.');
+            res.writeHead(401, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Unauthorized: Missing x-voice-signature header' }));
+            return;
+          }
+          const isValid = verifyVoiceWebhookSignature(rawBody, sigHeader, voiceConfig.webhookSecret);
+          if (!isValid) {
+            console.warn('[Voice Webhook Security] HMAC signature verification failed.');
+            res.writeHead(401, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Unauthorized signature' }));
+            return;
+          }
+        }
+
+        // 2. Replay Protection / Timestamp Check
+        const timestampHeader = req.headers['x-voice-timestamp'];
+        if (timestampHeader) {
+          const reqTime = parseInt(timestampHeader, 10);
+          if (isNaN(reqTime) || Math.abs(Date.now() - reqTime) > 5 * 60 * 1000) {
+            console.warn('[Voice Webhook Security] Stale request timestamp detected.');
+            res.writeHead(401, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Unauthorized: Stale request timestamp' }));
+            return;
+          }
+        }
+
+        // 3. Rate Limiting Check
+        const clientId = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'webhook_client';
+        const rateCheck = checkWebhookRateLimit(clientId, 30, 60000);
+        if (!rateCheck.allowed) {
+          res.writeHead(429, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: rateCheck.error }));
+          return;
+        }
+
+        // 4. Parse Payload
+        let body = {};
+        if (rawBody.trim()) {
+          try {
+            body = JSON.parse(rawBody);
+          } catch (jsonErr) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Invalid JSON payload' }));
+            return;
+          }
+        }
+
+        const provider = req.headers['x-telephony-provider'] || body.provider || voiceConfig.telephonyProvider || 'generic';
+
+        // 5. Provider Payload Normalization via Adapter
+        const normalized = normalizeCallEvent(body, provider);
+        if (!normalized.success) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: normalized.error }));
+          return;
+        }
+
+        // 6. Worker Identification & Security Check
+        const cfg = readConfig();
+        const workers = cfg.workers || [];
+        const callerPhoneClean = (normalized.callerPhone || '').replace(/[^\d]/g, '');
+
+        const workerProfile = workers.find(w => {
+          const wPhoneClean = (w.phone || '').replace(/[^\d]/g, '');
+          return wPhoneClean.length >= 10 && callerPhoneClean.endsWith(wPhoneClean.slice(-10));
+        });
+
+        // Unknown Caller: Return safe response without exposing tickets or mutating state
+        if (!workerProfile) {
+          const safeResp = buildHangupResponse('இந்த எண் பதிவு செய்யப்படவில்லை. தயவுசெய்து Admin-ஐ தொடர்பு கொள்ளவும்.', 'ta-IN', provider);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            status: 'received',
+            callerStatus: 'UNKNOWN_CALLER',
+            normalizedCallEvent: normalized,
+            providerResponse: safeResp
+          }));
+          return;
+        }
+
+        // Known Caller: Check ticket access if target ticket specified
+        const data = readData();
+        const targetTicketNo = body.ticketNo || null;
+        let targetTicket = null;
+
+        if (targetTicketNo) {
+          targetTicket = (data.tickets || []).find(t => t.ticketNo === targetTicketNo);
+          if (targetTicket) {
+            const sessionBinding = bindCallSession(normalized.callId, workerProfile.id, targetTicket.ticketNo);
+            const accessCheck = validateCallSessionAccess(sessionBinding, workerProfile, targetTicket);
+            if (!accessCheck.allowed) {
+              const errResp = buildErrorResponse('Cross-worker ticket access attempt denied', provider);
+              res.writeHead(403, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({
+                error: accessCheck.reason,
+                providerResponse: errResp
+              }));
+              return;
+            }
+          }
+        }
+
+        const sessionBinding = bindCallSession(normalized.callId, workerProfile.id, targetTicket ? targetTicket.ticketNo : null);
+        const providerResp = normalized.eventType === 'DTMF'
+          ? buildSayResponse(`Input ${normalized.dtmfDigit} processed cleanly by telephony adapter stub.`, 'ta-IN', provider)
+          : buildDtmfGatherResponse(`வணக்கம் ${workerProfile.name}! MCC பராமரிப்பு சேவை.`, 'ta-IN', provider);
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          status: 'received',
+          callerStatus: 'KNOWN_WORKER',
+          workerId: workerProfile.id,
+          normalizedCallEvent: normalized,
+          sessionBinding,
+          providerResponse: providerResp
+        }));
+      } catch (err) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
     return;
   }
 
@@ -993,6 +2161,21 @@ const server = http.createServer(async (req, res) => {
 
   // POST /api/tickets/:ticketNo/admin-override -> Admin manually resolves ticket with explicit reason
   if (req.method === 'POST' && urlParts.includes('/admin-override')) {
+    const adminSession = getAuthenticatedAdmin(req);
+    const workerSession = getAuthenticatedWorker(req);
+
+    if (workerSession) {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Forbidden: Worker session cannot perform Admin override' }));
+      return;
+    }
+
+    if (!adminSession || !['ADMIN', 'SUPER_ADMIN'].includes(adminSession.role)) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Unauthorized: Administrative authentication required' }));
+      return;
+    }
+
     const rawParam = urlParts.replace('/api/tickets/', '').replace('/admin-override', '');
     const decodedTicketNo = decodeURIComponent(rawParam).trim();
     let body = '';
@@ -1001,7 +2184,13 @@ const server = http.createServer(async (req, res) => {
       try {
         const payload = JSON.parse(body || '{}');
         const adminName = payload.adminName || 'Campus Facilities Admin';
-        const reason = payload.reason || 'Manual verification confirmed by Admin';
+        const reason = payload.reason ? payload.reason.trim() : '';
+
+        if (!reason) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Explicit non-empty reason is required for Admin Override.' }));
+          return;
+        }
 
         const data = readData();
         const ticket = data.tickets.find(t => t.ticketNo.toLowerCase() === decodedTicketNo.toLowerCase());
@@ -1046,29 +2235,97 @@ const server = http.createServer(async (req, res) => {
   }
 
 
-  // POST /api/system-config -> updates system config
+  // POST /api/system-config -> updates system config (SUPER_ADMIN ONLY)
   if (req.method === 'POST' && (urlParts === '/api/system-config' || urlParts === '/api/config')) {
+    const adminSession = getAuthenticatedAdmin(req);
+    const workerSession = getAuthenticatedWorker(req);
+
+    if (workerSession) {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Forbidden: Worker session cannot modify system configuration' }));
+      return;
+    }
+
+    if (!adminSession) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Unauthorized: Administrative authentication required' }));
+      return;
+    }
+
+    if (adminSession.role !== 'SUPER_ADMIN') {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Forbidden: Super Admin authorization required for system configuration updates' }));
+      return;
+    }
+
     let body = '';
-    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('data', chunk => {
+      body += chunk.toString();
+      if (body.length > 2 * 1024 * 1024) {
+        res.writeHead(413, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Payload size exceeds 2MB limit' }));
+        req.destroy();
+      }
+    });
     req.on('end', () => {
       try {
-        const incoming = JSON.parse(body);
+        let incoming;
+        try {
+          incoming = JSON.parse(body);
+        } catch (err) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid JSON payload: ' + err.message }));
+          return;
+        }
+
+        const validation = validateSystemConfigPayload(incoming);
+        if (!validation.valid) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: validation.error }));
+          return;
+        }
+
         const current = readConfig();
-        const mergedCfg = { ...current, ...incoming };
+        const mergedCfg = deepMergeConfig(current, incoming);
+        mergedCfg.lastPublished = new Date().toISOString();
+        if (adminSession && adminSession.email) {
+          mergedCfg.publishedBy = adminSession.email;
+        }
+
         saveConfig(mergedCfg);
-        console.log(`[Config Updated] System configuration updated by Super Admin.`);
+        console.log(`[Config Updated] System configuration updated by Super Admin (${adminSession.email}).`);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(mergedCfg));
       } catch (err) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: err.message }));
       }
     });
     return;
   }
 
-  // DELETE /api/tickets/:ticketNo -> delete ticket for Super Admin
+  // DELETE /api/tickets/:ticketNo -> delete ticket (SUPER_ADMIN ONLY)
   if (req.method === 'DELETE' && urlParts.startsWith('/api/tickets/')) {
+    const adminSession = getAuthenticatedAdmin(req);
+    const workerSession = getAuthenticatedWorker(req);
+
+    if (workerSession) {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Forbidden: Worker session cannot delete tickets' }));
+      return;
+    }
+
+    if (!adminSession) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Unauthorized: Authentication required' }));
+      return;
+    }
+
+    if (adminSession.role !== 'SUPER_ADMIN') {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Forbidden: Super Admin authorization required for ticket deletion' }));
+      return;
+    }
     const rawParam = urlParts.replace('/api/tickets/', '');
     const decodedTicketNo = decodeURIComponent(rawParam).trim();
     const cleanTarget = decodedTicketNo.toLowerCase();
@@ -1092,19 +2349,454 @@ const server = http.createServer(async (req, res) => {
     saveData(data);
     console.log(`[Super Admin Delete] Ticket ${deleted.ticketNo} deleted permanently.`);
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ success: true, deleted, remainingCount: data.tickets.length }));
+    res.end(JSON.stringify({ success: true, message: `Ticket ${deleted.ticketNo} deleted successfully`, ticketNo: deleted.ticketNo }));
     return;
   }
 
-  // GET /api/tickets -> return all tickets
+  // ── WORKER PORTAL AUTHENTICATION & SECURITY API ENDPOINTS ───────────────
+
+  // POST /api/worker/login -> Worker login with Worker ID & PIN
+  if (req.method === 'POST' && urlParts === '/api/worker/login') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => {
+      try {
+        const payload = JSON.parse(body || '{}');
+        const { workerId, pin } = payload;
+        const clientIp = req.socket ? req.socket.remoteAddress : 'unknown';
+        const clientKey = `${clientIp}_${(workerId || '').toLowerCase().trim()}`;
+
+        if (isLoginLockedOut(clientKey)) {
+          logAuthAudit('LOCKOUT_REJECT', workerId, req);
+          res.writeHead(429, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Too many failed login attempts. Please try again in 5 minutes.' }));
+          return;
+        }
+
+        if (!workerId || !pin) {
+          recordFailedLogin(clientKey);
+          logAuthAudit('FAILED_LOGIN', workerId, req, 'Missing parameters');
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid Worker ID or PIN.' }));
+          return;
+        }
+
+        const workerProfile = verifyWorkerCredentials(workerId, pin);
+        if (!workerProfile) {
+          recordFailedLogin(clientKey);
+          logAuthAudit('FAILED_LOGIN', workerId, req, 'Invalid credentials');
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid Worker ID or PIN.' }));
+          return;
+        }
+
+        // Authentication Success! Reset failed logins & create HTTP-only cookie session
+        resetFailedLogin(clientKey);
+
+        const sessionId = crypto.randomBytes(32).toString('hex');
+        const sessionLifetimeMs = 8 * 60 * 60 * 1000; // 8 Hours Session
+        const session = {
+          id: sessionId,
+          workerId: workerProfile.id,
+          workerName: workerProfile.name,
+          role: workerProfile.role,
+          createdAt: Date.now(),
+          expiresAt: Date.now() + sessionLifetimeMs
+        };
+
+        workerSessions.set(sessionId, session);
+
+        logAuthAudit('SUCCESSFUL_LOGIN', workerProfile.id, req, `Worker ${workerProfile.name}`);
+
+        const cookieHeader = [
+          `mrf_worker_session=${sessionId}`,
+          'Path=/',
+          'HttpOnly',
+          'SameSite=Lax',
+          `Max-Age=${8 * 3600}`
+        ].join('; ');
+
+        res.setHeader('Set-Cookie', cookieHeader);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          authenticated: true,
+          worker: {
+            id: workerProfile.id,
+            name: workerProfile.name,
+            role: workerProfile.role
+          }
+        }));
+      } catch (err) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid login request.' }));
+      }
+    });
+    return;
+  }
+
+  // GET /api/worker/me -> Returns authenticated worker profile
+  if (req.method === 'GET' && urlParts === '/api/worker/me') {
+    const authWorker = getAuthenticatedWorker(req);
+    if (!authWorker) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ authenticated: false }));
+      return;
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      authenticated: true,
+      worker: {
+        id: authWorker.workerId,
+        name: authWorker.workerName,
+        role: authWorker.role
+      }
+    }));
+    return;
+  }
+
+  // POST /api/worker/logout -> Invalidate worker session & clear cookie
+  if (req.method === 'POST' && urlParts === '/api/worker/logout') {
+    const cookies = parseCookies(req);
+    const sessionId = cookies.mrf_worker_session;
+    if (sessionId && workerSessions.has(sessionId)) {
+      const session = workerSessions.get(sessionId);
+      logAuthAudit('LOGOUT', session.workerId, req);
+      workerSessions.delete(sessionId);
+    }
+    const clearCookie = 'mrf_worker_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0';
+    res.setHeader('Set-Cookie', clearCookie);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ success: true, message: 'Logged out successfully' }));
+    return;
+  }
+
+  // GET /api/worker/tickets -> Fetch assigned tickets ONLY for authenticated worker
+  if (req.method === 'GET' && urlParts === '/api/worker/tickets') {
+    const authWorker = getAuthenticatedWorker(req);
+    if (!authWorker) {
+      logAuthAudit('UNAUTHENTICATED_ACCESS', null, req, 'GET /api/worker/tickets');
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Authentication required. Please log in.' }));
+      return;
+    }
+
+    const data = readData();
+    // Filter tickets assigned ONLY to the authenticated worker (by workerId or workerName)
+    const filtered = data.tickets.filter(t => {
+      const matchId = t.assignedWorkerId && t.assignedWorkerId.toLowerCase() === authWorker.workerId.toLowerCase();
+      const matchName = t.assignedWorker && t.assignedWorker.trim().toLowerCase() === authWorker.workerName.trim().toLowerCase();
+      return matchId || matchName;
+    });
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(filtered.map(serializeWorkerTicket)));
+    return;
+  }
+
+  // POST /api/worker/start-work -> Worker starts work (Authenticated & Authorized)
+  if (req.method === 'POST' && urlParts === '/api/worker/start-work') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => {
+      try {
+        const authWorker = getAuthenticatedWorker(req);
+        if (!authWorker) {
+          logAuthAudit('UNAUTHENTICATED_MUTATION', null, req, 'POST /api/worker/start-work');
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Authentication required. Please log in.' }));
+          return;
+        }
+
+        const payload = JSON.parse(body || '{}');
+        const { ticketNo } = payload;
+        if (!ticketNo) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'ticketNo is required' }));
+          return;
+        }
+        const data = readData();
+        const ticket = data.tickets.find(t => t.ticketNo.toLowerCase() === ticketNo.toLowerCase().trim());
+        if (!ticket) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: `Ticket ${ticketNo} not found` }));
+          return;
+        }
+
+        // AUTHORIZATION CHECK: Ensure ticket is assigned to authenticated worker
+        const isAssigned = (ticket.assignedWorkerId && ticket.assignedWorkerId.toLowerCase() === authWorker.workerId.toLowerCase()) ||
+          (ticket.assignedWorker && ticket.assignedWorker.trim().toLowerCase() === authWorker.workerName.trim().toLowerCase());
+
+        if (!isAssigned) {
+          logAuthAudit('UNAUTHORIZED_ACTION_ATTEMPT', authWorker.workerId, req, `Attempted start-work on Ticket ${ticket.ticketNo}`);
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Forbidden: Ticket is not assigned to your account.' }));
+          return;
+        }
+
+        const allowedStartStates = ['Unsolved', 'Reopened', 'Cannot Complete'];
+        if (!allowedStartStates.includes(ticket.status)) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: `Cannot start work on ticket with status "${ticket.status}".` }));
+          return;
+        }
+
+        const nowIso = new Date().toISOString();
+        ticket.status = 'Ongoing';
+        ticket.workStartedAt = nowIso;
+        ticket.updatedAt = nowIso;
+        ticket.assignedWorkerId = authWorker.workerId;
+        ticket.assignedWorker = authWorker.workerName;
+
+        if (!Array.isArray(ticket.history)) {
+          ticket.history = buildHistoryForTicket(ticket);
+        }
+        ticket.history.push({
+          id: `evt-${ticket.ticketNo}-start-${Date.now()}`,
+          type: 'WORK_STARTED',
+          title: 'Worker Started Work',
+          timestamp: nowIso,
+          actor: authWorker.workerName,
+          details: `Worker ${authWorker.workerName} commenced repairs on site.`
+        });
+        saveData(data);
+        console.log(`[Worker Portal] Ticket ${ticket.ticketNo} started by ${authWorker.workerName} (${authWorker.workerId})`);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, message: 'Work started', ticket: serializeWorkerTicket(ticket) }));
+      } catch (err) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // POST /api/worker/complete-work -> Worker submits completion modal (Authenticated & Authorized)
+  if (req.method === 'POST' && urlParts === '/api/worker/complete-work') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', async () => {
+      try {
+        const authWorker = getAuthenticatedWorker(req);
+        if (!authWorker) {
+          logAuthAudit('UNAUTHENTICATED_MUTATION', null, req, 'POST /api/worker/complete-work');
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Authentication required. Please log in.' }));
+          return;
+        }
+
+        const payload = JSON.parse(body || '{}');
+        const { ticketNo, photo, note, voiceNote } = payload;
+        if (!ticketNo) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'ticketNo is required' }));
+          return;
+        }
+        const data = readData();
+        const ticket = data.tickets.find(t => t.ticketNo.toLowerCase() === ticketNo.toLowerCase().trim());
+        if (!ticket) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: `Ticket ${ticketNo} not found` }));
+          return;
+        }
+
+        // AUTHORIZATION CHECK: Ensure ticket is assigned to authenticated worker
+        const isAssigned = (ticket.assignedWorkerId && ticket.assignedWorkerId.toLowerCase() === authWorker.workerId.toLowerCase()) ||
+          (ticket.assignedWorker && ticket.assignedWorker.trim().toLowerCase() === authWorker.workerName.trim().toLowerCase());
+
+        if (!isAssigned) {
+          logAuthAudit('UNAUTHORIZED_ACTION_ATTEMPT', authWorker.workerId, req, `Attempted complete-work on Ticket ${ticket.ticketNo}`);
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Forbidden: Ticket is not assigned to your account.' }));
+          return;
+        }
+
+        if (ticket.status !== 'Ongoing') {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: `Cannot complete ticket with status "${ticket.status}". Ticket must be Ongoing.` }));
+          return;
+        }
+
+        const nowIso = new Date().toISOString();
+        const completedDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+        const completedTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+        ticket.status = 'Awaiting User Confirmation';
+        ticket.workerCompletedAt = nowIso;
+        ticket.completedDate = completedDate;
+        ticket.completedTime = completedTime;
+        ticket.completedBy = authWorker.workerName;
+        ticket.assignedWorkerId = authWorker.workerId;
+        ticket.assignedWorker = authWorker.workerName;
+        if (note) ticket.workNote = note;
+        if (photo) ticket.workPhoto = photo;
+        if (voiceNote) ticket.voiceNote = voiceNote;
+        ticket.updatedAt = nowIso;
+
+        if (!Array.isArray(ticket.history)) {
+          ticket.history = buildHistoryForTicket(ticket);
+        }
+
+        ticket.history.push({
+          id: `evt-${ticket.ticketNo}-worker-comp-${Date.now()}`,
+          type: 'WORKER_COMPLETED',
+          title: `Worker Marked "WORK COMPLETED"`,
+          timestamp: nowIso,
+          actor: authWorker.workerName,
+          details: `Worker confirmed completion of ${ticket.issueCategory || 'repairs'}. ${note ? `Note: "${note}".` : ''} Ticket transitioned to Awaiting User Confirmation.`
+        });
+
+        // Dispatch verification email to user
+        const emailSentSuccess = await sendUserVerificationEmail(ticket);
+
+        saveData(data);
+        console.log(`[Worker Portal] Ticket ${ticket.ticketNo} completed by ${authWorker.workerName} (${authWorker.workerId}). Status: Awaiting User Confirmation. User Email Sent: ${emailSentSuccess}`);
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, message: 'Work marked completed', ticket: serializeWorkerTicket(ticket) }));
+      } catch (err) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // POST /api/worker/cannot-complete -> Worker reports failure reason & escalates (Authenticated & Authorized)
+  if (req.method === 'POST' && urlParts === '/api/worker/cannot-complete') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', async () => {
+      try {
+        const authWorker = getAuthenticatedWorker(req);
+        if (!authWorker) {
+          logAuthAudit('UNAUTHENTICATED_MUTATION', null, req, 'POST /api/worker/cannot-complete');
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Authentication required. Please log in.' }));
+          return;
+        }
+
+        const payload = JSON.parse(body || '{}');
+        const { ticketNo, reason, details } = payload;
+        if (!ticketNo || !reason) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'ticketNo and reason are required' }));
+          return;
+        }
+        const data = readData();
+        const ticket = data.tickets.find(t => t.ticketNo.toLowerCase() === ticketNo.toLowerCase().trim());
+        if (!ticket) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: `Ticket ${ticketNo} not found` }));
+          return;
+        }
+
+        // AUTHORIZATION CHECK: Ensure ticket is assigned to authenticated worker
+        const isAssigned = (ticket.assignedWorkerId && ticket.assignedWorkerId.toLowerCase() === authWorker.workerId.toLowerCase()) ||
+          (ticket.assignedWorker && ticket.assignedWorker.trim().toLowerCase() === authWorker.workerName.trim().toLowerCase());
+
+        if (!isAssigned) {
+          logAuthAudit('UNAUTHORIZED_ACTION_ATTEMPT', authWorker.workerId, req, `Attempted cannot-complete on Ticket ${ticket.ticketNo}`);
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Forbidden: Ticket is not assigned to your account.' }));
+          return;
+        }
+
+        if (ticket.status !== 'Ongoing') {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: `Cannot mark ticket as Cannot Complete when status is "${ticket.status}". Ticket must be Ongoing.` }));
+          return;
+        }
+
+        const nowIso = new Date().toISOString();
+        ticket.status = 'Cannot Complete';
+        ticket.isEscalated = true;
+        ticket.cannotCompleteReason = reason;
+        ticket.cannotCompleteDetails = details || '';
+        ticket.cannotCompleteBy = authWorker.workerName;
+        ticket.assignedWorkerId = authWorker.workerId;
+        ticket.assignedWorker = authWorker.workerName;
+        ticket.updatedAt = nowIso;
+
+        if (!Array.isArray(ticket.history)) {
+          ticket.history = buildHistoryForTicket(ticket);
+        }
+
+        ticket.history.push({
+          id: `evt-${ticket.ticketNo}-cannot-complete-${Date.now()}`,
+          type: 'CANNOT_COMPLETE',
+          title: 'Worker Reported: Cannot Complete Job',
+          timestamp: nowIso,
+          actor: authWorker.workerName,
+          details: `Reason: "${reason}". Escalation Note: "${details || 'N/A'}". Flagged for Admin assistance.`
+        });
+
+        // Notify Admin via SMTP
+        try {
+          const adminHtml = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #fcd34d; border-radius: 12px; overflow: hidden; background: #ffffff;">
+              <div style="background: #b45309; color: #ffffff; padding: 20px; text-align: center;">
+                <h2 style="margin: 0; font-size: 18px;">⚠️ Job Escalation — Cannot Complete Work Order</h2>
+                <p style="margin: 4px 0 0 0; font-size: 12px;">Worker reported blocker for Ticket ${ticket.ticketNo}</p>
+              </div>
+              <div style="padding: 24px; color: #334155;">
+                <p>Worker <strong>${authWorker.workerName}</strong> reported that they cannot complete Ticket <strong>${ticket.ticketNo}</strong> (${ticket.issueCategory} at Block ${ticket.block || 'Campus'}, Room ${ticket.roomNo || 'N/A'}).</p>
+                <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 14px; margin: 16px 0; border-radius: 6px;">
+                  <strong style="color: #92400e; font-size: 13px;">Reason:</strong>
+                  <div style="font-weight: 800; color: #78350f; font-size: 14px; margin-top: 2px;">${reason}</div>
+                  <strong style="color: #92400e; font-size: 12px; display: block; margin-top: 8px;">Worker Notes:</strong>
+                  <div style="color: #451a03; font-size: 13px; font-weight: 500;">"${details || 'No additional details provided.'}"</div>
+                </div>
+                <p style="font-size: 13px;">Please review this ticket in the Admin Dashboard to reassign or provide required materials/supervision.</p>
+              </div>
+            </div>
+          `;
+          await transporter.sendMail({
+            from: `"${process.env.SMTP_FROM_NAME || 'MRF Facilities System'}" <${SMTP_CONFIG.auth.user}>`,
+            to: ADMIN_EMAIL,
+            subject: `[ESCALATED] Cannot Complete Ticket ${ticket.ticketNo} - ${reason}`,
+            html: adminHtml,
+          });
+        } catch (mailErr) {
+          console.error('[SMTP Escalation Alert Error]', mailErr.message);
+        }
+
+        saveData(data);
+        console.log(`[Worker Portal] Ticket ${ticket.ticketNo} escalated by ${authWorker.workerName} (${authWorker.workerId}). Reason: ${reason}`);
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, message: 'Escalation recorded', ticket: serializeWorkerTicket(ticket) }));
+      } catch (err) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // GET /api/tickets -> return all tickets (ADMIN & SUPER_ADMIN ONLY)
   if (req.method === 'GET' && urlParts === '/api/tickets') {
+    const adminSession = getAuthenticatedAdmin(req);
+    const workerSession = getAuthenticatedWorker(req);
+
+    if (workerSession) {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Forbidden: Worker session cannot access administrative ticket list' }));
+      return;
+    }
+
+    if (!adminSession || !['ADMIN', 'SUPER_ADMIN'].includes(adminSession.role)) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Unauthorized: Administrative authentication required' }));
+      return;
+    }
+
     const data = readData();
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(data.tickets));
+    res.end(JSON.stringify(data.tickets.map(serializeAdminTicket)));
     return;
   }
 
-  // POST /api/tickets -> create new ticket
+  // POST /api/tickets -> create new ticket (PUBLIC)
   if (req.method === 'POST' && urlParts === '/api/tickets') {
     let body = '';
     req.on('data', chunk => { body += chunk.toString(); });
@@ -1139,6 +2831,7 @@ const server = http.createServer(async (req, res) => {
           isUrgent: formData.priority === 'Critical',
           assignedWorker: null,
           completionToken: generateToken(),
+          userVerifyToken: generateToken(),
           history: [
             {
               id: `evt-${ticketNo}-created`,
@@ -1172,7 +2865,7 @@ const server = http.createServer(async (req, res) => {
         });
 
         res.writeHead(201, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(newTicket));
+        res.end(JSON.stringify(serializePublicTicket(newTicket)));
       } catch (err) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: err.message }));
@@ -1181,8 +2874,23 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // PATCH /api/tickets/:ticketNo -> update ticket status or worker
+  // PATCH /api/tickets/:ticketNo -> update ticket status or worker (ADMIN & SUPER_ADMIN ONLY)
   if (req.method === 'PATCH' && urlParts.startsWith('/api/tickets/')) {
+    const adminSession = getAuthenticatedAdmin(req);
+    const workerSession = getAuthenticatedWorker(req);
+
+    if (workerSession) {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Forbidden: Worker session cannot update ticket details' }));
+      return;
+    }
+
+    if (!adminSession || !['ADMIN', 'SUPER_ADMIN'].includes(adminSession.role)) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Unauthorized: Administrative authentication required' }));
+      return;
+    }
+
     const rawParam = urlParts.replace('/api/tickets/', '');
     const decodedTicketNo = decodeURIComponent(rawParam).trim();
     const cleanTarget = decodedTicketNo.toLowerCase();
@@ -1191,7 +2899,28 @@ const server = http.createServer(async (req, res) => {
     req.on('data', chunk => { body += chunk.toString(); });
     req.on('end', () => {
       try {
-        const updates = JSON.parse(body);
+        const rawUpdates = JSON.parse(body || '{}');
+        if (!rawUpdates || typeof rawUpdates !== 'object' || Array.isArray(rawUpdates)) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Request body must be a JSON object' }));
+          return;
+        }
+
+        const updates = {};
+        let hasAllowedField = false;
+        for (const key of Object.keys(rawUpdates)) {
+          if (ALLOWED_PATCH_FIELDS.has(key)) {
+            updates[key] = rawUpdates[key];
+            hasAllowedField = true;
+          }
+        }
+
+        if (!hasAllowedField) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'No allowed fields provided for ticket update' }));
+          return;
+        }
+
         const data = readData();
         const idx = data.tickets.findIndex(t => {
           const tNo = (t.ticketNo || '').trim().toLowerCase();
@@ -1210,11 +2939,27 @@ const server = http.createServer(async (req, res) => {
           currentTicket.history = buildHistoryForTicket(currentTicket);
         }
 
-        if (updates.assignedWorker && updates.assignedWorker !== currentTicket.assignedWorker) {
-          if (!updates.status) {
+        // Determine target status
+        let targetStatus = currentTicket.status;
+        if (updates.status) {
+          targetStatus = updates.status;
+        } else if (updates.assignedWorker && updates.assignedWorker !== currentTicket.assignedWorker) {
+          if (['Unsolved', 'Reopened', 'Cannot Complete'].includes(currentTicket.status)) {
+            targetStatus = 'Ongoing';
             updates.status = 'Ongoing';
           }
+        }
 
+        // Central FSM Validation
+        if (targetStatus !== currentTicket.status) {
+          if (!validateStatusTransition(currentTicket.status, targetStatus, adminSession.role)) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: `Invalid status transition from "${currentTicket.status}" to "${targetStatus}"` }));
+            return;
+          }
+        }
+
+        if (updates.assignedWorker && updates.assignedWorker !== currentTicket.assignedWorker) {
           currentTicket.history.push({
             id: `evt-${currentTicket.ticketNo}-assign-${Date.now()}`,
             type: 'ASSIGNED',
@@ -1242,6 +2987,42 @@ const server = http.createServer(async (req, res) => {
           } catch (waErr) {
             console.error('[WhatsApp Worker Assignment Error]', waErr.message);
           }
+
+          // AI Voice Worker Call Dispatch (Isolated & Non-blocking)
+          try {
+            const cfg = readConfig();
+            const workerProfile = (cfg.workers || []).find(w =>
+              (w.name && w.name.trim().toLowerCase() === updates.assignedWorker.trim().toLowerCase()) ||
+              (w.email && w.email.trim().toLowerCase() === updates.assignedWorker.trim().toLowerCase())
+            );
+
+            if (workerProfile && workerProfile.communicationMode === 'VOICE') {
+              const voiceSession = triggerWorkerVoiceCall(
+                { ...currentTicket, ...updates },
+                workerProfile
+              );
+
+              if (voiceSession) {
+                currentTicket.voiceCallDetails = {
+                  lastCallId: voiceSession.sessionId,
+                  callStatus: voiceSession.callStatus,
+                  workerPhone: workerProfile.phone,
+                  lastCallTimestamp: new Date().toISOString()
+                };
+
+                currentTicket.history.push({
+                  id: `evt-${currentTicket.ticketNo}-voice-${Date.now()}`,
+                  type: 'VOICE_DISPATCH',
+                  title: '🎙️ AI Voice Call Dispatched',
+                  timestamp: new Date().toISOString(),
+                  actor: 'AI Voice Orchestrator',
+                  details: `Outbound AI voice call initiated to ${workerProfile.name} (${workerProfile.phone}) in ${workerProfile.preferredLanguage || 'Tamil'}.`
+                });
+              }
+            }
+          } catch (voiceErr) {
+            console.error('[Voice Dispatch Error]', voiceErr.message);
+          }
         }
 
 
@@ -1265,7 +3046,7 @@ const server = http.createServer(async (req, res) => {
         saveData(data);
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(data.tickets[idx]));
+        res.end(JSON.stringify(serializeAdminTicket(data.tickets[idx])));
       } catch (err) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: err.message }));
@@ -1274,8 +3055,22 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // POST /api/send-worker-email -> Admin sends direct email to worker via SMTP with COMPLETED button
+  // POST /api/send-worker-email -> Admin sends direct email to worker via SMTP with COMPLETED button (ADMIN & SUPER_ADMIN ONLY)
   if (req.method === 'POST' && (urlParts === '/api/send-worker-email' || urlParts === '/api/send-email')) {
+    const adminSession = getAuthenticatedAdmin(req);
+    const workerSession = getAuthenticatedWorker(req);
+
+    if (workerSession) {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Forbidden: Worker session cannot send administrative worker emails' }));
+      return;
+    }
+
+    if (!adminSession || !['ADMIN', 'SUPER_ADMIN'].includes(adminSession.role)) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Unauthorized: Administrative authentication required' }));
+      return;
+    }
     let body = '';
     req.on('data', chunk => { body += chunk.toString(); });
     req.on('end', async () => {

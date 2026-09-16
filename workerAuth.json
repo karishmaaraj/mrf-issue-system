@@ -1,0 +1,40 @@
+{
+  "workers": [
+    {
+      "workerId": "w1",
+      "salt": "mrf_salt_w1",
+      "pinHash": "00154fdca0621225880bd5d509c27240e91e5bab07cbbb398d28f196e998e3459c671ac2c5b253fcd36f3a037f1c4483f9b7a33320ca99e2369234dace7adc4c",
+      "active": true
+    },
+    {
+      "workerId": "w2",
+      "salt": "mrf_salt_w2",
+      "pinHash": "0f870d0143f5da7f5955431b79ff1be778ba32b3297d04efebedcee8bdebe02f299d5d6d524a240bef27f770238766fd301011d07e62ec0d9331082a3b5c3c6f",
+      "active": true
+    },
+    {
+      "workerId": "w3",
+      "salt": "mrf_salt_w3",
+      "pinHash": "b1f4eb11c0cbf520870da5dd45e96eb74c2c68f0539d0e3f29bc0af9739a8bbbac88db4c7cf870f00e65dbe9c0b05f06ba96b8fec924d8d94a7db7a8cad93879",
+      "active": true
+    },
+    {
+      "workerId": "w4",
+      "salt": "mrf_salt_w4",
+      "pinHash": "1781abc91812f20f84a94d2590b079dabb92214470f8c30602d125818090b2f00920353e41c5c48d4602137546182d30986cde538d96221a7c5c794fb7a84eb9",
+      "active": true
+    },
+    {
+      "workerId": "w5",
+      "salt": "mrf_salt_w5",
+      "pinHash": "360b68fd683d97399053ec6e77b4c3a3c0829774e30fb6be4ac496b7fcf44676a31be44803686d1aa8f6935ffc294e52336d23cbc58bddc3199aebaf9a7e6094",
+      "active": true
+    },
+    {
+      "workerId": "w6",
+      "salt": "mrf_salt_w6",
+      "pinHash": "c87c682ddee62ba5bfd2725a1aee72b0d0bdc7b853e889c1ed8fc6e831ab7982e1011fb8deb33e5b9dda8fb13e2c53e99c713abb64ce62256af6c13a4970f0aa",
+      "active": true
+    }
+  ]
+}

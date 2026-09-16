@@ -18,6 +18,7 @@ const PORT = process.env.PORT || 80;
 const ROUTES = [
   { prefix: '/issue', targetPort: 5174, targetHost: 'localhost' },
   { prefix: '/admin', targetPort: 5175, targetHost: 'localhost' },
+  { prefix: '/worker', targetPort: 5176, targetHost: 'localhost' },
   { prefix: '/superadmin', targetPort: 5177, targetHost: 'localhost' },
   { prefix: '/api', targetPort: 5000, targetHost: 'localhost' },
 ];
@@ -34,7 +35,7 @@ function findRoute(url) {
 const server = http.createServer((req, res) => {
   const url = req.url || '/';
 
-  // Root path handler
+  // Root path handler: silent redirect to /issue/
   if (url === '/' || url === '') {
     res.writeHead(302, { Location: '/issue/' });
     res.end();
@@ -68,38 +69,9 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
-    res.end(`
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8">
-        <title>MCC Portal Gateway</title>
-        <style>
-          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 40px; text-align: center; }
-          .card { max-width: 600px; margin: 40px auto; background: #1e293b; padding: 32px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-          h1 { font-size: 24px; color: #38bdf8; margin-bottom: 20px; }
-          .links { display: flex; flex-direction: column; gap: 12px; margin-top: 24px; }
-          a { display: block; padding: 12px; background: #2563eb; color: #fff; text-decoration: none; border-radius: 8px; font-weight: bold; transition: background 0.2s; }
-          a:hover { background: #1d4ed8; }
-          .api { background: #059669; }
-          .api:hover { background: #047857; }
-        </style>
-      </head>
-      <body>
-        <div class="card">
-          <h1>MCC Portal Gateway</h1>
-          <p>The requested path was not found. Please choose a portal:</p>
-          <div class="links">
-            <a href="/issue/">📋 Issue Portal (/issue)</a>
-            <a href="/admin/">🛡️ Admin Portal (/admin)</a>
-            <a href="/superadmin/">👑 Super Admin Portal (/superadmin)</a>
-            <a href="/api/tickets" class="api">🔌 Backend API (/api/tickets)</a>
-          </div>
-        </div>
-      </body>
-      </html>
-    `);
+    // Silent fallback to /issue/ instead of portal-selection page
+    res.writeHead(302, { Location: '/issue/' });
+    res.end();
     return;
   }
 
@@ -195,6 +167,7 @@ server.listen(PORT, () => {
   console.log(`==================================================`);
   console.log(`  📋 Issue Portal       → http://localhost/issue/`);
   console.log(`  🛡️ Admin Portal       → http://localhost/admin/`);
+  console.log(`  🔧 Worker Portal      → http://localhost/worker/`);
   console.log(`  👑 Super Admin Portal → http://localhost/superadmin/`);
   console.log(`  🔌 Backend REST API   → http://localhost/api/`);
   console.log(`==================================================\n`);

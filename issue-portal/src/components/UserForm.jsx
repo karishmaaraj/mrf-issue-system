@@ -555,17 +555,33 @@ export default function UserForm() {
       const isStartup = form.userType && (form.userType === 'Startup' || form.userType.includes('Startup'));
       if (isStartup) return null;
 
-      const deptOpts = Array.isArray(field.options) && field.options.length > 0
-        ? field.options.filter(o => o !== 'Startup')
-        : (isStudent && form.studentStream === 'Aided' && form.studentLevel === 'UG'
-          ? AIDED_UG_DEPARTMENTS
-          : isStudent && form.studentStream === 'Aided' && form.studentLevel === 'PG'
-            ? AIDED_PG_DEPARTMENTS
-            : isStudent && form.studentStream === 'SFS' && form.studentLevel === 'UG'
-              ? SFS_UG_DEPARTMENTS
-              : isStudent && form.studentStream === 'SFS' && form.studentLevel === 'PG'
-                ? SFS_PG_DEPARTMENTS
-                : DEPARTMENTS);
+      const secRoleFieldOpts = systemConfig.complaintForm?.sections?.find(s => s.id === 'sec_role')?.fields?.find(f => f.id === 'department')?.options;
+      const sysConfigDepts = systemConfig.complaintForm?.fields?.department?.options || secRoleFieldOpts;
+
+      const configuredDepts = (Array.isArray(sysConfigDepts) && sysConfigDepts.length > 0)
+        ? sysConfigDepts.filter(o => o !== 'Startup')
+        : (Array.isArray(field.options) && field.options.length > 0)
+          ? field.options.filter(o => o !== 'Startup')
+          : DEPARTMENTS;
+
+      let filteredDepts = configuredDepts;
+
+      if (isStudent && form.studentStream && form.studentLevel) {
+        const knownOtherDepts = (form.studentStream === 'Aided' && form.studentLevel === 'UG')
+          ? [...AIDED_PG_DEPARTMENTS, ...SFS_UG_DEPARTMENTS, ...SFS_PG_DEPARTMENTS]
+          : (form.studentStream === 'Aided' && form.studentLevel === 'PG')
+            ? [...AIDED_UG_DEPARTMENTS, ...SFS_UG_DEPARTMENTS, ...SFS_PG_DEPARTMENTS]
+            : (form.studentStream === 'SFS' && form.studentLevel === 'UG')
+              ? [...AIDED_UG_DEPARTMENTS, ...AIDED_PG_DEPARTMENTS, ...SFS_PG_DEPARTMENTS]
+              : [...AIDED_UG_DEPARTMENTS, ...AIDED_PG_DEPARTMENTS, ...SFS_UG_DEPARTMENTS];
+
+        const subset = configuredDepts.filter(d => !knownOtherDepts.includes(d));
+        if (subset.length > 0) {
+          filteredDepts = subset;
+        }
+      }
+
+      const deptOpts = filteredDepts.length > 0 ? filteredDepts : configuredDepts;
 
       return (
         <SelectField
@@ -647,11 +663,11 @@ export default function UserForm() {
     if (field.id === 'issueCategory') {
       return (
         <div key={field.id} className="space-y-3">
-          <label className="input-label flex items-center gap-1.5 font-bold text-[#800000] mb-2.5">
+          <label className="input-label flex items-center gap-1.5 font-bold text-[#800000] mb-1.5">
             <span className="tracking-wide">{field.label?.toUpperCase() || 'ISSUE CATEGORY'}</span>
             {field.required && <span className="text-red-500 font-extrabold ml-0.5">*</span>}
           </label>
-          <div className="flex flex-wrap gap-2.5">
+          <div className="flex flex-wrap gap-2">
             {dynamicCategories.map((cat) => {
               const cleanLabel = getCleanCategoryLabel(cat.label);
               const isSelected = form.issueCategory === cat.label || form.issueCategory === cleanLabel;
@@ -670,8 +686,8 @@ export default function UserForm() {
                         : prefix + prev.description.replace(/^[^:]+: /, ''),
                     }));
                   }}
-                  className={`group text-xs px-4 py-2 rounded-full border font-semibold transition-all duration-200 cursor-pointer flex items-center justify-center select-none ${isSelected
-                    ? 'bg-[#800000] text-white border-[#800000] shadow-md shadow-[#800000]/20 scale-[1.03]'
+                  className={`group text-xs px-3.5 py-1.5 rounded-full border font-semibold transition-all duration-200 cursor-pointer flex items-center justify-center select-none ${isSelected
+                    ? 'bg-[#800000] text-white border-[#800000] shadow-md shadow-[#800000]/20 scale-[1.02]'
                     : 'bg-white text-[#171717] border-[#D9D9D9] shadow-2xs hover:border-[#800000] hover:bg-[#F6E8EA] hover:text-[#800000] hover:-translate-y-0.5 hover:shadow-xs active:scale-95'
                     }`}
                 >
@@ -682,7 +698,7 @@ export default function UserForm() {
           </div>
 
           {(form.issueCategory.includes('Others') || form.issueCategory.includes('Other') || form.issueCategory.includes('📌')) && (
-            <div className="p-4 sm:p-5 bg-[#F6E8EA] border border-[#D9D9D9] rounded-2xl animate-slide-up space-y-3 shadow-xs">
+            <div className="p-3 sm:p-4 bg-[#F6E8EA] border border-[#D9D9D9] rounded-xl animate-slide-up space-y-2 shadow-xs">
               <div className="flex items-center justify-between">
                 <p className="text-[11px] font-extrabold text-[#800000] uppercase tracking-wider flex items-center gap-1.5">
                   <span>QUICK SUB-CATEGORIES (E.G., WATER LEAKAGE):</span>
@@ -690,7 +706,7 @@ export default function UserForm() {
                 <span className="text-[10px] font-bold text-[#800000] bg-white border border-[#D9D9D9] px-2 py-0.5 rounded-full">1-Click Autofill</span>
               </div>
 
-              <div className="flex flex-wrap gap-2.5">
+              <div className="flex flex-wrap gap-2">
                 {OTHER_SUB_CATEGORIES.map(sub => {
                   const isSubSelected = form.description.startsWith(sub.text.split(':')[0]);
                   return (
@@ -703,8 +719,8 @@ export default function UserForm() {
                           description: sub.text,
                         }));
                       }}
-                      className={`group text-xs px-4 py-2 rounded-full border font-semibold transition-all duration-200 flex items-center gap-2 cursor-pointer select-none ${isSubSelected
-                        ? 'bg-[#800000] text-white border-[#800000] shadow-md shadow-[#800000]/20 scale-[1.03]'
+                      className={`group text-xs px-3 py-1.5 rounded-full border font-semibold transition-all duration-200 flex items-center gap-1.5 cursor-pointer select-none ${isSubSelected
+                        ? 'bg-[#800000] text-white border-[#800000] shadow-md shadow-[#800000]/20 scale-[1.02]'
                         : 'bg-white text-[#171717] border-[#D9D9D9] shadow-2xs hover:border-[#800000] hover:bg-white hover:text-[#800000] hover:-translate-y-0.5 hover:shadow-xs active:scale-95'
                         }`}
                     >
@@ -724,11 +740,11 @@ export default function UserForm() {
     if (field.id === 'priority') {
       return (
         <div key={field.id}>
-          <label className="input-label flex items-center gap-1.5 font-bold text-[#800000] mb-2.5">
+          <label className="input-label flex items-center gap-1.5 font-bold text-[#800000] mb-1.5">
             <span className="tracking-wide">{field.label?.toUpperCase() || 'PRIORITY LEVEL'}</span>
             {field.required && <span className="text-red-500 font-extrabold ml-0.5">*</span>}
           </label>
-          <div className="bg-white border border-[#D9D9D9] rounded-2xl p-1.5 flex items-center justify-between gap-2 shadow-2xs">
+          <div className="bg-white border border-[#D9D9D9] rounded-xl p-1 flex items-center justify-between gap-1.5 shadow-2xs">
             {[
               {
                 level: 'Normal',
@@ -752,15 +768,15 @@ export default function UserForm() {
                   key={level}
                   type="button"
                   onClick={() => setForm(prev => ({ ...prev, priority: level }))}
-                  className={`group flex-1 py-2 sm:py-2.5 px-2 sm:px-4 rounded-xl border text-[11px] sm:text-xs font-bold transition-all duration-300 flex items-center justify-center gap-1.5 sm:gap-2.5 cursor-pointer select-none ${isActive
+                  className={`group flex-1 py-1.5 sm:py-2 px-2 sm:px-3 rounded-lg border text-[11px] sm:text-xs font-bold transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer select-none ${isActive
                     ? `${activeClasses} scale-[1.01]`
                     : 'border-transparent text-[#171717] hover:bg-[#F6E8EA] hover:text-[#800000] hover:shadow-2xs active:scale-98'
                     }`}
                 >
                   <div className="relative flex items-center justify-center">
-                    <span className={`w-3.5 h-3.5 rounded-full ${dotGradient} shrink-0 transition-transform duration-300 group-hover:scale-120`} />
+                    <span className={`w-3 h-3 rounded-full ${dotGradient} shrink-0 transition-transform duration-300 group-hover:scale-120`} />
                     {isActive && level === 'Critical' && (
-                      <span className="absolute w-3.5 h-3.5 rounded-full bg-red-400 opacity-75 animate-ping" />
+                      <span className="absolute w-3 h-3 rounded-full bg-red-400 opacity-75 animate-ping" />
                     )}
                   </div>
                   <span>{level}</span>
@@ -782,11 +798,11 @@ export default function UserForm() {
           </label>
           <textarea
             id={field.id}
-            rows={5}
+            rows={3.5}
             value={form[field.id] || ''}
             onChange={handleChange(field.id)}
             placeholder={field.placeholder || "Describe the complaint in detail..."}
-            className={`w-full px-4 py-2.5 rounded-2xl border border-[#D9D9D9] bg-white text-sm text-[#171717] placeholder:text-[#777777] hover:bg-white focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#800000]/12 focus:border-[#800000] transition duration-200 resize-none shadow-xs ${errors[field.id] ? 'border-red-400 focus:ring-red-400' : ''}`}
+            className={`w-full px-3.5 py-2 rounded-xl border border-[#D9D9D9] bg-white text-xs sm:text-sm text-[#171717] placeholder:text-[#777777] hover:bg-white focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#800000]/12 focus:border-[#800000] transition duration-200 resize-y shadow-xs ${errors[field.id] ? 'border-red-400 focus:ring-red-400' : ''}`}
           />
           {errors[field.id] && <p className="mt-1 text-xs text-red-500 flex items-center gap-1"><AlertCircle size={11} />{errors[field.id]}</p>}
         </div>
@@ -803,27 +819,27 @@ export default function UserForm() {
           </label>
           {photoPreview ? (
             <div className="relative group">
-              <img src={photoPreview} alt="Preview" className="h-48 w-full object-cover rounded-2xl border border-[#D9D9D9] shadow-md" />
+              <img src={photoPreview} alt="Preview" className="h-40 w-full object-cover rounded-xl border border-[#D9D9D9] shadow-md" />
               <button
                 type="button"
                 onClick={removePhoto}
-                className="absolute top-3 right-3 bg-white/90 backdrop-blur-md border border-[#D9D9D9] shadow-md text-[#171717] hover:text-red-600 rounded-full p-2 transition hover:scale-110"
+                className="absolute top-2.5 right-2.5 bg-white/90 backdrop-blur-md border border-[#D9D9D9] shadow-md text-[#171717] hover:text-red-600 rounded-full p-1.5 transition hover:scale-110"
               >
-                <X size={15} />
+                <X size={14} />
               </button>
             </div>
           ) : (
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-[#D9D9D9] hover:border-[#800000] bg-white hover:bg-[#F6E8EA] rounded-2xl p-8 text-center cursor-pointer transition-all duration-200 group space-y-2"
+              className="border-2 border-dashed border-[#D9D9D9] hover:border-[#800000] bg-white hover:bg-[#F6E8EA] rounded-xl p-4 sm:p-5 text-center cursor-pointer transition-all duration-200 group space-y-1.5"
             >
-              <div className="w-12 h-12 rounded-2xl bg-[#F6E8EA] border border-[#D9D9D9] shadow-sm flex items-center justify-center mx-auto text-[#800000] group-hover:scale-110 transition-all">
-                <Upload size={22} className="text-[#800000]" />
+              <div className="w-10 h-10 rounded-xl bg-[#F6E8EA] border border-[#D9D9D9] shadow-sm flex items-center justify-center mx-auto text-[#800000] group-hover:scale-110 transition-all">
+                <Upload size={18} className="text-[#800000]" />
               </div>
               <p className="text-xs font-bold text-[#171717] group-hover:text-[#800000] transition-colors">
                 Click or drag photo to upload
               </p>
-              <p className="text-[11px] text-[#777777]">PNG, JPG, WEBP up to 5MB</p>
+              <p className="text-[10px] text-[#777777]">PNG, JPG, WEBP up to 5MB</p>
             </div>
           )}
           <input
@@ -946,30 +962,30 @@ export default function UserForm() {
         <Navbar />
 
         {/* Page Header */}
-        <div className="bg-white border-b border-[#E5E5E5] px-6 py-7 shadow-xs">
-          <div className="max-w-4xl mx-auto space-y-1.5">
-            <div className="flex items-center gap-2 text-xs font-semibold mb-2">
+        <div className="bg-white border-b border-[#E5E5E5] px-4 sm:px-6 py-4 sm:py-5 shadow-xs">
+          <div className="max-w-5xl lg:max-w-6xl mx-auto space-y-1">
+            <div className="flex items-center gap-2 text-xs font-semibold mb-1.5">
               <Link
                 to="/"
-                className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-[#800000]/30 text-[#800000] hover:border-[#800000]/60 hover:bg-[#F4E8EA] transition-all duration-150 shadow-2xs font-medium"
+                className="group inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-[#800000]/30 text-[#800000] hover:border-[#800000]/60 hover:bg-[#F4E8EA] transition-all duration-150 shadow-2xs font-medium text-xs"
               >
-                <Home size={13} className="text-[#800000]" />
+                <Home size={12} className="text-[#800000]" />
                 <span>Home</span>
               </Link>
 
               <span className="text-[#9E9E9E] font-medium text-xs px-0.5 select-none">/</span>
 
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#F4E8EA] border border-[#800000]/30 text-[#800000] font-bold shadow-2xs">
-                <FileText size={13} className="text-[#800000]" />
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#F4E8EA] border border-[#800000]/30 text-[#800000] font-bold shadow-2xs text-xs">
+                <FileText size={12} className="text-[#800000]" />
                 <span>Complaint Form</span>
               </span>
             </div>
 
             <div>
-              <h1 className="text-2xl sm:text-3xl font-black text-[#171717] tracking-tight">
+              <h1 className="text-xl sm:text-2xl font-black text-[#171717] tracking-tight">
                 Submit Maintenance Complaint
               </h1>
-              <p className="text-xs text-[#6B6B6B] font-medium mt-1">
+              <p className="text-xs text-[#6B6B6B] font-medium mt-0.5">
                 Fill out the form below to report campus infrastructure or facility issues.
               </p>
             </div>
@@ -977,16 +993,16 @@ export default function UserForm() {
         </div>
 
         {/* Form Container */}
-        <div className="flex-1 max-w-4xl mx-auto w-full px-4 py-8">
+        <div className="flex-1 max-w-5xl lg:max-w-6xl mx-auto w-full px-3 sm:px-4 py-4 sm:py-5">
           <form
             onSubmit={handleSubmit}
             noValidate
-            className="bg-white rounded-2xl shadow-[0_25px_60px_-15px_rgba(23,23,23,0.08),0_0_0_1px_rgba(229,229,229,0.9)] border border-[#E5E5E5] overflow-hidden ring-1 ring-[#800000]/10 animate-slide-up"
+            className="bg-white rounded-2xl shadow-[0_20px_50px_-15px_rgba(23,23,23,0.08),0_0_0_1px_rgba(229,229,229,0.9)] border border-[#E5E5E5] overflow-hidden ring-1 ring-[#800000]/10 animate-slide-up"
           >
             {/* Top Accent Line */}
             <div className="h-1.5 w-full bg-[#800000]" />
 
-            <div className="p-6 md:p-10 space-y-10">
+            <div className="p-4 sm:p-6 md:p-7 space-y-5 sm:space-y-6">
 
               {/* Dynamically Render All Enabled Sections & Fields */}
               {enabledSections.map((sec) => {
@@ -994,14 +1010,14 @@ export default function UserForm() {
                 if (secFields.length === 0) return null;
 
                 return (
-                  <section key={sec.id} className="space-y-5">
-                    <div className="border-b border-[#E5E5E5] pb-3">
+                  <section key={sec.id} className="space-y-3 sm:space-y-3.5">
+                    <div className="border-b border-[#E5E5E5] pb-2">
                       <h2 className="text-xs font-black uppercase tracking-wider text-[#800000]">
                         {sec.title}
                       </h2>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
                       {secFields.map(field => {
                         const content = renderField(field);
                         if (!content) return null;
@@ -1021,14 +1037,14 @@ export default function UserForm() {
               })}
 
               {/* Form Info Box */}
-              <div className="flex items-center gap-3 bg-[#F4E8EA] border border-[#E5E5E5] rounded-2xl p-4 text-xs text-[#800000] font-medium">
+              <div className="flex items-center gap-3 bg-[#F4E8EA] border border-[#E5E5E5] rounded-xl p-3 text-xs text-[#800000] font-medium">
                 <span>Your submission will be logged under ticket sequence and assigned to the facilities supervisor for review.</span>
               </div>
 
               {/* Submissions Disabled Warning */}
               {systemConfig.submissionsEnabled === false && (
-                <div className="flex items-start gap-3 bg-amber-50 border border-amber-300 rounded-2xl px-4 py-3.5 text-xs text-amber-900 font-semibold">
-                  <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                <div className="flex items-start gap-3 bg-amber-50 border border-amber-300 rounded-xl px-3.5 py-3 text-xs text-amber-900 font-semibold">
+                  <AlertCircle size={15} className="text-amber-600 shrink-0 mt-0.5" />
                   <div>
                     <span className="font-black block">Submissions Temporarily Disabled</span>
                     <span className="font-medium text-amber-800">The portal is visible but new complaint submissions have been paused by the administrator. Please try again later.</span>
@@ -1040,15 +1056,15 @@ export default function UserForm() {
               <button
                 type="submit"
                 disabled={submitting || systemConfig.submissionsEnabled === false}
-                className="w-full bg-[#800000] hover:bg-[#9A1B2F] text-white font-black py-4 rounded-2xl shadow-xl shadow-[#800000]/25 hover:shadow-[#800000]/40 transition-all duration-200 flex items-center justify-center gap-2.5 text-base hover:scale-[1.01] active:scale-98 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full bg-[#800000] hover:bg-[#9A1B2F] text-white font-black py-3 sm:py-3.5 rounded-xl shadow-lg shadow-[#800000]/25 hover:shadow-[#800000]/40 transition-all duration-200 flex items-center justify-center gap-2 text-sm sm:text-base hover:scale-[1.01] active:scale-98 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {submitting ? (
                   <>
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     <span>Submitting Ticket...</span>
                   </>
                 ) : systemConfig.submissionsEnabled === false ? (
-                  <><Lock size={17} /> Submissions Paused</>
+                  <><Lock size={16} /> Submissions Paused</>
                 ) : (
                   <><SendHorizonal size={17} /> Submit Complaint</>
                 )}

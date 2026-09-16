@@ -21,8 +21,8 @@
   }
 
   body {
-    background-color: #F8F8F8;
-    color: #171717;
+    background-color: #F7F9FC;
+    color: #0F172A;
     @apply min-h-screen selection:bg-[#800000] selection:text-white;
   }
 }

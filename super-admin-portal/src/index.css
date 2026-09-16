@@ -337,3 +337,19 @@
   border-color: rgba(var(--primary-color-rgb, 220, 38, 38), 0.25) !important;
 }
 
+/* ────────────────────────────────────────────────────────────
+   Shared Super Admin Module Layout & Card Classes
+──────────────────────────────────────────────────────────── */
+.sa-card {
+  @apply bg-white border border-[#E5E5E5] rounded-2xl p-4 sm:p-5 shadow-sm text-[#111111];
+}
+.sa-header {
+  @apply bg-white p-4 rounded-2xl border border-[#E5E5E5] shadow-sm text-[#111111];
+}
+.sa-subcard {
+  @apply bg-[#F5F5F5] border border-[#E5E5E5] rounded-xl p-3.5 text-[#111111];
+}
+
+
+
+

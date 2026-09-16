@@ -94,7 +94,7 @@ async function sendAdminNotification(ticket) {
         </div>
 
         <div style="margin-top: 24px; text-align: center;">
-          <a href="http://localhost:5175/" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 12px 24px; font-weight: bold; border-radius: 6px; text-decoration: none;">View in Admin Portal</a>
+          <a href="http://localhost/admin/" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 12px 24px; font-weight: bold; border-radius: 6px; text-decoration: none;">View in Admin Portal</a>
         </div>
       </div>
 
@@ -680,7 +680,7 @@ const server = http.createServer((req, res) => {
             <div class="content">
               <p style="font-size: 16px; font-weight: 800; color: #991b1b; margin-top: 0;">Missing Completion Token</p>
               <p style="font-size: 13px; color: #64748b; line-height: 1.5;">No secure completion token was detected in this link. Please access the task from your original email dispatch.</p>
-              <a href="http://localhost:5175/" class="btn">Open Admin Portal</a>
+              <a href="http://localhost/admin/" class="btn">Open Admin Portal</a>
             </div>
           </div>
         </body>
@@ -715,7 +715,7 @@ const server = http.createServer((req, res) => {
             <div class="content">
               <p style="font-size: 16px; font-weight: 800; color: #991b1b; margin-top: 0;">Invalid or Expired Task Link</p>
               <p style="font-size: 13px; color: #64748b; line-height: 1.5;">This task completion token is invalid, expired, or the work order has been archived.</p>
-              <a href="http://localhost:5175/" class="btn">Open Admin Portal</a>
+              <a href="http://localhost/admin/" class="btn">Open Admin Portal</a>
             </div>
           </div>
         </body>
@@ -781,7 +781,7 @@ const server = http.createServer((req, res) => {
               </table>
 
               <p style="font-size: 11px; color: #94a3b8; margin: 0 0 18px 0;">Admin Portal has been synced in real time.</p>
-              <a href="http://localhost:5175/" class="btn">View Admin Portal</a>
+              <a href="http://localhost/admin/" class="btn">View Admin Portal</a>
             </div>
           </div>
         </body>
@@ -884,7 +884,7 @@ const server = http.createServer((req, res) => {
               </tr>
             </table>
 
-            <a href="http://localhost:5175/" class="btn">Open Admin Portal</a>
+            <a href="http://localhost/admin/" class="btn">Open Admin Portal</a>
           </div>
         </div>
       </body>

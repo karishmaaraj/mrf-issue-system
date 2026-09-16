@@ -18,11 +18,16 @@ export const INITIAL_WORKERS = [
 ];
 
 export const DEFAULT_STARTUP_COMPANIES = [
-  'MCC Innovation Hub',
-  'Nexus Tech Ventures',
-  'GreenGrid Solar Solutions',
-  'BioHealth Innovations',
-  'Quantum AI Labs'
+  'DSRI',
+  'Pentagon',
+  'Fab Lab',
+  'Papados Cafe',
+  'Green Era',
+  'Anmywill',
+  'TMS Media',
+  'Five Armstrong',
+  'Innoveity',
+  'Lexposh'
 ];
 
 export const INITIAL_CATEGORIES = [
@@ -184,7 +189,7 @@ export function getNormalizedFormConfig(complaintForm) {
 }
 
 export const DEFAULT_CONFIG = {
-  version: '2.0.0',
+  version: '2.1.0',
   lastPublished: new Date().toISOString(),
   publishedBy: 'Super Admin',
   companies: DEFAULT_STARTUP_COMPANIES,
@@ -389,14 +394,29 @@ export const DEFAULT_CONFIG = {
  * Deep merge utility to ensure backwards compatibility with older config versions
  */
 function deepMerge(target, source) {
-  if (!source || typeof source !== 'object') return target;
+  if (!source || typeof source !== 'object' || Array.isArray(source)) return target;
   const output = Array.isArray(target) ? [...target] : { ...target };
 
   for (const key of Object.keys(source)) {
-    if (source[key] instanceof Object && key in target && target[key] instanceof Object && !Array.isArray(source[key])) {
-      output[key] = deepMerge(target[key], source[key]);
+    const sVal = source[key];
+    const tVal = target[key];
+
+    if (sVal === null || sVal === undefined) {
+      if (key in target) continue;
+    }
+
+    if (Array.isArray(tVal)) {
+      if (Array.isArray(sVal) && sVal.length > 0) {
+        output[key] = sVal;
+      }
+    } else if (tVal && typeof tVal === 'object') {
+      if (sVal && typeof sVal === 'object' && !Array.isArray(sVal)) {
+        output[key] = deepMerge(tVal, sVal);
+      }
     } else {
-      output[key] = source[key];
+      if (sVal !== undefined) {
+        output[key] = sVal;
+      }
     }
   }
   return output;
@@ -443,6 +463,26 @@ export function getSystemConfig() {
       return DEFAULT_CONFIG;
     }
     const parsed = JSON.parse(stored);
+    
+    // Ensure stale cached company values do not override the new server configuration
+    if (parsed.version !== DEFAULT_CONFIG.version) {
+      parsed.companies = DEFAULT_STARTUP_COMPANIES;
+      if (parsed.complaintForm?.sections) {
+        parsed.complaintForm.sections.forEach(sec => {
+          if (sec.fields) {
+            sec.fields.forEach(f => {
+              if (f.id === 'company') f.options = DEFAULT_STARTUP_COMPANIES;
+            });
+          }
+        });
+      }
+      if (parsed.complaintForm?.fields?.company) {
+        parsed.complaintForm.fields.company.options = DEFAULT_STARTUP_COMPANIES;
+      }
+      parsed.version = DEFAULT_CONFIG.version;
+      localStorage.setItem(CONFIG_KEY, JSON.stringify(parsed));
+    }
+
     const config = deepMerge(DEFAULT_CONFIG, parsed);
     applyThemeTokens(config.theme);
     return config;

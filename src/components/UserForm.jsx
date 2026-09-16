@@ -555,17 +555,33 @@ export default function UserForm() {
       const isStartup = form.userType && (form.userType === 'Startup' || form.userType.includes('Startup'));
       if (isStartup) return null;
 
-      const deptOpts = Array.isArray(field.options) && field.options.length > 0
-        ? field.options.filter(o => o !== 'Startup')
-        : (isStudent && form.studentStream === 'Aided' && form.studentLevel === 'UG'
-          ? AIDED_UG_DEPARTMENTS
-          : isStudent && form.studentStream === 'Aided' && form.studentLevel === 'PG'
-            ? AIDED_PG_DEPARTMENTS
-            : isStudent && form.studentStream === 'SFS' && form.studentLevel === 'UG'
-              ? SFS_UG_DEPARTMENTS
-              : isStudent && form.studentStream === 'SFS' && form.studentLevel === 'PG'
-                ? SFS_PG_DEPARTMENTS
-                : DEPARTMENTS);
+      const secRoleFieldOpts = systemConfig.complaintForm?.sections?.find(s => s.id === 'sec_role')?.fields?.find(f => f.id === 'department')?.options;
+      const sysConfigDepts = systemConfig.complaintForm?.fields?.department?.options || secRoleFieldOpts;
+
+      const configuredDepts = (Array.isArray(sysConfigDepts) && sysConfigDepts.length > 0)
+        ? sysConfigDepts.filter(o => o !== 'Startup')
+        : (Array.isArray(field.options) && field.options.length > 0)
+          ? field.options.filter(o => o !== 'Startup')
+          : DEPARTMENTS;
+
+      let filteredDepts = configuredDepts;
+
+      if (isStudent && form.studentStream && form.studentLevel) {
+        const knownOtherDepts = (form.studentStream === 'Aided' && form.studentLevel === 'UG')
+          ? [...AIDED_PG_DEPARTMENTS, ...SFS_UG_DEPARTMENTS, ...SFS_PG_DEPARTMENTS]
+          : (form.studentStream === 'Aided' && form.studentLevel === 'PG')
+            ? [...AIDED_UG_DEPARTMENTS, ...SFS_UG_DEPARTMENTS, ...SFS_PG_DEPARTMENTS]
+            : (form.studentStream === 'SFS' && form.studentLevel === 'UG')
+              ? [...AIDED_UG_DEPARTMENTS, ...AIDED_PG_DEPARTMENTS, ...SFS_PG_DEPARTMENTS]
+              : [...AIDED_UG_DEPARTMENTS, ...AIDED_PG_DEPARTMENTS, ...SFS_UG_DEPARTMENTS];
+
+        const subset = configuredDepts.filter(d => !knownOtherDepts.includes(d));
+        if (subset.length > 0) {
+          filteredDepts = subset;
+        }
+      }
+
+      const deptOpts = filteredDepts.length > 0 ? filteredDepts : configuredDepts;
 
       return (
         <SelectField

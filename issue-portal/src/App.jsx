@@ -4,6 +4,7 @@ import LandingPage from './components/LandingPage.jsx';
 import UserForm from './components/UserForm.jsx';
 import AdminDashboard from './components/AdminDashboard.jsx';
 import SuperAdminDashboard from './components/SuperAdminDashboard.jsx';
+import WorkerPortal from './components/WorkerPortal.jsx';
 
 /**
  * ScrollToTop — Automatically scrolls window to top on route change
@@ -24,6 +25,7 @@ function ScrollToTop() {
  * Routes:
  *   "/"             → Student Landing Overview Page
  *   "/complaint"    → Student Complaint Submission Form
+ *   "/worker"       → Multilingual Field Worker Portal
  *   "/admin"        → Admin Portal (Login & Dashboard)
  *   "/super-admin"  → Super Admin Master Dynamic Control Center
  *   "*"             → Redirect to "/"
@@ -35,6 +37,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/complaint" element={<UserForm />} />
+        <Route path="/worker" element={<WorkerPortal />} />
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/super-admin" element={<SuperAdminDashboard />} />
         <Route path="*" element={<Navigate to="/" replace />} />

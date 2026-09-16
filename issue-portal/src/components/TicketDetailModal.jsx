@@ -10,7 +10,7 @@ import {
   CheckCircle2, AlertTriangle, ArrowRight, Calendar, Tag, Shield, Sparkles
 } from 'lucide-react';
 
-import { WORKER_LIST } from '../constants.js';
+import { getSystemConfig } from '../systemConfigStore.js';
 
 const STATUS_FLOW = {
   Unsolved: { next: 'Ongoing',   label: 'Mark as Ongoing',   color: 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-amber-500/25', icon: ArrowRight },
@@ -245,7 +245,13 @@ export default function TicketDetailModal({ ticket: initialTicket, onClose, onUp
                     className="input-field flex-1 font-bold cursor-pointer"
                   >
                     <option value="">— Unassigned —</option>
-                    {WORKER_LIST.map(w => (
+                    {Array.from(new Set([
+                      ...(getSystemConfig().workers || [])
+                        .filter(w => typeof w === 'string' ? true : w.active !== false)
+                        .map(w => typeof w === 'string' ? w : w.name)
+                        .filter(Boolean),
+                      ...(ticket.assignedWorker && ticket.assignedWorker !== '__custom__' ? [ticket.assignedWorker] : [])
+                    ])).map(w => (
                       <option key={w} value={w}>{w}</option>
                     ))}
                     <option value="__custom__">+ Enter custom name…</option>

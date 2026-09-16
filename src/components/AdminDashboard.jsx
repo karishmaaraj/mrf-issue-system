@@ -29,10 +29,48 @@ import { WORKERS } from '../constants.js';
 
 export default function AdminDashboard() {
   const [authed, setAuthed] = useState(false);
+  const [adminUser, setAdminUser] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('Dashboard');
+
+  const checkSession = useCallback(async () => {
+    try {
+      const apiBase = typeof window !== 'undefined' && (window.location.port === '' || window.location.port === '80')
+        ? ''
+        : 'http://localhost:5000';
+      const res = await fetch(`${apiBase}/api/admin/me`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.authenticated && ['ADMIN', 'SUPER_ADMIN'].includes(data.user?.role)) {
+          setAuthed(true);
+          setAdminUser(data.user);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('[Admin Session Check Error]', e);
+    }
+    setAuthed(false);
+    setAdminUser(null);
+  }, []);
 
   useEffect(() => {
-    document.title = 'MCC Admin Portal — Campus Facilities';
-  }, []);
+    document.title = 'MCC Admin Portal — Maintenance Operations';
+    checkSession();
+  }, [checkSession]);
+
+  const handleLogout = async () => {
+    try {
+      const apiBase = typeof window !== 'undefined' && (window.location.port === '' || window.location.port === '80')
+        ? ''
+        : 'http://localhost:5000';
+      await fetch(`${apiBase}/api/admin/logout`, { method: 'POST', credentials: 'include' });
+    } catch (e) {
+      console.warn('[Admin Logout Error]', e);
+    }
+    setAuthed(false);
+    setAdminUser(null);
+  };
   const [tickets, setTickets] = useState(() => getTickets());
   const [systemConfig, setSystemConfig] = useState(() => getSystemConfig());
   const [selectedTicket, setSelectedTicket] = useState(null);
@@ -166,8 +204,6 @@ export default function AdminDashboard() {
 
     showToast(`Work Order ${ticketNo} assigned & dispatched to ${workerName} with COMPLETED button!`);
   };
-
-  const handleLogout = () => setAuthed(false);
 
   const handleTicketUpdate = (updated) => {
     setTickets(prev =>

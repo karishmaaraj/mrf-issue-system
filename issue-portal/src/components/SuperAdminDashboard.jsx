@@ -569,13 +569,8 @@ export default function SuperAdminDashboard() {
     { id: 'override', label: 'Master Tickets', icon: Wrench, badge: tickets.length },
   ];
 
-  const issuePortalUrl = typeof window !== 'undefined' && (window.location.port === '' || window.location.port === '80')
-    ? '/issue/'
-    : 'http://localhost:5174/issue/';
-
-  const adminPortalUrl = typeof window !== 'undefined' && (window.location.port === '' || window.location.port === '80')
-    ? '/issue/admin'
-    : 'http://localhost:5174/issue/admin';
+  const issuePortalUrl = '/issue/';
+  const adminPortalUrl = '/admin/';
 
   if (!authed) {
     return <SuperAdminLogin onLogin={handleLogin} />;

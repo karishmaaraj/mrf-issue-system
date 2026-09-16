@@ -1,4 +1,7 @@
 {
+  "version": "2.0.0",
+  "lastPublished": "2026-09-10T01:52:37.724Z",
+  "publishedBy": "superadmin@mcc.edu",
   "workers": [
     {
       "id": "w1",
@@ -7,7 +10,9 @@
       "icon": "⚡",
       "email": "karishmaa24raj@gmail.com",
       "role": "Electrical Lead",
-      "active": true
+      "active": true,
+      "communicationMode": "VOICE",
+      "preferredLanguage": "ta-IN"
     },
     {
       "id": "w2",
@@ -16,7 +21,9 @@
       "icon": "🚰",
       "email": "rajanubama23@gmail.com",
       "role": "Plumbing Specialist",
-      "active": true
+      "active": true,
+      "communicationMode": "VOICE",
+      "preferredLanguage": "ta-IN"
     },
     {
       "id": "w3",
@@ -25,7 +32,9 @@
       "icon": "🖥️",
       "email": "balap4496@gmail.com",
       "role": "IT & Infrastructure",
-      "active": true
+      "active": true,
+      "communicationMode": "EMAIL",
+      "preferredLanguage": "en-IN"
     },
     {
       "id": "w4",
@@ -34,7 +43,9 @@
       "icon": "🏢",
       "email": "enaveen508@gmail.com",
       "role": "Civil Maintenance",
-      "active": true
+      "active": true,
+      "communicationMode": "VOICE",
+      "preferredLanguage": "ta-IN"
     },
     {
       "id": "w5",
@@ -43,7 +54,9 @@
       "icon": "🧹",
       "email": "lalitharasi496@gmail.com",
       "role": "Sanitation Lead",
-      "active": true
+      "active": true,
+      "communicationMode": "EMAIL",
+      "preferredLanguage": "ta-IN"
     },
     {
       "id": "w_test_1786961475720",
@@ -52,15 +65,31 @@
       "email": "deva.solar@mcc.edu.in",
       "icon": "⚡",
       "active": true,
-      "phone": "+91 98401 77889"
+      "phone": "+91 98401 77889",
+      "communicationMode": "VOICE",
+      "preferredLanguage": "ta-IN"
     }
   ],
+  "voiceSettings": {
+    "enabled": true,
+    "telephonyProvider": "MOCK",
+    "maxRetryAttempts": 2,
+    "retryDelayMinutes": 5,
+    "pinVerificationRequired": false,
+    "defaultLanguage": "ta-IN",
+    "supportedLanguages": ["ta-IN", "en-IN", "hi-IN"]
+  },
   "companies": [
-    "MCC Innovation Hub",
-    "Nexus Tech Ventures",
-    "GreenGrid Solar Solutions",
-    "BioHealth Innovations",
-    "Quantum AI Labs"
+    "DSRI",
+    "Pentagon",
+    "Fab Lab",
+    "Papados Cafe",
+    "Green Era",
+    "Anmywill",
+    "TMS Media",
+    "Five Armstrong",
+    "Innoveity",
+    "Lexposh"
   ],
   "categories": [
     {
@@ -123,15 +152,7 @@
   "autoEmailAlerts": true,
   "portalActive": true,
   "submissionsEnabled": true,
-  "portalNotice": {
-    "enabled": false,
-    "type": "info",
-    "message": "",
-    "lastUpdated": "2026-08-14T09:45:13.935Z"
-  },
-  "version": "2.0.0",
-  "lastPublished": "2026-08-27T11:39:25.019Z",
-  "publishedBy": "Super Admin",
+  "portalNotice": "Authorized Super Admin update",
   "branding": {
     "portalName": "MCC FIX HUB",
     "portalSubtitle": "MCC Unified Central Campus Maintenance System",
@@ -236,6 +257,18 @@
       "subtitle": "Clear 3-stage process from ticket submission to full resolution."
     }
   },
+  "facilitiesContact": {
+    "title": "Facilities Contact & Support",
+    "description": "If you have urgent inquiries regarding a previously submitted complaint, contact the campus facilities helpdesk.",
+    "office": "Campus Maintenance Office, Ground Floor, Admin Block",
+    "email": "mcc-support@campus.edu",
+    "hours": "Monday – Saturday (8:30 AM – 5:00 PM)"
+  },
+  "emergencyHazards": {
+    "title": "Emergency Hazards",
+    "description": "For critical emergencies such as active electrical fires, major gas leaks, structural collapse, or severe flooding, please contact security immediately.",
+    "helpline": "+91 0000-00000"
+  },
   "complaintForm": {
     "sections": [
       {
@@ -283,7 +316,6 @@
             "options": [
               "Student",
               "Staff",
-              "Unit / Office",
               "Startup"
             ]
           },
@@ -337,11 +369,16 @@
             "required": true,
             "enabled": true,
             "options": [
-              "MCC Innovation Hub",
-              "Nexus Tech Ventures",
-              "GreenGrid Solar Solutions",
-              "BioHealth Innovations",
-              "Quantum AI Labs"
+              "DSRI",
+              "Pentagon",
+              "Fab Lab",
+              "Papados Cafe",
+              "Green Era",
+              "Anmywill",
+              "TMS Media",
+              "Five Armstrong",
+              "Innoveity",
+              "Lexposh"
             ]
           }
         ]
@@ -576,17 +613,5 @@
     "enableSmtpDispatch": true,
     "enableAnnouncements": true,
     "enableHeroKenBurns": true
-  },
-  "facilitiesContact": {
-    "title": "Facilities Contact & Support",
-    "description": "If you have urgent inquiries regarding a previously submitted complaint, contact the campus facilities helpdesk.",
-    "office": "Campus Maintenance Office, Ground Floor, Admin Block",
-    "email": "mcc-support@campus.edu",
-    "hours": "Monday – Saturday (8:30 AM – 5:00 PM)"
-  },
-  "emergencyHazards": {
-    "title": "Emergency Hazards",
-    "description": "For critical emergencies such as active electrical fires, major gas leaks, structural collapse, or severe flooding, please contact security immediately.",
-    "helpline": "+91 0000-00000"
   }
 }

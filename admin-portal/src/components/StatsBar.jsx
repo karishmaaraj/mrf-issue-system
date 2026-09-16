@@ -66,33 +66,33 @@ function StatCard({
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick && onClick(); } }}
       title={`Click to view ${label} history & work orders`}
       className={`
-        relative overflow-hidden rounded-2xl px-5 py-4 border ${border} ${bg}
-        shadow-[0_4px_14px_-2px_rgba(0,0,0,0.04)] hover:shadow-xl hover:-translate-y-1.5
+        relative overflow-hidden rounded-2xl px-3.5 py-2.5 border ${border} ${bg}
+        shadow-[0_2px_10px_-2px_rgba(0,0,0,0.04)] hover:shadow-md hover:-translate-y-1
         active:scale-[0.98] transition-all duration-300 group cursor-pointer select-none
-        ${isActive ? 'ring-2 ring-blue-500 ring-offset-2 shadow-lg' : ''}
+        ${isActive ? 'ring-2 ring-blue-500 ring-offset-1 shadow-md' : ''}
         ${isUrgent && value > 0 ? 'animate-urgent-pulse' : ''}
       `}
     >
       {/* Ambient background glow orb */}
-      <div className="absolute -right-6 -bottom-6 w-24 h-24 rounded-full bg-white/40 blur-xl pointer-events-none group-hover:scale-150 transition-transform duration-500" />
+      <div className="absolute -right-6 -bottom-6 w-20 h-20 rounded-full bg-white/40 blur-xl pointer-events-none group-hover:scale-150 transition-transform duration-500" />
 
       {/* Top light shimmer effect */}
       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none" />
 
-      <div className="flex items-center gap-4 relative z-10">
+      <div className="flex items-center gap-3 relative z-10">
         {/* Animated Icon Container */}
         <div
           className={`
-            w-12 h-12 rounded-2xl flex items-center justify-center ${color}
-            shadow-md transition-all duration-300 group-hover:scale-110 group-hover:rotate-3
+            w-9 h-9 rounded-xl flex items-center justify-center ${color}
+            shadow-xs transition-all duration-300 group-hover:scale-105 group-hover:rotate-3
             relative shrink-0
           `}
         >
-          <Icon size={22} className="text-white transform transition-transform group-hover:scale-105" />
+          <Icon size={18} className="text-white transform transition-transform group-hover:scale-105" />
           {isUrgent && value > 0 && (
-            <span className="absolute -top-1 -right-1 flex h-3 w-3">
+            <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-red-600 border-2 border-white" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600 border-2 border-white" />
             </span>
           )}
         </div>
@@ -100,30 +100,30 @@ function StatCard({
         {/* Text & Count Value */}
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-1">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider truncate group-hover:text-slate-800 transition-colors">
+            <p className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider truncate group-hover:text-slate-800 transition-colors">
               {label}
             </p>
             {badgeText && (
-              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-white/80 border border-slate-200/80 shadow-2xs text-slate-600">
+              <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full bg-white/80 border border-slate-200/80 shadow-2xs text-slate-600">
                 {badgeText}
               </span>
             )}
           </div>
-          <div className="flex items-baseline justify-between gap-2 mt-0.5">
-            <p className="text-3xl font-black text-slate-800 tracking-tight leading-tight">
+          <div className="flex items-baseline justify-between gap-1 mt-0.5">
+            <p className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight leading-none">
               <AnimatedCounter value={value} />
             </p>
-            <span className="text-[10px] font-bold text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
+            <span className="text-[9px] font-bold text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
               <span>View</span>
-              <ArrowUpRight size={11} />
+              <ArrowUpRight size={10} />
             </span>
           </div>
         </div>
 
         {/* Trend / Metric indicator */}
         {trend !== undefined && (
-          <div className="ml-auto flex items-center gap-1.5 text-emerald-700 bg-emerald-100/80 border border-emerald-200/80 px-2.5 py-1 rounded-full text-xs font-extrabold shadow-2xs group-hover:scale-105 transition-transform shrink-0">
-            <TrendingUp size={13} className="animate-pulse" />
+          <div className="ml-auto flex items-center gap-1 text-emerald-700 bg-emerald-100/80 border border-emerald-200/80 px-2 py-0.5 rounded-full text-[10px] font-extrabold shadow-2xs group-hover:scale-105 transition-transform shrink-0">
+            <TrendingUp size={11} className="animate-pulse" />
             <span>{trend}</span>
           </div>
         )}
@@ -142,7 +142,7 @@ export default function StatsBar({ tickets = [], activeCategory, onSelectCategor
   const rate      = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3.5">
       {/* 1. TOTAL CARD */}
       <StatCard
         categoryKey="TOTAL"

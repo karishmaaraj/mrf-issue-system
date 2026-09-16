@@ -4,7 +4,7 @@
  * Real-time Draft Engine with Live Preview and 1-Click Live Publish across all portals.
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Crown, Users, Layers, Megaphone, Wrench, Shield, CheckCircle2, Clock,
   AlertTriangle, Flame, RefreshCw, Trash2, Plus, LogOut, ArrowUpRight,
@@ -71,25 +71,51 @@ const COLOR_PRESETS = [
 ];
 
 export default function SuperAdminDashboard() {
-  const [authed, setAuthed] = useState(true);
+  const [authed, setAuthed] = useState(false);
+  const [superUser, setSuperUser] = useState(null);
+
+  const checkSession = useCallback(async () => {
+    try {
+      const apiBase = typeof window !== 'undefined' && (window.location.port === '' || window.location.port === '80')
+        ? ''
+        : 'http://localhost:5000';
+      const res = await fetch(`${apiBase}/api/admin/me`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.authenticated && data.user?.role === 'SUPER_ADMIN') {
+          setAuthed(true);
+          setSuperUser(data.user);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('[Super Admin Session Check Error]', e);
+    }
+    setAuthed(false);
+    setSuperUser(null);
+  }, []);
 
   useEffect(() => {
     document.title = 'MCC Super Admin — Campus Facilities';
-  }, []);
+    checkSession();
+  }, [checkSession]);
 
-  const handleLogin = () => {
-    try {
-      sessionStorage.setItem(SUPER_ADMIN_AUTH_KEY, 'true');
-    } catch {}
+  const handleLogin = (user) => {
+    setSuperUser(user);
     setAuthed(true);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     try {
-      sessionStorage.removeItem(SUPER_ADMIN_AUTH_KEY);
-      localStorage.removeItem(SUPER_ADMIN_AUTH_KEY);
-    } catch {}
+      const apiBase = typeof window !== 'undefined' && (window.location.port === '' || window.location.port === '80')
+        ? ''
+        : 'http://localhost:5000';
+      await fetch(`${apiBase}/api/admin/logout`, { method: 'POST', credentials: 'include' });
+    } catch (e) {
+      console.warn('[Super Admin Logout Error]', e);
+    }
     setAuthed(false);
+    setSuperUser(null);
   };
 
   const [config, setConfig] = useState(() => getSystemConfig());
@@ -107,7 +133,7 @@ export default function SuperAdminDashboard() {
 
   // Modals
   const [showWorkerModal, setShowWorkerModal] = useState(false);
-  const [workerForm, setWorkerForm] = useState({ name: '', role: '', email: '', phone: '', icon: '🔧' });
+  const [workerForm, setWorkerForm] = useState({ name: '', role: '', email: '', phone: '', icon: '🔧', communicationMode: 'VOICE', preferredLanguage: 'ta-IN' });
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [categoryForm, setCategoryForm] = useState({ label: '', prefix: '', color: 'amber' });
   const [newDepartment, setNewDepartment] = useState('');
@@ -367,13 +393,15 @@ export default function SuperAdminDashboard() {
       email: workerForm.email.trim(),
       phone: workerForm.phone.trim(),
       icon: workerForm.icon || '🔧',
+      communicationMode: workerForm.communicationMode || 'VOICE',
+      preferredLanguage: workerForm.preferredLanguage || 'ta-IN',
       active: true,
     };
     updateDraft(prev => ({
       ...prev,
       workers: [...(prev.workers || []), newWorker]
     }));
-    setWorkerForm({ name: '', role: '', email: '', phone: '', icon: '🔧' });
+    setWorkerForm({ name: '', role: '', email: '', phone: '', icon: '🔧', communicationMode: 'VOICE', preferredLanguage: 'ta-IN' });
     setShowWorkerModal(false);
   };
 
@@ -569,13 +597,8 @@ export default function SuperAdminDashboard() {
     { id: 'override', label: 'Master Tickets', icon: Wrench, badge: tickets.length },
   ];
 
-  const issuePortalUrl = typeof window !== 'undefined' && (window.location.port === '' || window.location.port === '80')
-    ? '/issue/'
-    : 'http://localhost:5174/issue/';
-
-  const adminPortalUrl = typeof window !== 'undefined' && (window.location.port === '' || window.location.port === '80')
-    ? '/issue/admin'
-    : 'http://localhost:5174/issue/admin';
+  const issuePortalUrl = '/issue/';
+  const adminPortalUrl = '/admin/';
 
   if (!authed) {
     return <SuperAdminLogin onLogin={handleLogin} />;
@@ -593,29 +616,29 @@ export default function SuperAdminDashboard() {
       )}
 
       {/* Top Super Admin Master Navbar */}
-      <header className="bg-white border-b border-[#E5E5E5] sticky top-0 z-40 px-6 py-3 flex flex-wrap items-center justify-between gap-4 shadow-2xs">
+      <header className="bg-white border-b border-[#E5E5E5] sticky top-0 z-40 px-4 py-2 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
         <div className="flex items-center gap-3">
-          <CollegeLogo className="h-9 sm:h-10 w-auto shrink-0" />
+          <CollegeLogo className="h-8 sm:h-9 w-auto shrink-0" />
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-black text-lg text-[#111111] tracking-tight">MCC Super Admin</span>
+              <span className="font-black text-base text-[#111111] tracking-tight">MCC Super Admin</span>
             </div>
-            <span className="text-[11px] text-slate-500 font-medium">Central Multi-Portal Synchronization & Theme Engine</span>
+            <span className="text-[10px] text-slate-500 font-medium">Central Multi-Portal Synchronization & Theme Engine</span>
           </div>
         </div>
 
         {/* Action Controls & Publish Bar */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           {hasUnsavedChanges && (
-            <div className="flex items-center gap-2 bg-[#FFF5F5] border border-[#A00000]/30 px-3 py-1.5 rounded-xl animate-pulse">
+            <div className="flex items-center gap-1.5 bg-[#FFF5F5] border border-[#A00000]/30 px-2.5 py-1 rounded-xl animate-pulse">
               <span className="w-2 h-2 rounded-full bg-[#A00000]" />
-              <span className="text-xs font-bold text-[#A00000]">Unsaved Changes</span>
+              <span className="text-[11px] font-bold text-[#A00000]">Unsaved Changes</span>
               <button
                 onClick={handleDiscardDraft}
-                className="text-xs font-bold text-slate-600 hover:text-[#111111] px-2 py-0.5 rounded-lg hover:bg-white transition flex items-center gap-1"
+                className="text-[11px] font-bold text-slate-600 hover:text-[#111111] px-1.5 py-0.5 rounded-lg hover:bg-white transition flex items-center gap-1"
                 title="Discard draft changes and revert to live configuration"
               >
-                <Undo size={12} /> Discard
+                <Undo size={11} /> Discard
               </button>
             </div>
           )}
@@ -623,12 +646,12 @@ export default function SuperAdminDashboard() {
           <button
             onClick={handlePublish}
             disabled={isPublishing}
-            className={`px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 transition shadow-xs cursor-pointer ${hasUnsavedChanges
+            className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition shadow-xs cursor-pointer ${hasUnsavedChanges
               ? 'bg-[#A00000] hover:bg-[#800000] text-white shadow-2xs scale-105'
               : 'bg-[#A00000] text-white hover:bg-[#800000] border border-[#A00000]'
             }`}
           >
-            <Save size={14} className={isPublishing ? 'animate-spin' : ''} />
+            <Save size={13} className={isPublishing ? 'animate-spin' : ''} />
             <span>{isPublishing ? 'Publishing…' : 'Publish Live to All Portals'}</span>
           </button>
 
@@ -636,7 +659,7 @@ export default function SuperAdminDashboard() {
             href={issuePortalUrl}
             target="_blank"
             rel="noreferrer"
-            className="text-xs font-bold text-[#111111] hover:text-[#A00000] bg-white hover:bg-[#FFF5F5] border border-[#E5E5E5] px-3 py-2 rounded-xl transition flex items-center gap-1.5 shadow-2xs"
+            className="text-xs font-bold text-[#111111] hover:text-[#A00000] bg-white hover:bg-[#FFF5F5] border border-[#E5E5E5] px-2.5 py-1.5 rounded-xl transition flex items-center gap-1 shadow-2xs"
             title="Open Live Issue Portal"
           >
             <ExternalLink size={12} />
@@ -647,29 +670,29 @@ export default function SuperAdminDashboard() {
             href={adminPortalUrl}
             target="_blank"
             rel="noreferrer"
-            className="text-xs font-bold text-[#111111] hover:text-[#A00000] bg-white hover:bg-[#FFF5F5] border border-[#E5E5E5] px-3 py-2 rounded-xl transition flex items-center gap-1.5 shadow-2xs"
+            className="text-xs font-bold text-[#111111] hover:text-[#A00000] bg-white hover:bg-[#FFF5F5] border border-[#E5E5E5] px-2.5 py-1.5 rounded-xl transition flex items-center gap-1 shadow-2xs"
             title="Open Live Admin Portal"
           >
             <span>Admin Portal</span>
-            <ArrowUpRight size={13} className="text-[#A00000]" />
+            <ArrowUpRight size={12} className="text-[#A00000]" />
           </a>
 
           <button
             onClick={handleLogout}
-            className="p-2 text-[#A00000] hover:text-white bg-white hover:bg-[#A00000] rounded-xl border border-[#A00000]/30 transition ml-2 cursor-pointer shadow-2xs"
+            className="p-1.5 text-[#A00000] hover:text-white bg-white hover:bg-[#A00000] rounded-xl border border-[#A00000]/30 transition ml-1 cursor-pointer shadow-2xs"
             title="Sign Out"
           >
-            <LogOut size={15} />
+            <LogOut size={14} />
           </button>
         </div>
       </header>
 
       {/* Main Flex Layout Container */}
-      <div className="max-w-7xl mx-auto w-full p-4 sm:p-6 flex-1 flex flex-col lg:flex-row gap-6">
+      <div className="max-w-[1440px] mx-auto w-full p-3 sm:p-4 flex-1 flex flex-col lg:flex-row gap-4">
 
         {/* Mobile Sidebar Toggle Header (Visible on mobile/tablet < lg) */}
-        <div className="lg:hidden flex items-center justify-between bg-white border border-[#E5E5E5] p-3.5 rounded-2xl shadow-2xs">
-          <div className="flex items-center gap-2.5">
+        <div className="lg:hidden flex items-center justify-between bg-white border border-[#E5E5E5] p-3 rounded-xl shadow-2xs">
+          <div className="flex items-center gap-2">
             <span className="font-black text-xs text-[#111111] uppercase tracking-wider">Module Navigation:</span>
             <span className="text-[11px] font-black bg-[#A00000] text-white px-2.5 py-0.5 rounded-full shadow-2xs">
               {navTabs.find(t => t.id === activeTab)?.label}
@@ -677,18 +700,18 @@ export default function SuperAdminDashboard() {
           </div>
           <button
             onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
-            className="p-2 rounded-xl bg-[#F5F5F5] text-[#111111] hover:bg-[#FFF5F5] hover:text-[#A00000] border border-[#E5E5E5] transition cursor-pointer"
+            className="p-1.5 rounded-lg bg-[#F5F5F5] text-[#111111] hover:bg-[#FFF5F5] hover:text-[#A00000] border border-[#E5E5E5] transition cursor-pointer"
           >
-            {mobileSidebarOpen ? <X size={18} /> : <Menu size={18} />}
+            {mobileSidebarOpen ? <X size={16} /> : <Menu size={16} />}
           </button>
         </div>
 
         {/* Left Vertical Sidebar (Desktop sticky / Mobile drawer) */}
-        <aside className={`lg:w-60 xl:w-64 shrink-0 space-y-1.5 ${mobileSidebarOpen ? 'block' : 'hidden lg:block'}`}>
-          <div className="sticky top-20 bg-white border border-[#E5E5E5] rounded-3xl p-3.5 shadow-2xs space-y-1.5">
-            <div className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400 border-b border-[#E5E5E5] mb-1.5 flex items-center justify-between">
+        <aside className={`lg:w-56 xl:w-60 shrink-0 ${mobileSidebarOpen ? 'block' : 'hidden lg:block'}`}>
+          <div className="sticky top-16 max-h-[calc(100vh-4.5rem)] overflow-y-auto bg-white border border-[#E5E5E5] rounded-2xl p-2.5 shadow-2xs space-y-1 scrollbar-none">
+            <div className="px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-slate-400 border-b border-[#E5E5E5] mb-1 flex items-center justify-between">
               <span>Control Modules</span>
-              <span className="bg-[#F5F5F5] text-slate-600 px-2 py-0.5 rounded-full text-[9px] font-bold">11 Views</span>
+              <span className="bg-[#F5F5F5] text-slate-600 px-1.5 py-0.5 rounded-full text-[9px] font-bold">11 Views</span>
             </div>
 
             {navTabs.map(({ id, label, icon: Icon, badge }) => (
@@ -698,17 +721,17 @@ export default function SuperAdminDashboard() {
                   setActiveTab(id);
                   setMobileSidebarOpen(false);
                 }}
-                className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-black transition-all cursor-pointer ${activeTab === id
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${activeTab === id
                   ? 'bg-[#A00000] text-white shadow-2xs'
                   : 'bg-white text-[#111111] hover:text-[#A00000] hover:bg-[#FFF5F5] border border-[#E5E5E5]'
                 }`}
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <Icon size={15} className="shrink-0" />
+                <div className="flex items-center gap-2 min-w-0">
+                  <Icon size={14} className="shrink-0" />
                   <span className="truncate">{label}</span>
                 </div>
                 {badge !== undefined && (
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${activeTab === id ? 'bg-white/20 text-white' : 'bg-[#F5F5F5] text-slate-600 border border-[#E5E5E5]'}`}>
+                  <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-black shrink-0 ${activeTab === id ? 'bg-white/20 text-white' : 'bg-[#F5F5F5] text-slate-600 border border-[#E5E5E5]'}`}>
                     {badge}
                   </span>
                 )}
@@ -718,11 +741,11 @@ export default function SuperAdminDashboard() {
         </aside>
 
         {/* Right Main Content View Area */}
-        <main className="flex-1 min-w-0 space-y-6">
+        <main className="flex-1 min-w-0 space-y-4">
           {/* ── TAB 1: EXECUTIVE OVERVIEW ───────────────────────────── */}
           {activeTab === 'overview' && (
-          <div className="space-y-6 animate-fade-in">
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
+          <div className="space-y-4 animate-fade-in">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
               {[
                 { label: 'Total Tickets', value: stats.total, icon: Database, color: 'text-[#A00000] bg-white border-[#E5E5E5]' },
                 { label: 'Unsolved', value: stats.unsolved, icon: AlertTriangle, color: 'text-red-700 bg-red-50 border-red-200' },
@@ -731,25 +754,25 @@ export default function SuperAdminDashboard() {
                 { label: 'Critical / Urgent', value: stats.critical, icon: Flame, color: 'text-rose-800 bg-rose-50 border-rose-200' },
                 { label: 'Active Workers', value: stats.activeStaff, icon: Users, color: 'text-[#A00000] bg-white border-[#E5E5E5]' },
               ].map(({ label, value, icon: Icon, color }) => (
-                <div key={label} className={`p-4 rounded-2xl border ${color} shadow-2xs space-y-1`}>
+                <div key={label} className={`p-3 rounded-xl border ${color} shadow-2xs space-y-0.5`}>
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-slate-500">{label}</span>
-                    <Icon size={16} />
+                    <span className="text-[10px] font-bold text-slate-500">{label}</span>
+                    <Icon size={14} />
                   </div>
-                  <p className="text-2xl font-black text-[#111111]">{value}</p>
+                  <p className="text-xl sm:text-2xl font-black text-[#111111]">{value}</p>
                 </div>
               ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-white border border-[#E5E5E5] rounded-3xl p-6 space-y-4 shadow-2xs">
-                <div className="flex items-center justify-between border-b border-[#E5E5E5] pb-3">
-                  <h3 className="text-sm font-black text-[#111111] flex items-center gap-2">
-                    <BarChart3 size={16} className="text-[#A00000]" />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="bg-white border border-[#E5E5E5] rounded-2xl p-4 sm:p-5 space-y-3 shadow-2xs">
+                <div className="flex items-center justify-between border-b border-[#E5E5E5] pb-2.5">
+                  <h3 className="text-xs sm:text-sm font-black text-[#111111] flex items-center gap-2">
+                    <BarChart3 size={15} className="text-[#A00000]" />
                     <span>Stream & Classification Complaints Breakdown</span>
                   </h3>
                 </div>
-                <div className="space-y-3 pt-2">
+                <div className="space-y-2.5 pt-1">
                   {Object.entries(stats.streamCounts).map(([stream, count]) => {
                     const pct = stats.total > 0 ? Math.round((count / stats.total) * 100) : 0;
                     return (
@@ -767,16 +790,16 @@ export default function SuperAdminDashboard() {
                 </div>
               </div>
 
-              <div className="bg-white border border-[#E5E5E5] rounded-3xl p-6 space-y-4 shadow-2xs">
-                <div className="flex items-center justify-between border-b border-[#E5E5E5] pb-3">
-                  <h3 className="text-sm font-black text-[#111111] flex items-center gap-2">
-                    <Palette size={16} className="text-[#A00000]" />
+              <div className="bg-white border border-[#E5E5E5] rounded-2xl p-4 sm:p-5 space-y-3 shadow-2xs">
+                <div className="flex items-center justify-between border-b border-[#E5E5E5] pb-2.5">
+                  <h3 className="text-xs sm:text-sm font-black text-[#111111] flex items-center gap-2">
+                    <Palette size={15} className="text-[#A00000]" />
                     <span>Active Theme & Branding Status</span>
                   </h3>
-                  <button onClick={() => setActiveTab('brandingTheme')} className="text-xs font-bold text-[#A00000] hover:underline">Customize</button>
+                  <button onClick={() => setActiveTab('brandingTheme')} className="text-xs font-bold text-[#A00000] hover:underline cursor-pointer">Customize</button>
                 </div>
-                <div className="space-y-3 text-xs">
-                  <div className="flex items-center justify-between p-3 bg-[#F5F5F5] rounded-xl border border-[#E5E5E5]">
+                <div className="space-y-2.5 text-xs">
+                  <div className="flex items-center justify-between p-2.5 bg-[#F5F5F5] rounded-xl border border-[#E5E5E5]">
                     <span className="text-slate-600 font-medium">Primary Brand Color</span>
                     <div className="flex items-center gap-2">
                       <span className="w-4 h-4 rounded-full border border-black/20 shadow-2xs" style={{ backgroundColor: draftConfig.theme?.primaryColor || '#A00000' }} />
@@ -786,11 +809,11 @@ export default function SuperAdminDashboard() {
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between p-3 bg-[#F5F5F5] rounded-xl border border-[#E5E5E5]">
+                  <div className="flex items-center justify-between p-2.5 bg-[#F5F5F5] rounded-xl border border-[#E5E5E5]">
                     <span className="text-slate-600 font-medium">Portal Name</span>
                     <span className="font-bold text-[#111111]">{draftConfig.branding?.portalName || 'MCC FIX HUB'}</span>
                   </div>
-                  <div className="flex items-center justify-between p-3 bg-[#F5F5F5] rounded-xl border border-[#E5E5E5]">
+                  <div className="flex items-center justify-between p-2.5 bg-[#F5F5F5] rounded-xl border border-[#E5E5E5]">
                     <span className="text-slate-600 font-medium">User Portal Availability</span>
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${draftConfig.userPortal?.portalActive !== false ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
                       {draftConfig.userPortal?.portalActive !== false ? 'Online' : 'Closed'}
@@ -1827,20 +1850,20 @@ export default function SuperAdminDashboard() {
         {/* ── TAB 3: THEME & BRANDING STUDIO ─────────────────────── */}
         {activeTab === 'brandingTheme' && (
           <div className="space-y-6 animate-fade-in max-w-5xl">
-            <div className="bg-slate-900/80 p-5 rounded-3xl border border-slate-800">
-              <h2 className="text-lg font-black text-white flex items-center gap-2">
-                <Palette size={18} className="text-indigo-400" />
+            <div className="bg-white p-5 rounded-3xl border border-[#E5E5E5] shadow-2xs">
+              <h2 className="text-lg font-black text-[#111111] flex items-center gap-2">
+                <Palette size={18} className="text-[#A00000]" />
                 <span>Theme & Visual Branding Studio</span>
               </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5">
                 Customize color palettes, presets, and branding. Changes dynamically set CSS custom properties across all portals.
               </p>
             </div>
 
             {/* 1. One-Click Color Presets */}
-            <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 space-y-4">
-              <h3 className="text-sm font-black text-white border-b border-slate-800 pb-3 flex items-center gap-2">
-                <Palette size={15} className="text-amber-400" />
+            <div className="bg-white border border-[#E5E5E5] rounded-3xl p-6 space-y-4 shadow-2xs">
+              <h3 className="text-sm font-black text-[#111111] border-b border-[#E5E5E5] pb-3 flex items-center gap-2">
+                <Palette size={15} className="text-[#A00000]" />
                 <span>One-Click Curated Theme Presets</span>
               </h3>
               
@@ -1861,18 +1884,18 @@ export default function SuperAdminDashboard() {
                         }));
                       }}
                       className={`p-4 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer ${isSelected
-                        ? 'bg-slate-800 border-amber-400 shadow-lg shadow-amber-500/10 scale-102'
-                        : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
+                        ? 'bg-[#FFF5F5] border-[#A00000] shadow-2xs scale-102'
+                        : 'bg-[#F5F5F5] border-[#E5E5E5] hover:border-slate-400 hover:bg-white'
                       }`}
                     >
                       <div className="space-y-1">
-                        <p className="text-xs font-black text-white">{p.name}</p>
-                        <p className="text-[10px] text-slate-400 font-mono">{p.primary} / {p.accent}</p>
+                        <p className="text-xs font-black text-[#111111]">{p.name}</p>
+                        <p className="text-[10px] text-slate-500 font-mono">{p.primary} / {p.accent}</p>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className="w-5 h-5 rounded-full shadow-inner" style={{ backgroundColor: p.primary }} />
-                        <span className="w-4 h-4 rounded-full shadow-inner" style={{ backgroundColor: p.accent }} />
-                        {isSelected && <Check size={14} className="text-amber-400 ml-1" />}
+                        <span className="w-5 h-5 rounded-full shadow-inner border border-black/10" style={{ backgroundColor: p.primary }} />
+                        <span className="w-4 h-4 rounded-full shadow-inner border border-black/10" style={{ backgroundColor: p.accent }} />
+                        {isSelected && <Check size={14} className="text-[#A00000] ml-1" />}
                       </div>
                     </button>
                   );
@@ -1882,11 +1905,11 @@ export default function SuperAdminDashboard() {
 
             {/* 2. Custom Color Pickers with Named Swatches & Undo */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 space-y-5">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="bg-white border border-[#E5E5E5] rounded-3xl p-6 space-y-5 shadow-2xs">
+                <div className="flex items-center justify-between border-b border-[#E5E5E5] pb-3">
                   <div>
-                    <h3 className="text-sm font-black text-white">Custom Theme Colors</h3>
-                    <p className="text-[10px] text-slate-400">Select by Color Name or Color Picker</p>
+                    <h3 className="text-sm font-black text-[#111111]">Custom Theme Colors</h3>
+                    <p className="text-[10px] text-slate-500">Select by Color Name or Color Picker</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
@@ -1894,8 +1917,8 @@ export default function SuperAdminDashboard() {
                       disabled={themeHistory.length === 0}
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
                         themeHistory.length > 0
-                          ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md shadow-amber-500/20 font-black animate-pulse'
-                          : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/50'
+                          ? 'bg-[#A00000] hover:bg-[#800000] text-white shadow-2xs font-black'
+                          : 'bg-[#F5F5F5] text-slate-400 cursor-not-allowed border border-[#E5E5E5]'
                       }`}
                       title={themeHistory.length > 0 ? "Undo last color selection" : "No previous color history"}
                     >
@@ -1907,15 +1930,15 @@ export default function SuperAdminDashboard() {
                 
                 <div className="space-y-6 text-xs">
                   {/* Primary Theme Color */}
-                  <div className="p-4 bg-slate-950/70 border border-slate-800/90 rounded-2xl space-y-3">
+                  <div className="p-4 bg-[#F5F5F5] border border-[#E5E5E5] rounded-2xl space-y-3">
                     <div className="flex items-center justify-between">
-                      <label className="text-slate-300 font-black flex items-center gap-2">
+                      <label className="text-[#111111] font-black flex items-center gap-2">
                         <span>Primary Theme Color</span>
-                        <span className="text-[11px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                        <span className="text-[11px] font-bold text-[#A00000] bg-[#FFF5F5] px-2 py-0.5 rounded-full border border-[#A00000]/20">
                           {getFriendlyColorName(draftConfig.theme?.primaryColor)}
                         </span>
                       </label>
-                      <span className="text-[10px] font-mono text-slate-400">{draftConfig.theme?.primaryColor || '#DC2626'}</span>
+                      <span className="text-[10px] font-mono text-slate-500">{draftConfig.theme?.primaryColor || '#DC2626'}</span>
                     </div>
 
                     <div className="flex items-center gap-3">
@@ -1923,7 +1946,7 @@ export default function SuperAdminDashboard() {
                         type="color"
                         value={draftConfig.theme?.primaryColor || '#DC2626'}
                         onChange={(e) => applyThemeColorWithHistory('primary', e.target.value)}
-                        className="w-11 h-11 rounded-xl border-2 border-slate-700 bg-slate-950 cursor-pointer p-0.5"
+                        className="w-11 h-11 rounded-xl border-2 border-[#E5E5E5] bg-white cursor-pointer p-0.5"
                         title="Open Color Wheel"
                       />
                       <input
@@ -1936,13 +1959,13 @@ export default function SuperAdminDashboard() {
                             applyThemeColorWithHistory('primary', hexMatch[0]);
                           }
                         }}
-                        className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white font-bold text-xs"
+                        className="flex-1 px-3.5 py-2.5 rounded-xl bg-white border border-[#E5E5E5] text-[#111111] font-bold text-xs"
                       />
                     </div>
 
                     {/* Quick Named Color Buttons for Primary */}
                     <div>
-                      <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block mb-2">
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500 block mb-2">
                         Quick Pick by Color Name:
                       </span>
                       <div className="grid grid-cols-5 gap-1.5">
@@ -1955,8 +1978,8 @@ export default function SuperAdminDashboard() {
                               onClick={() => applyThemeColorWithHistory('primary', c.hex, c.hover)}
                               className={`px-2 py-1.5 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 border transition-all cursor-pointer select-none ${
                                 isCurrent
-                                  ? 'bg-slate-800 border-amber-400 text-white shadow-md ring-1 ring-amber-400/30 font-black scale-105'
-                                  : 'bg-slate-900/90 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white hover:border-slate-600'
+                                  ? 'bg-[#A00000] border-[#A00000] text-white shadow-2xs font-black scale-105'
+                                  : 'bg-white border-[#E5E5E5] text-[#111111] hover:bg-[#FFF5F5] hover:text-[#A00000]'
                               }`}
                             >
                               <span>{c.emoji}</span>
@@ -1969,15 +1992,15 @@ export default function SuperAdminDashboard() {
                   </div>
 
                   {/* Accent Color */}
-                  <div className="p-4 bg-slate-950/70 border border-slate-800/90 rounded-2xl space-y-3">
+                  <div className="p-4 bg-[#F5F5F5] border border-[#E5E5E5] rounded-2xl space-y-3">
                     <div className="flex items-center justify-between">
-                      <label className="text-slate-300 font-black flex items-center gap-2">
+                      <label className="text-[#111111] font-black flex items-center gap-2">
                         <span>Accent Color</span>
-                        <span className="text-[11px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">
+                        <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
                           {getFriendlyColorName(draftConfig.theme?.accentColor)}
                         </span>
                       </label>
-                      <span className="text-[10px] font-mono text-slate-400">{draftConfig.theme?.accentColor || '#2563EB'}</span>
+                      <span className="text-[10px] font-mono text-slate-500">{draftConfig.theme?.accentColor || '#2563EB'}</span>
                     </div>
 
                     <div className="flex items-center gap-3">
@@ -1985,7 +2008,7 @@ export default function SuperAdminDashboard() {
                         type="color"
                         value={draftConfig.theme?.accentColor || '#2563EB'}
                         onChange={(e) => applyThemeColorWithHistory('accent', e.target.value)}
-                        className="w-11 h-11 rounded-xl border-2 border-slate-700 bg-slate-950 cursor-pointer p-0.5"
+                        className="w-11 h-11 rounded-xl border-2 border-[#E5E5E5] bg-white cursor-pointer p-0.5"
                         title="Open Color Wheel"
                       />
                       <input
@@ -1998,13 +2021,13 @@ export default function SuperAdminDashboard() {
                             applyThemeColorWithHistory('accent', hexMatch[0]);
                           }
                         }}
-                        className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white font-bold text-xs"
+                        className="flex-1 px-3.5 py-2.5 rounded-xl bg-white border border-[#E5E5E5] text-[#111111] font-bold text-xs"
                       />
                     </div>
 
                     {/* Quick Named Color Buttons for Accent */}
                     <div>
-                      <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block mb-2">
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500 block mb-2">
                         Quick Pick by Color Name:
                       </span>
                       <div className="grid grid-cols-5 gap-1.5">
@@ -2017,8 +2040,8 @@ export default function SuperAdminDashboard() {
                               onClick={() => applyThemeColorWithHistory('accent', c.hex)}
                               className={`px-2 py-1.5 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 border transition-all cursor-pointer select-none ${
                                 isCurrent
-                                  ? 'bg-slate-800 border-blue-400 text-white shadow-md ring-1 ring-blue-400/30 font-black scale-105'
-                                  : 'bg-slate-900/90 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white hover:border-slate-600'
+                                  ? 'bg-[#2563EB] border-[#2563EB] text-white shadow-2xs font-black scale-105'
+                                  : 'bg-white border-[#E5E5E5] text-[#111111] hover:bg-blue-50 hover:text-blue-700'
                               }`}
                             >
                               <span>{c.emoji}</span>
@@ -2032,12 +2055,12 @@ export default function SuperAdminDashboard() {
                 </div>
               </div>
 
-              <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 space-y-4">
-                <h3 className="text-sm font-black text-white border-b border-slate-800 pb-3">Portal Branding Names</h3>
+              <div className="bg-white border border-[#E5E5E5] rounded-3xl p-6 space-y-4 shadow-2xs">
+                <h3 className="text-sm font-black text-[#111111] border-b border-[#E5E5E5] pb-3">Portal Branding Names</h3>
                 
                 <div className="space-y-4 text-xs">
                   <div>
-                    <label className="block text-slate-400 font-bold mb-1">Portal Name</label>
+                    <label className="block text-slate-600 font-bold mb-1">Portal Name</label>
                     <input
                       type="text"
                       value={draftConfig.branding?.portalName || 'MCC FIX HUB'}
@@ -2045,11 +2068,11 @@ export default function SuperAdminDashboard() {
                         ...prev,
                         branding: { ...prev.branding, portalName: e.target.value }
                       }))}
-                      className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold"
+                      className="w-full px-3.5 py-2 rounded-xl bg-white border border-[#E5E5E5] text-[#111111] font-bold focus:border-[#A00000] outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-400 font-bold mb-1">Organization Abbreviation</label>
+                    <label className="block text-slate-600 font-bold mb-1">Organization Abbreviation</label>
                     <input
                       type="text"
                       value={draftConfig.branding?.shortOrgName || 'MCC'}
@@ -2057,7 +2080,7 @@ export default function SuperAdminDashboard() {
                         ...prev,
                         branding: { ...prev.branding, shortOrgName: e.target.value }
                       }))}
-                      className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold"
+                      className="w-full px-3.5 py-2 rounded-xl bg-white border border-[#E5E5E5] text-[#111111] font-bold focus:border-[#A00000] outline-none"
                     />
                   </div>
                 </div>
@@ -2066,25 +2089,26 @@ export default function SuperAdminDashboard() {
           </div>
         )}
 
+
         {/* ── TAB 4: ADMIN PORTAL STUDIO ─────────────────────────── */}
         {activeTab === 'adminPortal' && (
           <div className="space-y-6 animate-fade-in max-w-4xl">
-            <div className="bg-slate-900/80 p-5 rounded-3xl border border-slate-800">
-              <h2 className="text-lg font-black text-white flex items-center gap-2">
-                <Layout size={18} className="text-blue-400" />
+            <div className="bg-white p-5 rounded-3xl border border-[#E5E5E5] shadow-2xs">
+              <h2 className="text-lg font-black text-[#111111] flex items-center gap-2">
+                <Layout size={18} className="text-[#A00000]" />
                 <span>Admin Portal & Kanban Studio</span>
               </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5">
                 Configure SLA response time warning limits, Kanban board titles, and auto-dispatch rules.
               </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-xs">
-              <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 space-y-4">
-                <h3 className="text-sm font-black text-white border-b border-slate-800 pb-3">SLA Warning Limits (Hours)</h3>
+              <div className="bg-white border border-[#E5E5E5] rounded-3xl p-6 space-y-4 shadow-2xs">
+                <h3 className="text-sm font-black text-[#111111] border-b border-[#E5E5E5] pb-3">SLA Warning Limits (Hours)</h3>
                 
                 <div>
-                  <label className="block text-slate-400 font-bold mb-1">SLA Warning Limit (Hours)</label>
+                  <label className="block text-slate-600 font-bold mb-1">SLA Warning Limit (Hours)</label>
                   <input
                     type="number"
                     value={draftConfig.adminPortal?.slaWarningHours || 18}
@@ -2092,13 +2116,13 @@ export default function SuperAdminDashboard() {
                       ...prev,
                       adminPortal: { ...prev.adminPortal, slaWarningHours: parseInt(e.target.value, 10) || 18 }
                     }))}
-                    className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold"
+                    className="w-full px-3.5 py-2 rounded-xl bg-white border border-[#E5E5E5] text-[#111111] font-bold focus:border-[#A00000] outline-none"
                   />
                   <p className="text-[10px] text-slate-500 mt-1">Tickets older than this show an amber SLA warning badge.</p>
                 </div>
 
                 <div>
-                  <label className="block text-slate-400 font-bold mb-1">SLA Critical Target (Hours)</label>
+                  <label className="block text-slate-600 font-bold mb-1">SLA Critical Target (Hours)</label>
                   <input
                     type="number"
                     value={draftConfig.adminPortal?.slaCriticalHours || 24}
@@ -2107,19 +2131,19 @@ export default function SuperAdminDashboard() {
                       adminPortal: { ...prev.adminPortal, slaCriticalHours: parseInt(e.target.value, 10) || 24 },
                       slaTargetHours: parseInt(e.target.value, 10) || 24
                     }))}
-                    className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold"
+                    className="w-full px-3.5 py-2 rounded-xl bg-white border border-[#E5E5E5] text-[#111111] font-bold focus:border-[#A00000] outline-none"
                   />
                   <p className="text-[10px] text-slate-500 mt-1">Tickets exceeding this target show an emergency red SLA breached badge.</p>
                 </div>
               </div>
 
-              <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 space-y-4">
-                <h3 className="text-sm font-black text-white border-b border-slate-800 pb-3">Dispatch & Solving Toggles</h3>
+              <div className="bg-white border border-[#E5E5E5] rounded-3xl p-6 space-y-4 shadow-2xs">
+                <h3 className="text-sm font-black text-[#111111] border-b border-[#E5E5E5] pb-3">Dispatch & Solving Toggles</h3>
 
-                <div className="flex items-center justify-between p-3.5 bg-slate-950/60 rounded-xl border border-slate-800">
+                <div className="flex items-center justify-between p-3.5 bg-[#F5F5F5] rounded-xl border border-[#E5E5E5]">
                   <div>
-                    <p className="font-bold text-white">Allow Worker Self-Completion</p>
-                    <p className="text-[10px] text-slate-400">Enables secure 1-click tokenized resolution button in emails.</p>
+                    <p className="font-bold text-[#111111]">Allow Worker Self-Completion</p>
+                    <p className="text-[10px] text-slate-500">Enables secure 1-click tokenized resolution button in emails.</p>
                   </div>
                   <input
                     type="checkbox"
@@ -2128,7 +2152,7 @@ export default function SuperAdminDashboard() {
                       ...prev,
                       features: { ...prev.features, allowWorkerSelfComplete: e.target.checked }
                     }))}
-                    className="rounded text-amber-500"
+                    className="rounded text-[#A00000]"
                   />
                 </div>
               </div>
@@ -2300,13 +2324,13 @@ export default function SuperAdminDashboard() {
           return (
             <div className="space-y-6 animate-fade-in max-w-5xl">
               {/* Header */}
-              <div className="bg-slate-900/80 p-5 rounded-3xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="bg-white p-5 rounded-3xl border border-[#E5E5E5] flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
                 <div>
-                  <h2 className="text-lg font-black text-white flex items-center gap-2">
-                    <Sliders size={18} className="text-amber-400" />
+                  <h2 className="text-lg font-black text-[#111111] flex items-center gap-2">
+                    <Sliders size={18} className="text-[#A00000]" />
                     <span>Dynamic Complaint Form Builder</span>
                   </h2>
-                  <p className="text-xs text-slate-400 mt-0.5">
+                  <p className="text-xs text-slate-500 mt-0.5">
                     Add, rename, reorder, and configure form sections, fields, field types, and dynamic options. Changes sync live across portals.
                   </p>
                 </div>
@@ -2315,7 +2339,7 @@ export default function SuperAdminDashboard() {
                   <button
                     type="button"
                     onClick={handleAddSection}
-                    className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-black rounded-2xl shadow-lg shadow-blue-500/25 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-[#A00000] hover:bg-[#800000] text-white text-xs font-black rounded-2xl shadow-2xs hover:scale-105 active:scale-95 transition-all cursor-pointer"
                   >
                     <Plus size={15} className="stroke-[3]" />
                     <span>+ Add Section</span>
@@ -2324,7 +2348,7 @@ export default function SuperAdminDashboard() {
                   <button
                     type="button"
                     onClick={handleResetSections}
-                    className="inline-flex items-center gap-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl border border-slate-700 transition cursor-pointer"
+                    className="inline-flex items-center gap-1 px-3 py-2 bg-white hover:bg-[#FFF5F5] text-slate-600 hover:text-[#111111] text-xs font-bold rounded-xl border border-[#E5E5E5] transition cursor-pointer"
                     title="Reset to default sections"
                   >
                     <RotateCcw size={13} />
@@ -2338,19 +2362,19 @@ export default function SuperAdminDashboard() {
                 {sections.map((sec, secIdx) => (
                   <div
                     key={sec.id || secIdx}
-                    className={`bg-slate-900/80 border rounded-3xl p-5 space-y-4 transition-all ${
-                      sec.enabled ? 'border-slate-800' : 'border-slate-800/50 opacity-60 bg-slate-950/40'
+                    className={`bg-white border rounded-3xl p-5 space-y-4 shadow-2xs transition-all ${
+                      sec.enabled ? 'border-[#E5E5E5]' : 'border-[#E5E5E5] opacity-60 bg-[#F5F5F5]/60'
                     }`}
                   >
                     {/* Section Header */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E5E5E5] pb-3">
                       <div className="flex items-center gap-2 flex-1">
-                        <div className="flex flex-col text-slate-500">
+                        <div className="flex flex-col text-slate-400">
                           <button
                             type="button"
                             disabled={secIdx === 0}
                             onClick={() => handleMoveSection(secIdx, -1)}
-                            className="hover:text-amber-400 disabled:opacity-30 disabled:hover:text-slate-500 cursor-pointer"
+                            className="hover:text-[#A00000] disabled:opacity-30 disabled:hover:text-slate-400 cursor-pointer"
                           >
                             <ChevronUp size={14} />
                           </button>
@@ -2358,19 +2382,19 @@ export default function SuperAdminDashboard() {
                             type="button"
                             disabled={secIdx === sections.length - 1}
                             onClick={() => handleMoveSection(secIdx, 1)}
-                            className="hover:text-amber-400 disabled:opacity-30 disabled:hover:text-slate-500 cursor-pointer"
+                            className="hover:text-[#A00000] disabled:opacity-30 disabled:hover:text-slate-400 cursor-pointer"
                           >
                             <ChevronDown size={14} />
                           </button>
                         </div>
 
-                        <span className="text-xs font-black text-amber-400 font-mono">SECTION {secIdx + 1}</span>
+                        <span className="text-xs font-black text-[#A00000] font-mono">SECTION {secIdx + 1}</span>
 
                         <input
                           type="text"
                           value={sec.title}
                           onChange={(e) => handleUpdateSectionTitle(secIdx, e.target.value)}
-                          className="bg-slate-950 border border-slate-700 px-3 py-1.5 rounded-xl font-extrabold text-sm text-white focus:outline-none focus:border-amber-400 flex-1 max-w-sm"
+                          className="bg-white border border-[#E5E5E5] px-3 py-1.5 rounded-xl font-extrabold text-sm text-[#111111] focus:outline-none focus:border-[#A00000] flex-1 max-w-sm"
                           placeholder="Section Title"
                         />
                       </div>
@@ -2381,18 +2405,18 @@ export default function SuperAdminDashboard() {
                           onClick={() => handleToggleSection(secIdx)}
                           className={`px-3 py-1.5 rounded-xl font-extrabold text-xs flex items-center gap-1.5 transition cursor-pointer ${
                             sec.enabled
-                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                              : 'bg-slate-800 text-slate-400 border border-slate-700'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : 'bg-slate-100 text-slate-500 border border-slate-200'
                           }`}
                         >
-                          <div className={`w-2 h-2 rounded-full ${sec.enabled ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
+                          <div className={`w-2 h-2 rounded-full ${sec.enabled ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
                           <span>{sec.enabled ? 'ENABLED' : 'DISABLED'}</span>
                         </button>
 
                         <button
                           type="button"
                           onClick={() => handleDeleteSection(secIdx)}
-                          className="p-1.5 rounded-xl bg-red-950/40 text-red-400 hover:bg-red-900/60 border border-red-900/50 transition cursor-pointer"
+                          className="p-1.5 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 transition cursor-pointer"
                           title="Delete Section"
                         >
                           <Trash2 size={14} />
@@ -2409,18 +2433,18 @@ export default function SuperAdminDashboard() {
                       {(sec.fields || []).map((field, fIdx) => (
                         <div
                           key={field.id || fIdx}
-                          className={`bg-slate-950 border rounded-2xl p-3.5 space-y-3 ${
-                            field.enabled ? 'border-slate-800 hover:border-slate-700' : 'border-slate-900 opacity-50'
+                          className={`bg-[#F5F5F5] border rounded-2xl p-3.5 space-y-3 ${
+                            field.enabled ? 'border-[#E5E5E5] hover:border-slate-300' : 'border-[#E5E5E5] opacity-50'
                           }`}
                         >
                           <div className="flex flex-wrap items-center justify-between gap-3">
                             <div className="flex items-center gap-2 flex-1 min-w-[240px]">
-                              <div className="flex flex-col text-slate-500">
+                              <div className="flex flex-col text-slate-400">
                                 <button
                                   type="button"
                                   disabled={fIdx === 0}
                                   onClick={() => handleMoveField(secIdx, fIdx, -1)}
-                                  className="hover:text-amber-400 disabled:opacity-30 cursor-pointer"
+                                  className="hover:text-[#A00000] disabled:opacity-30 cursor-pointer"
                                 >
                                   <ChevronUp size={12} />
                                 </button>
@@ -2428,7 +2452,7 @@ export default function SuperAdminDashboard() {
                                   type="button"
                                   disabled={fIdx === (sec.fields.length - 1)}
                                   onClick={() => handleMoveField(secIdx, fIdx, 1)}
-                                  className="hover:text-amber-400 disabled:opacity-30 cursor-pointer"
+                                  className="hover:text-[#A00000] disabled:opacity-30 cursor-pointer"
                                 >
                                   <ChevronDown size={12} />
                                 </button>
@@ -2441,7 +2465,7 @@ export default function SuperAdminDashboard() {
                                   type="text"
                                   value={field.label}
                                   onChange={(e) => handleUpdateField(secIdx, fIdx, { label: e.target.value })}
-                                  className="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-xl font-bold text-xs text-white focus:outline-none focus:border-amber-400"
+                                  className="w-full bg-white border border-[#E5E5E5] px-3 py-1.5 rounded-xl font-bold text-xs text-[#111111] focus:outline-none focus:border-[#A00000]"
                                 />
                               </div>
 
@@ -2451,7 +2475,7 @@ export default function SuperAdminDashboard() {
                                 <select
                                   value={field.type || 'text'}
                                   onChange={(e) => handleUpdateField(secIdx, fIdx, { type: e.target.value })}
-                                  className="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-xl font-bold text-xs text-amber-300 focus:outline-none focus:border-amber-400 cursor-pointer"
+                                  className="w-full bg-white border border-[#E5E5E5] px-2.5 py-1.5 rounded-xl font-bold text-xs text-[#A00000] focus:outline-none focus:border-[#A00000] cursor-pointer"
                                 >
                                   <option value="text">Text Input</option>
                                   <option value="email">Email</option>
@@ -2468,12 +2492,12 @@ export default function SuperAdminDashboard() {
 
                             <div className="flex items-center gap-3">
                               {/* Required Toggle */}
-                              <label className="flex items-center gap-1.5 text-xs text-slate-300 font-bold cursor-pointer select-none">
+                              <label className="flex items-center gap-1.5 text-xs text-slate-700 font-bold cursor-pointer select-none">
                                 <input
                                   type="checkbox"
                                   checked={!!field.required}
                                   onChange={(e) => handleUpdateField(secIdx, fIdx, { required: e.target.checked })}
-                                  className="rounded border-slate-700 text-amber-500 focus:ring-amber-500 bg-slate-900 w-4 h-4"
+                                  className="rounded border-[#E5E5E5] text-[#A00000] focus:ring-[#A00000] bg-white w-4 h-4"
                                 />
                                 <span>Required</span>
                               </label>
@@ -2483,7 +2507,7 @@ export default function SuperAdminDashboard() {
                                 type="button"
                                 onClick={() => handleUpdateField(secIdx, fIdx, { enabled: !field.enabled })}
                                 className={`px-2.5 py-1 rounded-xl text-[11px] font-extrabold cursor-pointer transition ${
-                                  field.enabled ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' : 'bg-slate-800 text-slate-500 border border-slate-700'
+                                  field.enabled ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-slate-200 text-slate-500 border border-slate-300'
                                 }`}
                               >
                                 {field.enabled ? 'ON' : 'OFF'}
@@ -2493,7 +2517,7 @@ export default function SuperAdminDashboard() {
                               <button
                                 type="button"
                                 onClick={() => handleDeleteField(secIdx, fIdx)}
-                                className="text-red-400 hover:text-red-300 p-1 hover:bg-red-950/50 rounded-lg transition cursor-pointer"
+                                className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded-lg transition cursor-pointer"
                                 title="Delete field"
                               >
                                 <X size={14} />
@@ -2503,19 +2527,19 @@ export default function SuperAdminDashboard() {
 
                           {/* Options Manager if field type has options */}
                           {['select', 'radio', 'checkbox'].includes(field.type) && (
-                            <div className="pt-2 border-t border-slate-800/80 space-y-2">
-                              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                            <div className="pt-2 border-t border-[#E5E5E5] space-y-2">
+                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
                                 Configured Options ({field.options?.length || 0})
                               </label>
 
-                              <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1 bg-slate-900/60 rounded-xl border border-slate-800">
+                              <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1 bg-white rounded-xl border border-[#E5E5E5]">
                                 {(field.options || []).map((opt, optIdx) => (
-                                  <span key={optIdx} className="inline-flex items-center gap-1 bg-slate-950 border border-slate-700 px-2.5 py-1 rounded-lg text-xs text-slate-200 font-medium">
+                                  <span key={optIdx} className="inline-flex items-center gap-1 bg-[#F5F5F5] border border-[#E5E5E5] px-2.5 py-1 rounded-lg text-xs text-[#111111] font-medium">
                                     <span>{opt}</span>
                                     <button
                                       type="button"
                                       onClick={() => handleRemoveOption(secIdx, fIdx, optIdx)}
-                                      className="text-red-400 hover:text-red-300 ml-1 p-0.5 rounded hover:bg-red-950"
+                                      className="text-red-500 hover:text-red-700 ml-1 p-0.5 rounded hover:bg-red-50"
                                     >
                                       <X size={11} />
                                     </button>
@@ -2529,7 +2553,7 @@ export default function SuperAdminDashboard() {
                                   type="text"
                                   placeholder="Add option..."
                                   id={`add_opt_${secIdx}_${fIdx}`}
-                                  className="px-3 py-1 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white placeholder:text-slate-600 flex-1"
+                                  className="px-3 py-1 bg-white border border-[#E5E5E5] rounded-lg text-xs text-[#111111] placeholder:text-slate-400 flex-1 focus:border-[#A00000] outline-none"
                                   onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
                                       e.preventDefault();
@@ -2547,7 +2571,7 @@ export default function SuperAdminDashboard() {
                                       input.value = '';
                                     }
                                   }}
-                                  className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs cursor-pointer shadow"
+                                  className="px-3 py-1 bg-[#A00000] hover:bg-[#800000] text-white font-bold rounded-lg text-xs cursor-pointer shadow-2xs"
                                 >
                                   + Option
                                 </button>
@@ -2560,7 +2584,7 @@ export default function SuperAdminDashboard() {
                       <button
                         type="button"
                         onClick={() => handleAddField(secIdx)}
-                        className="w-full py-2.5 border-2 border-dashed border-slate-800 hover:border-amber-400/50 bg-slate-950/40 hover:bg-slate-950 text-slate-400 hover:text-amber-400 rounded-2xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer mt-2"
+                        className="w-full py-2.5 border-2 border-dashed border-[#E5E5E5] hover:border-[#A00000]/50 bg-white hover:bg-[#FFF5F5] text-slate-600 hover:text-[#A00000] rounded-2xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer mt-2"
                       >
                         <Plus size={14} className="stroke-[3]" />
                         <span>Add Field to {sec.title}</span>
@@ -2571,19 +2595,19 @@ export default function SuperAdminDashboard() {
               </div>
 
               {/* Problem Categories Manager */}
-              <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <div className="bg-white border border-[#E5E5E5] rounded-3xl p-6 space-y-4 shadow-2xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E5E5E5] pb-3">
                   <div>
-                    <h3 className="text-sm font-black text-white flex items-center gap-2">
-                      <Sparkles size={16} className="text-blue-400" />
+                    <h3 className="text-sm font-black text-[#111111] flex items-center gap-2">
+                      <Sparkles size={16} className="text-[#A00000]" />
                       <span>Issue Problem Categories & Features</span>
                     </h3>
-                    <p className="text-[11px] text-slate-400">These problem types appear as category chips in the Complaint Form.</p>
+                    <p className="text-[11px] text-slate-500">These problem types appear as category chips in the Complaint Form.</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => setShowCategoryModal(true)}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs shadow-md transition cursor-pointer self-start sm:self-auto"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#A00000] hover:bg-[#800000] text-white font-bold rounded-xl text-xs shadow-2xs transition cursor-pointer self-start sm:self-auto"
                   >
                     <Plus size={13} className="stroke-[3]" />
                     <span>+ Add Category</span>
@@ -2596,22 +2620,22 @@ export default function SuperAdminDashboard() {
                     value={newProblemInput}
                     onChange={(e) => setNewProblemInput(e.target.value)}
                     placeholder="Quick add category (e.g. AC Not Cooling, Smart Board Fault)"
-                    className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder:text-slate-500"
+                    className="flex-1 px-3.5 py-2.5 rounded-xl bg-white border border-[#E5E5E5] text-[#111111] placeholder:text-slate-400 text-xs font-medium focus:border-[#A00000] outline-none"
                   />
-                  <button type="submit" className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shadow-md hover:scale-105 transition shrink-0">
+                  <button type="submit" className="px-4 py-2.5 bg-[#A00000] hover:bg-[#800000] text-white font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shadow-2xs hover:scale-105 transition shrink-0 text-xs">
                     <Plus size={14} className="stroke-[3]" /> Add
                   </button>
                 </form>
 
                 <div className="flex flex-wrap gap-2.5 max-h-60 overflow-y-auto p-1">
                   {(draftConfig.categories || DEFAULT_CONFIG.categories || INITIAL_CATEGORIES).map((cat) => (
-                    <span key={cat.id || cat.label} className="inline-flex items-center gap-2 bg-slate-950 border border-slate-700 px-3.5 py-2 rounded-xl font-bold text-slate-200 shadow-xs">
+                    <span key={cat.id || cat.label} className="inline-flex items-center gap-2 bg-[#F5F5F5] border border-[#E5E5E5] px-3.5 py-2 rounded-xl font-bold text-[#111111] text-xs shadow-2xs">
                       <span>{cat.label}</span>
                       {cat.prefix && <span className="text-[10px] text-slate-500 font-mono">({cat.prefix})</span>}
                       <button
                         type="button"
                         onClick={() => handleDeleteCategory(cat.id, cat.label)}
-                        className="text-red-400 hover:text-red-300 ml-1 p-0.5 rounded hover:bg-red-950 transition cursor-pointer"
+                        className="text-red-500 hover:text-red-700 ml-1 p-0.5 rounded hover:bg-red-50 transition cursor-pointer"
                         title={`Remove "${cat.label}"`}
                       >
                         <X size={13} />
@@ -2627,22 +2651,22 @@ export default function SuperAdminDashboard() {
         {/* ── TAB: STARTUP COMPANIES MANAGEMENT ─────────────────────── */}
         {activeTab === 'companies' && (
           <div className="space-y-6 animate-fade-in max-w-5xl">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/80 p-5 rounded-3xl border border-slate-800">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-3xl border border-[#E5E5E5] shadow-2xs">
               <div>
-                <h2 className="text-lg font-black text-white flex items-center gap-2">
-                  <Building2 size={18} className="text-amber-400" />
+                <h2 className="text-lg font-black text-[#111111] flex items-center gap-2">
+                  <Building2 size={18} className="text-[#A00000]" />
                   <span>Startup Companies Management</span>
                 </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-slate-500 mt-0.5">
                   Manage startup companies dynamically. Companies configured here automatically populate the Company dropdown in the Complaint Form for Startup classification.
                 </p>
               </div>
             </div>
 
             {/* Add New Company Card */}
-            <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 space-y-4">
-              <h3 className="text-sm font-black text-white flex items-center gap-2 border-b border-slate-800 pb-3">
-                <Plus size={16} className="text-amber-400" />
+            <div className="bg-white border border-[#E5E5E5] rounded-3xl p-6 space-y-4 shadow-2xs">
+              <h3 className="text-sm font-black text-[#111111] flex items-center gap-2 border-b border-[#E5E5E5] pb-3">
+                <Plus size={16} className="text-[#A00000]" />
                 <span>Add New Startup Company</span>
               </h3>
               
@@ -2652,11 +2676,11 @@ export default function SuperAdminDashboard() {
                   value={newCompanyInput}
                   onChange={(e) => setNewCompanyInput(e.target.value)}
                   placeholder="Enter startup company name (e.g. Nexus Tech Ventures, BioHealth Innovations)..."
-                  className="flex-1 px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder:text-slate-500 font-medium text-xs focus:outline-none focus:border-amber-400"
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-white border border-[#E5E5E5] text-[#111111] placeholder:text-slate-400 font-medium text-xs focus:outline-none focus:border-[#A00000]"
                 />
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs flex items-center gap-1.5 cursor-pointer shadow-md transition-all hover:scale-105 active:scale-95 shrink-0"
+                  className="px-5 py-2.5 bg-[#A00000] hover:bg-[#800000] text-white font-black rounded-xl text-xs flex items-center gap-1.5 cursor-pointer shadow-2xs transition-all hover:scale-105 active:scale-95 shrink-0"
                 >
                   <Plus size={15} className="stroke-[3]" />
                   <span>Add Company</span>
@@ -2665,13 +2689,13 @@ export default function SuperAdminDashboard() {
             </div>
 
             {/* Existing Companies Grid / List */}
-            <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <h3 className="text-sm font-black text-white flex items-center gap-2">
-                  <Building2 size={16} className="text-blue-400" />
+            <div className="bg-white border border-[#E5E5E5] rounded-3xl p-6 space-y-4 shadow-2xs">
+              <div className="flex items-center justify-between border-b border-[#E5E5E5] pb-3">
+                <h3 className="text-sm font-black text-[#111111] flex items-center gap-2">
+                  <Building2 size={16} className="text-[#A00000]" />
                   <span>Active Startup Companies ({(draftConfig.companies || DEFAULT_STARTUP_COMPANIES).length})</span>
                 </h3>
-                <span className="text-[10px] text-slate-400 font-mono">Live Sync Enabled</span>
+                <span className="text-[10px] text-slate-500 font-mono">Live Sync Enabled</span>
               </div>
 
               {(!draftConfig.companies || draftConfig.companies.length === 0) && (
@@ -2682,19 +2706,19 @@ export default function SuperAdminDashboard() {
                 {(draftConfig.companies || DEFAULT_STARTUP_COMPANIES).map((comp, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center justify-between p-3.5 bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-2xl transition group"
+                    className="flex items-center justify-between p-3.5 bg-[#F5F5F5] border border-[#E5E5E5] hover:border-slate-300 rounded-2xl transition group"
                   >
                     <div className="flex items-center gap-2.5 truncate">
-                      <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 font-black text-xs shrink-0">
+                      <div className="w-8 h-8 rounded-xl bg-[#FFF5F5] border border-[#A00000]/20 flex items-center justify-center text-[#A00000] font-black text-xs shrink-0">
                         {comp.charAt(0).toUpperCase()}
                       </div>
-                      <span className="text-xs font-extrabold text-slate-200 truncate">{comp}</span>
+                      <span className="text-xs font-extrabold text-[#111111] truncate">{comp}</span>
                     </div>
 
                     <button
                       type="button"
                       onClick={() => handleDeleteCompany(comp)}
-                      className="p-1.5 rounded-xl text-red-400 hover:text-red-300 hover:bg-red-950/60 border border-transparent hover:border-red-900/50 transition cursor-pointer shrink-0"
+                      className="p-1.5 rounded-xl text-red-600 hover:text-red-700 hover:bg-red-50 border border-transparent hover:border-red-200 transition cursor-pointer shrink-0"
                       title={`Remove "${comp}"`}
                     >
                       <Trash2 size={14} />
@@ -2709,56 +2733,68 @@ export default function SuperAdminDashboard() {
         {/* ── TAB 6: MAINTENANCE STAFF ROSTER ─────────────────────── */}
         {activeTab === 'workers' && (
           <div className="space-y-6 animate-fade-in">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/80 p-5 rounded-3xl border border-slate-800">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-3xl border border-[#E5E5E5] shadow-2xs">
               <div>
-                <h2 className="text-lg font-black text-white flex items-center gap-2">
-                  <Users size={18} className="text-amber-400" />
+                <h2 className="text-lg font-black text-[#111111] flex items-center gap-2">
+                  <Users size={18} className="text-[#A00000]" />
                   <span>Maintenance Staff & Trade Allocation</span>
                 </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-slate-500 mt-0.5">
                   Workers configured here dynamically populate the allocation dropdown in Admin Portal in real time.
                 </p>
               </div>
               <button
                 onClick={() => setShowWorkerModal(true)}
-                className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black px-4 py-2.5 rounded-2xl text-xs flex items-center gap-2 shadow-lg shadow-amber-500/20 cursor-pointer"
+                className="bg-[#A00000] hover:bg-[#800000] text-white font-black px-4 py-2.5 rounded-2xl text-xs flex items-center gap-2 shadow-2xs cursor-pointer"
               >
                 <Plus size={15} />
                 <span>Add Maintenance Worker</span>
               </button>
             </div>
 
-            <div className="bg-slate-900/80 border border-slate-800 rounded-3xl overflow-hidden shadow-xl">
+            <div className="bg-white border border-[#E5E5E5] rounded-3xl overflow-hidden shadow-2xs">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-950/80 text-slate-400 uppercase font-black tracking-wider text-[10px] border-b border-slate-800">
+                  <thead className="bg-[#F5F5F5] text-slate-600 uppercase font-black tracking-wider text-[10px] border-b border-[#E5E5E5]">
                     <tr>
                       <th className="p-4">Staff Member</th>
                       <th className="p-4">Trade / Role</th>
                       <th className="p-4">Email Address</th>
                       <th className="p-4">Phone</th>
+                      <th className="p-4">Dispatch Channel</th>
                       <th className="p-4">Status</th>
                       <th className="p-4 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800 font-medium">
+                  <tbody className="divide-y divide-[#E5E5E5] font-medium">
                     {(draftConfig.workers || []).map(w => (
-                      <tr key={w.id} className="hover:bg-slate-800/40 transition">
+                      <tr key={w.id} className="hover:bg-[#FFF5F5]/50 transition">
                         <td className="p-4">
                           <div>
-                            <span className="font-black text-white block text-sm">{w.name}</span>
+                            <span className="font-black text-[#111111] block text-sm">{w.name}</span>
                             <span className="text-[10px] text-slate-500 font-mono">ID: {w.id}</span>
                           </div>
                         </td>
-                        <td className="p-4 text-amber-400 font-bold">{w.role}</td>
-                        <td className="p-4 text-slate-300 font-mono text-[11px]">{w.email}</td>
-                        <td className="p-4 text-slate-400 font-mono">{w.phone}</td>
+                        <td className="p-4 text-[#A00000] font-bold">{w.role}</td>
+                        <td className="p-4 text-slate-600 font-mono text-[11px]">{w.email}</td>
+                        <td className="p-4 text-slate-[#111111] font-mono">{w.phone}</td>
+                        <td className="p-4">
+                          {w.communicationMode === 'VOICE' ? (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-amber-50 text-amber-800 border border-amber-200">
+                              🎙️ AI Voice ({w.preferredLanguage || 'ta-IN'})
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-blue-50 text-blue-800 border border-blue-200">
+                              ✉️ Email
+                            </span>
+                          )}
+                        </td>
                         <td className="p-4">
                           <button
                             onClick={() => handleToggleWorker(w.id)}
                             className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition ${w.active
-                              ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-900'
-                              : 'bg-slate-800 text-slate-500 border border-slate-700 hover:bg-slate-700'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                              : 'bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200'
                             }`}
                           >
                             {w.active ? 'Active' : 'Disabled'}
@@ -2767,7 +2803,7 @@ export default function SuperAdminDashboard() {
                         <td className="p-4 text-right">
                           <button
                             onClick={() => handleDeleteWorker(w.id, w.name)}
-                            className="p-2 text-red-400 hover:text-red-300 hover:bg-red-950/60 rounded-xl transition"
+                            className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl transition cursor-pointer"
                             title="Delete Worker"
                           >
                             <Trash2 size={15} />
@@ -2785,19 +2821,19 @@ export default function SuperAdminDashboard() {
         {/* ── TAB 7: ISSUE CATEGORIES MASTER ──────────────────────── */}
         {activeTab === 'categories' && (
           <div className="space-y-6 animate-fade-in">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/80 p-5 rounded-3xl border border-slate-800">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-3xl border border-[#E5E5E5] shadow-2xs">
               <div>
-                <h2 className="text-lg font-black text-white flex items-center gap-2">
-                  <Layers size={18} className="text-blue-400" />
+                <h2 className="text-lg font-black text-[#111111] flex items-center gap-2">
+                  <Layers size={18} className="text-[#A00000]" />
                   <span>Issue Categories Master</span>
                 </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-slate-500 mt-0.5">
                   Categories configured here dynamically update quick-pick chips on the User Complaint Portal.
                 </p>
               </div>
               <button
                 onClick={() => setShowCategoryModal(true)}
-                className="bg-blue-600 hover:bg-blue-500 text-white font-black px-4 py-2.5 rounded-2xl text-xs flex items-center gap-2 shadow-lg shadow-blue-500/20 cursor-pointer"
+                className="bg-[#A00000] hover:bg-[#800000] text-white font-black px-4 py-2.5 rounded-2xl text-xs flex items-center gap-2 shadow-2xs cursor-pointer"
               >
                 <Plus size={15} />
                 <span>Add Category</span>
@@ -2806,25 +2842,25 @@ export default function SuperAdminDashboard() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {(draftConfig.categories || []).map(cat => (
-                <div key={cat.id} className="p-5 bg-slate-900/80 border border-slate-800 rounded-3xl space-y-3 relative overflow-hidden">
+                <div key={cat.id} className="p-5 bg-white border border-[#E5E5E5] rounded-3xl space-y-3 relative overflow-hidden shadow-2xs">
                   <div className="flex items-center justify-between">
-                    <span className="text-base font-black text-white">{cat.label}</span>
+                    <span className="text-base font-black text-[#111111]">{cat.label}</span>
                     <button
                       onClick={() => handleToggleCategory(cat.id)}
-                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${cat.active ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/40' : 'bg-slate-800 text-slate-500'}`}
+                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${cat.active ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}
                     >
                       {cat.active ? 'Active' : 'Disabled'}
                     </button>
                   </div>
-                  <p className="text-xs text-slate-400 font-mono bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80">
+                  <p className="text-xs text-slate-600 font-mono bg-[#F5F5F5] p-2.5 rounded-xl border border-[#E5E5E5]">
                     <span className="text-slate-500 font-sans block text-[10px] uppercase font-bold">Auto-Prefix:</span>
                     {cat.prefix}
                   </p>
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-800/80 text-xs">
+                  <div className="flex items-center justify-between pt-2 border-t border-[#E5E5E5] text-xs">
                     <span className="text-[11px] text-slate-500 font-mono">{cat.id}</span>
                     <button
                       onClick={() => handleDeleteCategory(cat.id, cat.label)}
-                      className="text-red-400 hover:text-red-300 text-xs font-bold flex items-center gap-1"
+                      className="text-red-600 hover:text-red-700 text-xs font-bold flex items-center gap-1 cursor-pointer"
                     >
                       <Trash2 size={13} /> Remove
                     </button>
@@ -2838,19 +2874,19 @@ export default function SuperAdminDashboard() {
         {/* ── TAB 8: BROADCAST CAMPUS ALERTS ──────────────────────── */}
         {activeTab === 'announcement' && (
           <div className="max-w-3xl space-y-6 animate-fade-in">
-            <div className="bg-slate-900/80 p-6 sm:p-8 rounded-3xl border border-slate-800 space-y-6">
+            <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E5E5E5] space-y-6 shadow-2xs">
               <div>
-                <h2 className="text-lg font-black text-white flex items-center gap-2">
-                  <Megaphone size={18} className="text-amber-400" />
+                <h2 className="text-lg font-black text-[#111111] flex items-center gap-2">
+                  <Megaphone size={18} className="text-[#A00000]" />
                   <span>Campus-Wide Live Announcement Banner</span>
                 </h2>
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xs text-slate-500 mt-1">
                   Broadcasting a notice will immediately display an alert banner across the User Portal and Admin Portal.
                 </p>
               </div>
 
               <div className="space-y-4 text-xs">
-                <div className="flex items-center gap-3 bg-slate-950/60 p-4 rounded-2xl border border-slate-800">
+                <div className="flex items-center gap-3 bg-[#F5F5F5] p-4 rounded-2xl border border-[#E5E5E5]">
                   <input
                     id="ann_enabled"
                     type="checkbox"
@@ -2859,22 +2895,22 @@ export default function SuperAdminDashboard() {
                       ...prev,
                       announcement: { ...prev.announcement, enabled: e.target.checked }
                     }))}
-                    className="w-4 h-4 rounded text-amber-500"
+                    className="w-4 h-4 rounded text-[#A00000]"
                   />
-                  <label htmlFor="ann_enabled" className="font-bold text-white cursor-pointer">
+                  <label htmlFor="ann_enabled" className="font-bold text-[#111111] cursor-pointer">
                     Enable & Broadcast Announcement Banner to All Portals
                   </label>
                 </div>
 
                 <div>
-                  <label className="text-slate-400 font-bold uppercase mb-1.5 block">Alert Severity Level</label>
+                  <label className="text-slate-600 font-bold uppercase mb-1.5 block">Alert Severity Level</label>
                   <select
                     value={draftConfig.announcement?.type || 'info'}
                     onChange={(e) => updateDraft(prev => ({
                       ...prev,
                       announcement: { ...prev.announcement, type: e.target.value }
                     }))}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 bg-slate-950 text-white"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E5E5] bg-white text-[#111111] font-bold outline-none focus:border-[#A00000]"
                   >
                     <option value="info">🔵 Information / General Notice (Blue)</option>
                     <option value="warning">🟡 Maintenance Warning / Planned Outage (Amber)</option>
@@ -2883,7 +2919,7 @@ export default function SuperAdminDashboard() {
                 </div>
 
                 <div>
-                  <label className="text-slate-400 font-bold uppercase mb-1.5 block">Notice Message Content</label>
+                  <label className="text-slate-600 font-bold uppercase mb-1.5 block">Notice Message Content</label>
                   <textarea
                     rows={3}
                     value={draftConfig.announcement?.message || ''}
@@ -2892,7 +2928,7 @@ export default function SuperAdminDashboard() {
                       announcement: { ...prev.announcement, message: e.target.value }
                     }))}
                     placeholder="e.g. Scheduled power outage in Block B on Wednesday between 2 PM and 4 PM..."
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 bg-slate-950 text-white resize-none"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E5E5] bg-white text-[#111111] resize-none outline-none focus:border-[#A00000]"
                   />
                 </div>
               </div>
@@ -2903,20 +2939,20 @@ export default function SuperAdminDashboard() {
         {/* ── TAB 9: EMAIL NOTIFICATION TEMPLATES ─────────────────── */}
         {activeTab === 'emailTemplates' && (
           <div className="max-w-3xl space-y-6 animate-fade-in">
-            <div className="bg-slate-900/80 p-6 sm:p-8 rounded-3xl border border-slate-800 space-y-6">
+            <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E5E5E5] space-y-6 shadow-2xs">
               <div>
-                <h2 className="text-lg font-black text-white flex items-center gap-2">
-                  <Mail size={18} className="text-indigo-400" />
+                <h2 className="text-lg font-black text-[#111111] flex items-center gap-2">
+                  <Mail size={18} className="text-[#A00000]" />
                   <span>Email Notification Templates</span>
                 </h2>
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xs text-slate-500 mt-1">
                   Customize subject lines and footer texts without modifying backend SMTP security.
                 </p>
               </div>
 
               <div className="space-y-4 text-xs">
                 <div>
-                  <label className="text-slate-400 font-bold block mb-1">Admin Notification Subject</label>
+                  <label className="text-slate-600 font-bold block mb-1">Admin Notification Subject</label>
                   <input
                     type="text"
                     value={draftConfig.emailTemplates?.adminNotificationSubject || ''}
@@ -2924,12 +2960,12 @@ export default function SuperAdminDashboard() {
                       ...prev,
                       emailTemplates: { ...prev.emailTemplates, adminNotificationSubject: e.target.value }
                     }))}
-                    className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono"
+                    className="w-full px-3.5 py-2 rounded-xl bg-white border border-[#E5E5E5] text-[#111111] font-mono outline-none focus:border-[#A00000]"
                   />
                 </div>
 
                 <div>
-                  <label className="text-slate-400 font-bold block mb-1">Worker Work Order Dispatch Subject</label>
+                  <label className="text-slate-600 font-bold block mb-1">Worker Work Order Dispatch Subject</label>
                   <input
                     type="text"
                     value={draftConfig.emailTemplates?.workerDispatchSubject || ''}
@@ -2937,7 +2973,7 @@ export default function SuperAdminDashboard() {
                       ...prev,
                       emailTemplates: { ...prev.emailTemplates, workerDispatchSubject: e.target.value }
                     }))}
-                    className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono"
+                    className="w-full px-3.5 py-2 rounded-xl bg-white border border-[#E5E5E5] text-[#111111] font-mono outline-none focus:border-[#A00000]"
                   />
                 </div>
               </div>
@@ -2948,9 +2984,9 @@ export default function SuperAdminDashboard() {
         {/* ── TAB 10: FEATURE SWITCHES ────────────────────────────── */}
         {activeTab === 'features' && (
           <div className="max-w-3xl space-y-6 animate-fade-in">
-            <div className="bg-slate-900/80 p-6 sm:p-8 rounded-3xl border border-slate-800 space-y-6">
-              <h2 className="text-lg font-black text-white flex items-center gap-2">
-                <Settings size={18} className="text-emerald-400" />
+            <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E5E5E5] space-y-6 shadow-2xs">
+              <h2 className="text-lg font-black text-[#111111] flex items-center gap-2">
+                <Settings size={18} className="text-[#A00000]" />
                 <span>Feature Switchboard</span>
               </h2>
 
@@ -2962,8 +2998,8 @@ export default function SuperAdminDashboard() {
                   { key: 'enableSmtpDispatch', label: 'Automated SMTP Email Alerts' },
                   { key: 'enableHeroKenBurns', label: 'Ken Burns Hero Background Zoom Animation' }
                 ].map(({ key, label }) => (
-                  <div key={key} className="flex items-center justify-between p-3.5 bg-slate-950/60 rounded-xl border border-slate-800">
-                    <span className="font-bold text-slate-200">{label}</span>
+                  <div key={key} className="flex items-center justify-between p-3.5 bg-[#F5F5F5] rounded-xl border border-[#E5E5E5]">
+                    <span className="font-bold text-[#111111]">{label}</span>
                     <input
                       type="checkbox"
                       checked={draftConfig.features?.[key] !== false}
@@ -2971,7 +3007,7 @@ export default function SuperAdminDashboard() {
                         ...prev,
                         features: { ...prev.features, [key]: e.target.checked }
                       }))}
-                      className="rounded text-amber-500"
+                      className="rounded text-[#A00000]"
                     />
                   </div>
                 ))}
@@ -2983,13 +3019,13 @@ export default function SuperAdminDashboard() {
         {/* ── TAB 11: MASTER TICKET OVERRIDE & AUDIT ──────────────── */}
         {activeTab === 'override' && (
           <div className="space-y-6 animate-fade-in">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/80 p-5 rounded-3xl border border-slate-800">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-3xl border border-[#E5E5E5] shadow-2xs">
               <div>
-                <h2 className="text-lg font-black text-white flex items-center gap-2">
-                  <Wrench size={18} className="text-rose-400" />
+                <h2 className="text-lg font-black text-[#111111] flex items-center gap-2">
+                  <Wrench size={18} className="text-[#A00000]" />
                   <span>Master Ticket Override & Permanent Purge</span>
                 </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-slate-500 mt-0.5">
                   Super Admin privileges: Force change ticket statuses or permanently delete spam complaints.
                 </p>
               </div>
@@ -3001,15 +3037,15 @@ export default function SuperAdminDashboard() {
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search tickets..."
-                    className="px-3.5 py-2 pl-9 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white"
+                    className="px-3.5 py-2 pl-9 bg-white border border-[#E5E5E5] rounded-xl text-xs text-[#111111] outline-none focus:border-[#A00000]"
                   />
-                  <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 </div>
 
                 <select
                   value={filterPriority}
                   onChange={(e) => setFilterPriority(e.target.value)}
-                  className="px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white"
+                  className="px-3 py-2 bg-white border border-[#E5E5E5] rounded-xl text-xs text-[#111111] font-bold outline-none focus:border-[#A00000]"
                 >
                   <option value="All">All Priorities</option>
                   <option value="Normal">Normal</option>
@@ -3019,10 +3055,10 @@ export default function SuperAdminDashboard() {
               </div>
             </div>
 
-            <div className="bg-slate-900/80 border border-slate-800 rounded-3xl overflow-hidden shadow-xl">
+            <div className="bg-white border border-[#E5E5E5] rounded-3xl overflow-hidden shadow-2xs">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-950/80 text-slate-400 uppercase font-black tracking-wider text-[10px] border-b border-slate-800">
+                  <thead className="bg-[#F5F5F5] text-slate-600 uppercase font-black tracking-wider text-[10px] border-b border-[#E5E5E5]">
                     <tr>
                       <th className="p-4">Ticket ID</th>
                       <th className="p-4">Complainant</th>
@@ -3033,29 +3069,29 @@ export default function SuperAdminDashboard() {
                       <th className="p-4 text-right">Purge</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800 font-medium">
+                  <tbody className="divide-y divide-[#E5E5E5] font-medium">
                     {filteredTickets.map(t => (
-                      <tr key={t.ticketNo} className="hover:bg-slate-800/40 transition">
-                        <td className="p-4 font-black font-mono text-amber-400">{t.ticketNo}</td>
+                      <tr key={t.ticketNo} className="hover:bg-[#FFF5F5]/50 transition">
+                        <td className="p-4 font-black font-mono text-[#A00000]">{t.ticketNo}</td>
                         <td className="p-4">
-                          <span className="font-bold text-white block">{t.name}</span>
-                          <span className="text-[10px] text-slate-400">{t.department} ({t.userType})</span>
+                          <span className="font-bold text-[#111111] block">{t.name}</span>
+                          <span className="text-[10px] text-slate-500">{t.department} ({t.userType})</span>
                         </td>
                         <td className="p-4">
-                          <span className="text-slate-200 block font-bold">{t.issueCategory}</span>
+                          <span className="text-[#111111] block font-bold">{t.issueCategory}</span>
                           <span className="text-[10px] text-slate-500">Block {t.block || 'Campus'}, Room {t.roomNo || 'N/A'}</span>
                         </td>
                         <td className="p-4">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${t.priority === 'Critical' ? 'bg-red-950 text-red-400 border border-red-500/40' : 'bg-slate-800 text-slate-300'}`}>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${t.priority === 'Critical' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-slate-100 text-slate-700 border border-slate-200'}`}>
                             {t.priority}
                           </span>
                         </td>
                         <td className="p-4">
                           <span className={`px-2.5 py-1 rounded-xl text-[10px] font-black uppercase ${t.status === 'Completed'
-                            ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/40'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                             : t.status === 'Ongoing'
-                              ? 'bg-amber-950 text-amber-400 border border-amber-500/40'
-                              : 'bg-red-950 text-red-400 border border-red-500/40'
+                              ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                              : 'bg-red-50 text-red-700 border border-red-200'
                           }`}>
                             {t.status}
                           </span>
@@ -3064,19 +3100,19 @@ export default function SuperAdminDashboard() {
                           <div className="flex items-center gap-1.5">
                             <button
                               onClick={() => handleForceStatus(t.ticketNo, 'Unsolved')}
-                              className="px-2 py-1 bg-slate-800 hover:bg-red-950 hover:text-red-400 rounded-lg text-[10px] font-bold transition"
+                              className="px-2 py-1 bg-[#F5F5F5] hover:bg-red-50 hover:text-red-700 border border-[#E5E5E5] rounded-lg text-[10px] font-bold transition cursor-pointer"
                             >
                               Unsolved
                             </button>
                             <button
                               onClick={() => handleForceStatus(t.ticketNo, 'Ongoing')}
-                              className="px-2 py-1 bg-slate-800 hover:bg-amber-950 hover:text-amber-400 rounded-lg text-[10px] font-bold transition"
+                              className="px-2 py-1 bg-[#F5F5F5] hover:bg-amber-50 hover:text-amber-800 border border-[#E5E5E5] rounded-lg text-[10px] font-bold transition cursor-pointer"
                             >
                               Ongoing
                             </button>
                             <button
                               onClick={() => handleForceStatus(t.ticketNo, 'Completed')}
-                              className="px-2 py-1 bg-slate-800 hover:bg-emerald-950 hover:text-emerald-400 rounded-lg text-[10px] font-bold transition"
+                              className="px-2 py-1 bg-[#F5F5F5] hover:bg-emerald-50 hover:text-emerald-700 border border-[#E5E5E5] rounded-lg text-[10px] font-bold transition cursor-pointer"
                             >
                               Solved
                             </button>
@@ -3085,7 +3121,7 @@ export default function SuperAdminDashboard() {
                         <td className="p-4 text-right">
                           <button
                             onClick={() => setTicketToDelete(t)}
-                            className="p-2 text-red-400 hover:text-red-300 hover:bg-red-950/80 rounded-xl transition cursor-pointer"
+                            className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl transition cursor-pointer"
                             title="Permanently Delete Ticket"
                           >
                             <Trash2 size={15} />
@@ -3104,68 +3140,94 @@ export default function SuperAdminDashboard() {
 
       {/* ── MODAL: Add Worker ─────────────────────────────────────── */}
       {showWorkerModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-slate-900 border border-amber-500/40 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5 animate-scale-in">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-base font-black text-white flex items-center gap-2">
-                <Users size={16} className="text-amber-400" />
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white border border-[#E5E5E5] rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5 animate-scale-in text-[#111111]">
+            <div className="flex items-center justify-between border-b border-[#E5E5E5] pb-3">
+              <h3 className="text-base font-black text-[#111111] flex items-center gap-2">
+                <Users size={16} className="text-[#A00000]" />
                 <span>Add Maintenance Worker</span>
               </h3>
-              <button onClick={() => setShowWorkerModal(false)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setShowWorkerModal(false)} className="text-slate-400 hover:text-[#111111] cursor-pointer">
                 <X size={18} />
               </button>
             </div>
 
             <form onSubmit={handleAddWorker} className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-300 font-bold mb-1">Worker Name *</label>
+                <label className="block text-slate-600 font-bold mb-1">Worker Name *</label>
                 <input
                   type="text"
                   required
                   value={workerForm.name}
                   onChange={(e) => setWorkerForm(prev => ({ ...prev, name: e.target.value }))}
                   placeholder="e.g. Ramesh Babu"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 bg-slate-950 text-white"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E5E5] bg-white text-[#111111] font-bold focus:border-[#A00000] outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-bold mb-1">Specialized Trade / Role *</label>
+                <label className="block text-slate-600 font-bold mb-1">Specialized Trade / Role *</label>
                 <input
                   type="text"
                   required
                   value={workerForm.role}
                   onChange={(e) => setWorkerForm(prev => ({ ...prev, role: e.target.value }))}
                   placeholder="e.g. HVAC & AC Maintenance Lead"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 bg-slate-950 text-white"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E5E5] bg-white text-[#111111] font-bold focus:border-[#A00000] outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-bold mb-1">Email for Work Order Dispatch</label>
+                <label className="block text-slate-600 font-bold mb-1">Email for Work Order Dispatch</label>
                 <input
                   type="email"
                   value={workerForm.email}
                   onChange={(e) => setWorkerForm(prev => ({ ...prev, email: e.target.value }))}
                   placeholder="worker@mcc.edu"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 bg-slate-950 text-white"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E5E5] bg-white text-[#111111] font-mono outline-none focus:border-[#A00000]"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-bold mb-1">Phone Number</label>
+                <label className="block text-slate-600 font-bold mb-1">Phone Number</label>
                 <input
                   type="text"
                   value={workerForm.phone}
                   onChange={(e) => setWorkerForm(prev => ({ ...prev, phone: e.target.value }))}
                   placeholder="+91 98400 12345"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 bg-slate-950 text-white"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E5E5] bg-white text-[#111111] font-mono outline-none focus:border-[#A00000]"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-600 font-bold mb-1">Dispatch Channel</label>
+                  <select
+                    value={workerForm.communicationMode}
+                    onChange={(e) => setWorkerForm(prev => ({ ...prev, communicationMode: e.target.value }))}
+                    className="w-full px-3 py-2.5 rounded-xl border border-[#E5E5E5] bg-white text-[#111111] font-bold outline-none focus:border-[#A00000]"
+                  >
+                    <option value="VOICE">🎙️ AI Voice Call</option>
+                    <option value="EMAIL">✉️ Email Portal</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-slate-600 font-bold mb-1">Voice Language</label>
+                  <select
+                    value={workerForm.preferredLanguage}
+                    onChange={(e) => setWorkerForm(prev => ({ ...prev, preferredLanguage: e.target.value }))}
+                    className="w-full px-3 py-2.5 rounded-xl border border-[#E5E5E5] bg-white text-[#111111] font-bold outline-none focus:border-[#A00000]"
+                  >
+                    <option value="ta-IN">Tamil (தமிழ்)</option>
+                    <option value="en-IN">English</option>
+                    <option value="hi-IN">Hindi (हिंदी)</option>
+                  </select>
+                </div>
               </div>
 
               <button
                 type="submit"
-                className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black py-3 rounded-xl shadow-lg shadow-amber-500/20 cursor-pointer text-xs"
+                className="w-full bg-[#A00000] hover:bg-[#800000] text-white font-black py-3 rounded-xl shadow-2xs cursor-pointer text-xs transition-all"
               >
                 Save & Add to Active Roster
               </button>
@@ -3176,26 +3238,26 @@ export default function SuperAdminDashboard() {
 
       {/* ── MODAL: Add Features / New Problem ───────────────────────────── */}
       {showCategoryModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-slate-900 border border-blue-500/40 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5 animate-scale-in">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white border border-[#E5E5E5] rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5 animate-scale-in text-[#111111]">
+            <div className="flex items-center justify-between border-b border-[#E5E5E5] pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold">
+                <div className="w-8 h-8 rounded-xl bg-[#FFF5F5] text-[#A00000] flex items-center justify-center font-bold border border-[#A00000]/20">
                   <Sparkles size={18} />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-white">Add Features / New Problem</h3>
-                  <p className="text-[11px] text-slate-400 font-medium">Add a maintenance problem type or feature to Complaint Form</p>
+                  <h3 className="text-base font-black text-[#111111]">Add Features / New Problem</h3>
+                  <p className="text-[11px] text-slate-500 font-medium">Add a maintenance problem type or feature to Complaint Form</p>
                 </div>
               </div>
-              <button onClick={() => setShowCategoryModal(false)} className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition">
+              <button onClick={() => setShowCategoryModal(false)} className="text-slate-400 hover:text-[#111111] p-1 rounded-lg hover:bg-slate-100 transition cursor-pointer">
                 <X size={18} />
               </button>
             </div>
 
             <form onSubmit={handleAddCategory} className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-300 font-bold mb-1">Problem / Feature Name with Emoji *</label>
+                <label className="block text-slate-600 font-bold mb-1">Problem / Feature Name with Emoji *</label>
                 <input
                   type="text"
                   required
@@ -3209,24 +3271,24 @@ export default function SuperAdminDashboard() {
                     }));
                   }}
                   placeholder="e.g. ❄️ Air Conditioner Fault, 💡 Projector Issue"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 bg-slate-950 text-white font-semibold focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E5E5] bg-white text-[#111111] font-semibold focus:border-[#A00000] outline-none transition"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-bold mb-1">Auto-Prefix for Description (Optional)</label>
+                <label className="block text-slate-600 font-bold mb-1">Auto-Prefix for Description (Optional)</label>
                 <input
                   type="text"
                   value={categoryForm.prefix}
                   onChange={(e) => setCategoryForm(prev => ({ ...prev, prefix: e.target.value }))}
                   placeholder="e.g. AC issue: "
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 bg-slate-950 text-white font-mono text-xs focus:border-blue-500 outline-none transition"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E5E5] bg-white text-[#111111] font-mono text-xs focus:border-[#A00000] outline-none transition"
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black py-3 rounded-xl shadow-lg shadow-blue-500/25 hover:scale-[1.02] active:scale-98 transition flex items-center justify-center gap-2 cursor-pointer text-xs"
+                className="w-full bg-[#A00000] hover:bg-[#800000] text-white font-black py-3 rounded-xl shadow-2xs hover:scale-[1.02] active:scale-98 transition flex items-center justify-center gap-2 cursor-pointer text-xs"
               >
                 <Plus size={15} className="stroke-[3]" />
                 <span>Save & Add Problem Feature</span>
@@ -3238,56 +3300,56 @@ export default function SuperAdminDashboard() {
 
       {/* ── MODAL: Delete Confirmation Inside Website ────────────────── */}
       {ticketToDelete && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-slate-900 border border-red-500/40 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5 animate-scale-in text-slate-100">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white border border-[#E5E5E5] rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5 animate-scale-in text-[#111111]">
+            <div className="flex items-center justify-between border-b border-[#E5E5E5] pb-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-red-500/20 text-red-400 flex items-center justify-center font-bold border border-red-500/30">
+                <div className="w-10 h-10 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center font-bold border border-red-200">
                   <Trash2 size={20} className="animate-pulse" />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-white">Permanently Purge Ticket</h3>
-                  <p className="text-[11px] text-slate-400 font-medium">Irreversible database action</p>
+                  <h3 className="text-base font-black text-[#111111]">Permanently Purge Ticket</h3>
+                  <p className="text-[11px] text-slate-500 font-medium">Irreversible database action</p>
                 </div>
               </div>
               <button
                 onClick={() => !isDeleting && setTicketToDelete(null)}
                 disabled={isDeleting}
-                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition cursor-pointer"
+                className="text-slate-400 hover:text-[#111111] p-1 rounded-lg hover:bg-slate-100 transition cursor-pointer"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <div className="bg-slate-950/90 rounded-2xl p-4 border border-slate-800 space-y-2 text-xs">
+            <div className="bg-[#F5F5F5] rounded-2xl p-4 border border-[#E5E5E5] space-y-2 text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-slate-400 font-medium">Ticket Number:</span>
-                <span className="font-mono font-black text-red-400 bg-red-950/80 px-2.5 py-0.5 rounded-lg border border-red-800/60 text-sm">
+                <span className="text-slate-500 font-medium">Ticket Number:</span>
+                <span className="font-mono font-black text-[#A00000] bg-[#FFF5F5] px-2.5 py-0.5 rounded-lg border border-[#A00000]/20 text-sm">
                   {ticketToDelete.ticketNo}
                 </span>
               </div>
               {ticketToDelete.name && (
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-400 font-medium">Complainant:</span>
-                  <span className="font-bold text-slate-200">{ticketToDelete.name}</span>
+                  <span className="text-slate-500 font-medium">Complainant:</span>
+                  <span className="font-bold text-[#111111]">{ticketToDelete.name}</span>
                 </div>
               )}
               {ticketToDelete.issueCategory && (
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-400 font-medium">Issue Category:</span>
-                  <span className="font-semibold text-slate-300">{ticketToDelete.issueCategory}</span>
+                  <span className="text-slate-500 font-medium">Issue Category:</span>
+                  <span className="font-semibold text-slate-700">{ticketToDelete.issueCategory}</span>
                 </div>
               )}
               {ticketToDelete.block && (
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-400 font-medium">Location:</span>
-                  <span className="font-medium text-slate-300">{ticketToDelete.block} {ticketToDelete.roomNo ? `(Room ${ticketToDelete.roomNo})` : ''}</span>
+                  <span className="text-slate-500 font-medium">Location:</span>
+                  <span className="font-medium text-slate-700">{ticketToDelete.block} {ticketToDelete.roomNo ? `(Room ${ticketToDelete.roomNo})` : ''}</span>
                 </div>
               )}
             </div>
 
-            <div className="p-3.5 rounded-xl bg-red-950/40 border border-red-500/30 text-red-300 text-xs leading-relaxed flex items-start gap-2.5">
-              <AlertTriangle size={16} className="shrink-0 text-red-400 mt-0.5" />
+            <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs leading-relaxed flex items-start gap-2.5">
+              <AlertTriangle size={16} className="shrink-0 text-red-600 mt-0.5" />
               <span>
                 Are you sure you want to permanently purge <strong>{ticketToDelete.ticketNo}</strong>? This ticket will be completely removed from all portals and cannot be recovered.
               </span>
@@ -3298,7 +3360,7 @@ export default function SuperAdminDashboard() {
                 type="button"
                 onClick={() => setTicketToDelete(null)}
                 disabled={isDeleting}
-                className="px-5 py-2.5 rounded-xl border border-slate-700 hover:bg-slate-800 text-slate-300 font-bold text-xs transition cursor-pointer"
+                className="px-5 py-2.5 rounded-xl border border-[#E5E5E5] hover:bg-slate-50 text-slate-700 font-bold text-xs transition cursor-pointer"
               >
                 Cancel
               </button>

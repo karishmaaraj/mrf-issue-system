@@ -4,7 +4,7 @@
  * Real-time Draft Engine with Live Preview and 1-Click Live Publish across all portals.
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Crown, Users, Layers, Megaphone, Wrench, Shield, CheckCircle2, Clock,
   AlertTriangle, Flame, RefreshCw, Trash2, Plus, LogOut, ArrowUpRight,
@@ -71,25 +71,51 @@ const COLOR_PRESETS = [
 ];
 
 export default function SuperAdminDashboard() {
-  const [authed, setAuthed] = useState(true);
+  const [authed, setAuthed] = useState(false);
+  const [superUser, setSuperUser] = useState(null);
+
+  const checkSession = useCallback(async () => {
+    try {
+      const apiBase = typeof window !== 'undefined' && (window.location.port === '' || window.location.port === '80')
+        ? ''
+        : 'http://localhost:5000';
+      const res = await fetch(`${apiBase}/api/admin/me`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.authenticated && data.user?.role === 'SUPER_ADMIN') {
+          setAuthed(true);
+          setSuperUser(data.user);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('[Super Admin Session Check Error]', e);
+    }
+    setAuthed(false);
+    setSuperUser(null);
+  }, []);
 
   useEffect(() => {
     document.title = 'MCC Super Admin — Campus Facilities';
-  }, []);
+    checkSession();
+  }, [checkSession]);
 
-  const handleLogin = () => {
-    try {
-      sessionStorage.setItem(SUPER_ADMIN_AUTH_KEY, 'true');
-    } catch {}
+  const handleLogin = (user) => {
+    setSuperUser(user);
     setAuthed(true);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     try {
-      sessionStorage.removeItem(SUPER_ADMIN_AUTH_KEY);
-      localStorage.removeItem(SUPER_ADMIN_AUTH_KEY);
-    } catch {}
+      const apiBase = typeof window !== 'undefined' && (window.location.port === '' || window.location.port === '80')
+        ? ''
+        : 'http://localhost:5000';
+      await fetch(`${apiBase}/api/admin/logout`, { method: 'POST', credentials: 'include' });
+    } catch (e) {
+      console.warn('[Super Admin Logout Error]', e);
+    }
     setAuthed(false);
+    setSuperUser(null);
   };
 
   const [config, setConfig] = useState(() => getSystemConfig());
@@ -569,13 +595,8 @@ export default function SuperAdminDashboard() {
     { id: 'override', label: 'Master Tickets', icon: Wrench, badge: tickets.length },
   ];
 
-  const issuePortalUrl = typeof window !== 'undefined' && (window.location.port === '' || window.location.port === '80')
-    ? '/issue/'
-    : 'http://localhost:5174/issue/';
-
-  const adminPortalUrl = typeof window !== 'undefined' && (window.location.port === '' || window.location.port === '80')
-    ? '/issue/admin'
-    : 'http://localhost:5174/issue/admin';
+  const issuePortalUrl = '/issue/';
+  const adminPortalUrl = '/admin/';
 
   if (!authed) {
     return <SuperAdminLogin onLogin={handleLogin} />;

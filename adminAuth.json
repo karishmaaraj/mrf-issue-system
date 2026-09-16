@@ -1,0 +1,20 @@
+{
+  "accounts": [
+    {
+      "id": "adm_1",
+      "email": "admin@mcc.edu",
+      "role": "ADMIN",
+      "salt": "mrf_salt_admin_2026",
+      "passwordHash": "ba4b91e6db1c4b63f07dd32ec57334405e7c38cf76a7fe4d4a842564b5421184925ab01df98be59c6554e5fff778f328cde77af91f2432660296ba080dd70ef6",
+      "active": true
+    },
+    {
+      "id": "sup_1",
+      "email": "superadmin@mcc.edu",
+      "role": "SUPER_ADMIN",
+      "salt": "mrf_salt_superadmin_2026",
+      "passwordHash": "f3e6dbb1ab277fad0360f0175b8151405bef6d72e3351f8b01ec478d543d6a99beffd129a674bfda0dde18814d3a4794bf5606e7994120182b0bb15b7cc1b5df",
+      "active": true
+    }
+  ]
+}

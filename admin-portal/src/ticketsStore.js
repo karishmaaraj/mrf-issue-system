@@ -129,7 +129,7 @@ export function getTickets() {
 export async function fetchTicketsFromServer() {
   const serverUrl = getTicketsApiUrl();
   try {
-    const res = await fetch(serverUrl);
+    const res = await fetch(serverUrl, { credentials: 'include' });
     if (res.ok) {
       const serverTickets = await res.json();
       const newHash = computeSimpleHash(serverTickets);
@@ -160,12 +160,13 @@ export async function createTicket(formData) {
     const res = await fetch(serverUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(formData),
     });
 
     if (res.ok) {
       const newTicket = await res.json();
-      const freshRes = await fetch(serverUrl);
+      const freshRes = await fetch(serverUrl, { credentials: 'include' });
       if (freshRes.ok) {
         const fresh = await freshRes.json();
         cachedTickets = fresh;
@@ -222,12 +223,13 @@ export async function updateTicket(ticketNo, updates) {
     const res = await fetch(`${serverUrl}/${encodeURIComponent(ticketNo)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(updates),
     });
 
     if (res.ok) {
       const updated = await res.json();
-      const freshRes = await fetch(serverUrl);
+      const freshRes = await fetch(serverUrl, { credentials: 'include' });
       if (freshRes.ok) {
         const fresh = await freshRes.json();
         cachedTickets = fresh;
@@ -250,20 +252,20 @@ export async function updateTicket(ticketNo, updates) {
     const tDigits = tNo.replace(/\D/g, '');
     return tNo === cleanTarget || (cleanDigits && tDigits === cleanDigits);
   });
-  if (idx === -1) return null;
-
-  localTickets[idx] = {
-    ...localTickets[idx],
-    ...updates,
-    updatedAt: new Date().toISOString(),
-  };
-
-  cachedTickets = localTickets;
-  lastSerializedHash = computeSimpleHash(localTickets);
-  saveLocalTickets(localTickets);
-  syncLocalCounterWithTickets(localTickets);
-  broadcastTicketsUpdate(localTickets);
-  return localTickets[idx];
+  if (idx !== -1) {
+    localTickets[idx] = {
+      ...localTickets[idx],
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+    cachedTickets = localTickets;
+    lastSerializedHash = computeSimpleHash(localTickets);
+    saveLocalTickets(localTickets);
+    syncLocalCounterWithTickets(localTickets);
+    broadcastTicketsUpdate(localTickets);
+    return localTickets[idx];
+  }
+  return null;
 }
 
 export async function deleteTicket(ticketNo) {
@@ -274,11 +276,12 @@ export async function deleteTicket(ticketNo) {
   try {
     const res = await fetch(`${serverUrl}/${encodeURIComponent(ticketNo)}`, {
       method: 'DELETE',
+      credentials: 'include',
     });
 
     if (res.ok) {
       serverSuccess = true;
-      const freshRes = await fetch(serverUrl);
+      const freshRes = await fetch(serverUrl, { credentials: 'include' });
       if (freshRes.ok) {
         const fresh = await freshRes.json();
         cachedTickets = fresh;
@@ -321,6 +324,7 @@ export async function adminOverrideTicket(ticketNo, adminName, reason) {
     const res = await fetch(`${serverUrl}/${encodeURIComponent(ticketNo)}/admin-override`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ adminName, reason }),
     });
 

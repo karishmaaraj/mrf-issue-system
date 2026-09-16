@@ -12,10 +12,10 @@ export default function Navbar() {
 
   return (
     <nav className="bg-white/95 backdrop-blur-md border-b border-[#E5E5E5] shadow-xs sticky top-0 z-30 py-0.5">
-      <div className="max-w-6xl mx-auto flex items-center justify-between px-4 sm:px-6 py-2">
+      <div className="max-w-[1440px] mx-auto flex items-center justify-between px-4 sm:px-6 py-1.5">
         {/* Brand (Left Side) */}
         <Link to="/" className="flex items-center gap-3.5 group">
-          <CollegeLogo className="h-14 sm:h-16 w-auto shrink-0 transition-transform group-hover:scale-105" />
+          <CollegeLogo className="h-10 sm:h-12 w-auto shrink-0 transition-transform group-hover:scale-105" />
           <div>
             <p className="font-extrabold text-[#171717] text-base sm:text-lg leading-tight group-hover:text-[#800000] transition">MCC FIX HUB</p>
             <p className="text-[11px] sm:text-xs text-[#6B6B6B] font-medium leading-tight">Campus Maintenance Tracking System</p>

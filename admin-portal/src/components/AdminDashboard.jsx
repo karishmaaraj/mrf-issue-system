@@ -1,49 +1,102 @@
 /**
- * AdminDashboard.jsx — Master Animated Admin Portal (Purely Admin Options)
- * Features rich micro-interactions, animated live radar indicators, interactive worker dispatch, and fluid transitions.
+ * AdminDashboard.jsx — Master Redesigned Admin Portal (Light MCC Theme)
+ * Features:
+ * 1. LEFT SIDEBAR (Clean white sidebar, MCC FIX HUB branding, active pill)
+ * 2. TOP HEADER ("Good morning, Admin! 👋", subtitle, Date/Time, Avatar, Actions)
+ * 3. COMPACT STATUS SUMMARY (Unsolved, In Progress, Awaiting, Resolved, Reopened)
+ * 4. NEEDS YOUR ATTENTION (Primary action area with [ 🔧 Assign Work ] / [ Review & Reassign ])
+ * 5. SEARCH + FILTERS (Positioned before complaint board)
+ * 6. COMPLAINT BOARD (4 clean columns: Unsolved, In Progress, Awaiting Confirmation, Resolved)
+ * 7. ASSIGN WORK MODAL (Light MCC Maroon theme)
+ * 8. WORKER OVERVIEW (Real dynamic worker cards & real workload)
+ * 9. RECENT ACTIVITY (Timestamped activity panel)
  */
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Link } from 'react-router-dom';
 import AdminLogin from './AdminLogin.jsx';
-import StatsBar from './StatsBar.jsx';
+import StatRow from './StatRow.jsx';
+import PriorityQueue from './PriorityQueue.jsx';
+import WorkerGrid from './WorkerGrid.jsx';
+import ActivityFeed from './ActivityFeed.jsx';
 import KanbanBoard from './KanbanBoard.jsx';
 import TicketDetailModal from './TicketDetailModal.jsx';
 import WorkerEmailModal from './WorkerEmailModal.jsx';
-import WorkTracker from './WorkTracker.jsx';
 import WorkHistoryView from './WorkHistoryView.jsx';
 import WorkTimelineModal from './WorkTimelineModal.jsx';
-import { getTickets, updateTicket, fetchTicketsFromServer } from '../ticketsStore.js';
-import { sendCompletionEmail, sendWorkerAssignmentEmail } from '../emailService.js';
-import { getSystemConfig, fetchSystemConfigFromServer } from '../systemConfigStore.js';
+import AssignWorkModal from './AssignWorkModal.jsx';
 import CollegeLogo from './CollegeLogo.jsx';
+import { getTickets, updateTicket, fetchTicketsFromServer, isTicketUrgent } from '../ticketsStore.js';
+import { sendCompletionEmail } from '../emailService.js';
+import { getSystemConfig, fetchSystemConfigFromServer } from '../systemConfigStore.js';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import {
-  LogOut, RefreshCw, Search, LayoutDashboard, Filter,
-  SlidersHorizontal, Shield, CheckCircle2, Users, Activity, Download, Wrench, Send, Sparkles, Mail, History,
-  Crown, Megaphone, FileText, FileSpreadsheet
+  LayoutDashboard, ClipboardList, Users, FileText, Bell, Settings,
+  LogOut, RefreshCw, Search, SlidersHorizontal, Filter, Shield,
+  CheckCircle2, Wrench, Send, FileSpreadsheet, User, Calendar, Menu, X, ChevronRight, Flame
 } from 'lucide-react';
 
 import { WORKERS } from '../constants.js';
 
 export default function AdminDashboard() {
   const [authed, setAuthed] = useState(false);
+  const [adminUser, setAdminUser] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('Dashboard');
+
+  const checkSession = useCallback(async () => {
+    try {
+      const apiBase = typeof window !== 'undefined' && (window.location.port === '' || window.location.port === '80')
+        ? ''
+        : 'http://localhost:5000';
+      const res = await fetch(`${apiBase}/api/admin/me`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.authenticated && ['ADMIN', 'SUPER_ADMIN'].includes(data.user?.role)) {
+          setAuthed(true);
+          setAdminUser(data.user);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('[Admin Session Check Error]', e);
+    }
+    setAuthed(false);
+    setAdminUser(null);
+  }, []);
 
   useEffect(() => {
-    document.title = 'MCC Admin Portal — Campus Facilities';
-  }, []);
+    document.title = 'MCC Admin Portal — Maintenance Operations';
+    checkSession();
+  }, [checkSession]);
+
+  const handleLogout = async () => {
+    try {
+      const apiBase = typeof window !== 'undefined' && (window.location.port === '' || window.location.port === '80')
+        ? ''
+        : 'http://localhost:5000';
+      await fetch(`${apiBase}/api/admin/logout`, { method: 'POST', credentials: 'include' });
+    } catch (e) {
+      console.warn('[Admin Logout Error]', e);
+    }
+    setAuthed(false);
+    setAdminUser(null);
+  };
+
   const [tickets, setTickets] = useState(() => getTickets());
   const [systemConfig, setSystemConfig] = useState(() => getSystemConfig());
   const [selectedTicket, setSelectedTicket] = useState(null);
+  const [assigningTicket, setAssigningTicket] = useState(null);
   const [timelineTicket, setTimelineTicket] = useState(null);
-  const [historyViewMode, setHistoryViewMode] = useState(null); // 'TOTAL' | 'PENDING' | 'URGENT' | 'COMPLETED' | null
+  const [historyViewMode, setHistoryViewMode] = useState(null);
   const [emailingWorker, setEmailingWorker] = useState(null);
   const [toast, setToast] = useState(null);
 
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterType, setFilterType] = useState('All');
+  const [filterPriority, setFilterPriority] = useState('All');
+  const [filterWorker, setFilterWorker] = useState('All');
   const [filterUrgent, setFilterUrgent] = useState(false);
 
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -164,10 +217,8 @@ export default function AdminDashboard() {
       console.error('[Worker Dispatch Email Error]', err);
     }
 
-    showToast(`Work Order ${ticketNo} assigned & dispatched to ${workerName} with COMPLETED button!`);
+    showToast(`Work Order ${ticketNo} assigned & dispatched to ${workerName}!`);
   };
-
-  const handleLogout = () => setAuthed(false);
 
   const handleTicketUpdate = (updated) => {
     setTickets(prev =>
@@ -193,7 +244,7 @@ export default function AdminDashboard() {
     const completed = tickets.filter(t => t.status === 'Completed' || t.status === 'Resolved').length;
 
     // Header Banner
-    doc.setFillColor(160, 0, 0); // MCC Primary Maroon #A00000
+    doc.setFillColor(128, 0, 0); // MCC Primary Maroon #800000
     doc.rect(0, 0, 297, 22, 'F');
 
     doc.setTextColor(255, 255, 255);
@@ -206,7 +257,7 @@ export default function AdminDashboard() {
     doc.text(`Generated: ${timeFormatted}`, 283, 12, { align: 'right' });
 
     // Summary Subheader
-    doc.setTextColor(30, 41, 59);
+    doc.setTextColor(15, 23, 42);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9.5);
     doc.text(`Report Summary: Total: ${total} | Unsolved: ${unsolved} | In Progress: ${ongoing} | Solved & Closed: ${completed}`, 14, 29);
@@ -220,53 +271,20 @@ export default function AdminDashboard() {
       'Description',
       'Assigned Worker',
       'Status',
-      'Date Logged',
-      'Custom Fields'
+      'Date Logged'
     ]];
 
-    const tableRows = tickets.map(t => {
-      const ticketNo = t.ticketNo || '';
-      const userTypeInfo = (t.userType || 'Student') + (t.studentStream ? ` (${t.studentStream}${t.studentLevel ? ' ' + t.studentLevel : ''})` : '');
-      const complainant = `${t.name || 'N/A'}\n${t.email || ''}\n${t.phone || ''}`.trim();
-      const deptClass = `${t.department || 'General'}\n[${userTypeInfo}]`;
-      const location = `${t.issueCategory || 'General'}\n${t.block || 'Campus'} (Rm ${t.roomNo || 'N/A'})`;
-      const priority = t.priority || 'Normal';
-      const description = t.description || 'No description provided';
-      const worker = t.assignedWorker || 'Unassigned';
-      const status = t.status || 'Unsolved';
-
-      let createdDate = '';
-      if (t.createdAt) {
-        try {
-          const d = new Date(t.createdAt);
-          createdDate = isNaN(d.getTime()) ? String(t.createdAt) : d.toLocaleDateString('en-IN');
-        } catch {
-          createdDate = String(t.createdAt);
-        }
-      }
-
-      // Format custom fields as key: value lines
-      let customFieldsText = '';
-      if (t.customFields && typeof t.customFields === 'object' && !Array.isArray(t.customFields)) {
-        customFieldsText = Object.entries(t.customFields)
-          .filter(([k, v]) => k && v !== undefined && v !== null && String(v).trim() !== '')
-          .map(([k, v]) => `${k}: ${v}`)
-          .join('\n');
-      }
-
-      return [
-        ticketNo,
-        complainant,
-        deptClass,
-        location,
-        priority,
-        description,
-        worker,
-        status,
-        createdDate,
-        customFieldsText || '—'
-      ];
-    });
+    const tableRows = tickets.map(t => [
+      t.ticketNo || '',
+      `${t.name || 'N/A'}\n${t.email || ''}`,
+      `${t.department || 'General'}\n[${t.userType || 'Student'}]`,
+      `${t.issueCategory || 'General'}\n${t.block || 'Campus'} (Rm ${t.roomNo || 'N/A'})`,
+      t.priority || 'Normal',
+      t.description || 'No description provided',
+      t.assignedWorker || 'Unassigned',
+      t.status || 'Unsolved',
+      t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-IN') : ''
+    ]);
 
     autoTable(doc, {
       head: tableHeaders,
@@ -274,7 +292,7 @@ export default function AdminDashboard() {
       startY: 33,
       theme: 'grid',
       headStyles: {
-        fillColor: [160, 0, 0],
+        fillColor: [128, 0, 0],
         textColor: [255, 255, 255],
         fontStyle: 'bold',
         fontSize: 8,
@@ -282,28 +300,9 @@ export default function AdminDashboard() {
       },
       bodyStyles: {
         fontSize: 7.5,
-        textColor: [30, 41, 59],
+        textColor: [15, 23, 42],
         cellPadding: 2.5,
       },
-      columnStyles: {
-        0: { cellWidth: 18, fontStyle: 'bold', halign: 'center' },
-        1: { cellWidth: 32 },
-        2: { cellWidth: 28 },
-        3: { cellWidth: 28 },
-        4: { cellWidth: 16, halign: 'center' },
-        5: { cellWidth: 55 },
-        6: { cellWidth: 22 },
-        7: { cellWidth: 22, halign: 'center' },
-        8: { cellWidth: 18, halign: 'center' },
-        9: { cellWidth: 30 },
-      },
-      didDrawPage: (data) => {
-        const pageCount = doc.internal.getNumberOfPages();
-        doc.setFontSize(8);
-        doc.setTextColor(100, 116, 139);
-        doc.text(`Page ${pageCount}`, data.settings.margin.left, doc.internal.pageSize.height - 7);
-        doc.text('MCC FIX HUB — Official Facilities Maintenance Export', 283, doc.internal.pageSize.height - 7, { align: 'right' });
-      }
     });
 
     const fileName = `MCC_FIX_HUB_Tickets_${dateStr}.pdf`;
@@ -317,76 +316,23 @@ export default function AdminDashboard() {
       return;
     }
 
-    const formatDate = (iso) => {
-      if (!iso) return '';
-      try {
-        const d = new Date(iso);
-        if (isNaN(d.getTime())) return String(iso);
-        return d.toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'medium' });
-      } catch {
-        return String(iso);
-      }
-    };
-
-    // Dynamically discover all unique customField keys across all tickets
-    const customKeysSet = new Set();
-    tickets.forEach(t => {
-      if (t.customFields && typeof t.customFields === 'object' && !Array.isArray(t.customFields)) {
-        Object.keys(t.customFields).forEach(k => {
-          if (k && k.trim()) customKeysSet.add(k.trim());
-        });
-      }
-    });
-    const customKeys = Array.from(customKeysSet);
-
-    const rows = tickets.map(t => {
-      const userTypeFull = (t.userType || '') + (t.studentStream ? ` (${t.studentStream}${t.studentLevel ? ' ' + t.studentLevel : ''})` : '');
-
-      const baseRow = {
-        'Ticket ID': t.ticketNo || '',
-        'User Name': t.name || '',
-        'Email': t.email || '',
-        'Phone': t.phone || '',
-        'User Type / Stream': userTypeFull,
-        'Department': t.department || '',
-        'Location / Block': t.block || '',
-        'Room / Area': t.roomNo || '',
-        'Issue Category': t.issueCategory || '',
-        'Priority': t.priority || 'Normal',
-        'Description': t.description || '',
-        'Assigned Worker': t.assignedWorker || 'Unassigned',
-        'Status': t.status || 'Unsolved',
-        'Created Date/Time': formatDate(t.createdAt),
-        'Worker Completion Date/Time': formatDate(t.workerCompletedAt || t.completedAt),
-        'User Confirmation Date/Time': formatDate(t.userConfirmedAt),
-        'Resolution Info': t.completedBy ? `Resolved by ${t.completedBy}` : (t.completedDate ? `Completed on ${t.completedDate}` : ''),
-        'Rejection / Override Reason': t.rejectionReason ? `Rejection: ${t.rejectionReason}` : (t.adminOverrideReason ? `Override: ${t.adminOverrideReason}` : '')
-      };
-
-      // Append dynamic custom fields columns
-      customKeys.forEach(key => {
-        const val = t.customFields ? t.customFields[key] : undefined;
-        baseRow[`Custom: ${key}`] = (val !== undefined && val !== null) ? String(val) : '';
-      });
-
-      return baseRow;
-    });
+    const rows = tickets.map(t => ({
+      'Ticket ID': t.ticketNo || '',
+      'User Name': t.name || '',
+      'Email': t.email || '',
+      'Phone': t.phone || '',
+      'Department': t.department || '',
+      'Location / Block': t.block || '',
+      'Room / Area': t.roomNo || '',
+      'Issue Category': t.issueCategory || '',
+      'Priority': t.priority || 'Normal',
+      'Description': t.description || '',
+      'Assigned Worker': t.assignedWorker || 'Unassigned',
+      'Status': t.status || 'Unsolved',
+      'Created Date': t.createdAt || ''
+    }));
 
     const worksheet = XLSX.utils.json_to_sheet(rows);
-
-    // Auto-compute column widths
-    if (rows.length > 0) {
-      const colKeys = Object.keys(rows[0]);
-      worksheet['!cols'] = colKeys.map(key => {
-        let maxLen = key.length;
-        rows.forEach(r => {
-          const valStr = String(r[key] || '');
-          if (valStr.length > maxLen) maxLen = Math.min(valStr.length, 50);
-        });
-        return { wch: Math.max(maxLen + 3, 12) };
-      });
-    }
-
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'MCC Tickets');
 
@@ -415,22 +361,28 @@ export default function AdminDashboard() {
       if (filterStatus === 'Completed') {
         filtered = filtered.filter(t => t.status === 'Completed' || t.status === 'Resolved');
       } else if (filterStatus === 'Ongoing') {
-        filtered = filtered.filter(t => t.status === 'Ongoing' || t.status === 'Awaiting User Confirmation' || t.status === 'Reopened');
+        filtered = filtered.filter(t => t.status === 'Ongoing' || t.status === 'Reopened');
+      } else if (filterStatus === 'Awaiting') {
+        filtered = filtered.filter(t => t.status === 'Awaiting User Confirmation');
       } else {
         filtered = filtered.filter(t => t.status === filterStatus);
       }
     }
 
     if (filterType !== 'All') {
-      filtered = filtered.filter(t => t.userType === filterType || (filterType === 'Unit' && (t.userType === 'Unit' || t.userType === 'Unit / Office')));
+      filtered = filtered.filter(t => t.issueCategory === filterType || t.userType === filterType);
+    }
+
+    if (filterPriority !== 'All') {
+      filtered = filtered.filter(t => t.priority === filterPriority);
+    }
+
+    if (filterWorker !== 'All') {
+      filtered = filtered.filter(t => t.assignedWorker === filterWorker);
     }
 
     if (filterUrgent) {
-      filtered = filtered.filter(t => {
-        if (t.isUrgent) return true;
-        if (t.status === 'Completed' || t.status === 'Resolved' || t.status === 'Archived') return false;
-        return (Date.now() - new Date(t.createdAt).getTime()) > 48 * 36e5;
-      });
+      filtered = filtered.filter(t => isTicketUrgent(t));
     }
 
     return {
@@ -438,431 +390,407 @@ export default function AdminDashboard() {
       Ongoing: filtered.filter(t => t.status === 'Ongoing' || t.status === 'Awaiting User Confirmation' || t.status === 'Reopened'),
       Completed: filtered.filter(t => t.status === 'Completed' || t.status === 'Resolved'),
     };
-  }, [tickets, search, filterStatus, filterType, filterUrgent]);
+  }, [tickets, search, filterStatus, filterType, filterPriority, filterWorker, filterUrgent]);
 
-  const activeTicketForTracker = useMemo(() => {
-    const pending = tickets.filter(t => t.status !== 'Completed' && t.status !== 'Resolved' && t.status !== 'Archived');
-    return pending.length > 0 ? pending[pending.length - 1] : tickets[tickets.length - 1] || null;
+  const attentionCount = useMemo(() => {
+    return tickets.filter(t => {
+      if (t.status === 'Completed' || t.status === 'Resolved' || t.status === 'Archived') return false;
+      const isUnsolvedUnassigned = t.status === 'Unsolved' && (!t.assignedWorker || !t.assignedWorker.trim());
+      const isReopened = t.status === 'Reopened';
+      const isUrgent = isTicketUrgent(t);
+      return isUnsolvedUnassigned || isReopened || isUrgent;
+    }).length;
   }, [tickets]);
 
-  const activityLog = useMemo(() => {
-    return tickets
-      .slice()
-      .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
-      .slice(0, 5);
-  }, [tickets]);
+  const currentDateFormatted = useMemo(() => {
+    return new Date().toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  }, []);
+
+  const navItems = [
+    { id: 'Dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'Complaints', label: 'All Complaints', icon: ClipboardList },
+    { id: 'Workers', label: 'Workers', icon: Users },
+    { id: 'Reports', label: 'Reports', icon: FileText },
+    { id: 'Notifications', label: 'Notifications', icon: Bell },
+    { id: 'Settings', label: 'Settings', icon: Settings },
+  ];
 
   if (!authed) {
     return <AdminLogin onLogin={() => setAuthed(true)} />;
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] flex flex-col selection:bg-[#A00000] selection:text-white relative overflow-x-hidden">
-      {/* Dynamic Animated Ambient Background Orbs */}
-      <div className="fixed top-[-10%] left-[-5%] w-[45rem] h-[45rem] bg-[#A00000]/5 rounded-full blur-[140px] pointer-events-none -z-10" />
-      <div className="fixed bottom-[-10%] right-[-5%] w-[45rem] h-[45rem] bg-[#A00000]/5 rounded-full blur-[140px] pointer-events-none -z-10" />
-
-      {/* Toast Notification with Spring Pop-In */}
+    <div className="min-h-screen bg-[#F7F9FC] text-slate-900 flex flex-row selection:bg-[#800000] selection:text-white font-sans antialiased overflow-x-hidden">
+      {/* Toast Notification */}
       {toast && (
-        <div className="fixed bottom-6 right-6 z-50 animate-slide-up bg-slate-900/95 backdrop-blur-md text-white text-xs font-semibold px-5 py-3.5 rounded-2xl shadow-2xl border border-slate-700/80 flex items-center gap-3 max-w-md">
-          <div className="w-7 h-7 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
-            <CheckCircle2 size={16} />
-          </div>
+        <div className="fixed bottom-6 right-6 z-50 animate-slide-up bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-lg border border-slate-800 flex items-center gap-2.5 max-w-md">
+          <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
           <span className="leading-snug">{toast}</span>
         </div>
       )}
 
-      {/* Admin Navbar — Floating Glassmorphism Header */}
-      <nav className="glass-panel border-b border-[#E5E5E5] sticky top-0 z-40 transition-all duration-300 shadow-xs">
-        <div className="max-w-7xl mx-auto flex items-center justify-between px-5 sm:px-8 py-3.5">
-          <div className="flex items-center gap-4 group cursor-pointer">
-            <CollegeLogo className="h-14 sm:h-16 w-auto shrink-0" />
-            <div>
-              <div className="flex items-center gap-2.5">
-                <p className="font-black text-[#111111] text-lg sm:text-xl tracking-tight leading-tight">
-                  MCC Admin Dashboard
+      {/* 1. LEFT SIDEBAR */}
+      <aside className={`
+        fixed xl:static top-0 bottom-0 left-0 z-50 w-64 bg-white border-r border-slate-200/80 flex flex-col justify-between transition-transform duration-200 shadow-xs
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full xl:translate-x-0'}
+      `}>
+        <div className="space-y-6 p-5">
+          {/* Brand Section */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <CollegeLogo className="h-10 w-auto shrink-0" />
+              <div>
+                <p className="font-extrabold text-[#800000] text-base leading-none tracking-tight">
+                  MCC FIX HUB
                 </p>
-                {/* Live Radar Pulsing Connected Badge */}
-                <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-[11px] font-black px-2.5 py-0.5 rounded-full shadow-2xs">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                  </span>
-                  Connected to Server
-                </span>
+                <p className="text-[11px] text-slate-500 font-semibold leading-tight mt-1">
+                  Maintenance Operations
+                </p>
               </div>
-              <p className="text-xs text-slate-500 font-medium leading-tight mt-0.5">
-                Campus Facilities Management & Maintenance Dispatch
-              </p>
             </div>
+
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(false)}
+              className="xl:hidden text-slate-400 hover:text-slate-700"
+            >
+              <X size={20} />
+            </button>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3">
-            <button
-              onClick={() => refreshTickets(true)}
-              disabled={isRefreshing}
-              title="Refresh tickets data"
-              className="px-3.5 py-2 rounded-xl text-[#111111] hover:text-[#A00000] hover:bg-[#FFF5F5] border border-[#E5E5E5] hover:border-[#A00000]/30 transition-all duration-200 flex items-center gap-2 text-xs font-bold active:scale-95 shadow-2xs cursor-pointer disabled:opacity-60 bg-white"
-            >
-              <RefreshCw size={14} className={isRefreshing ? 'animate-spin text-[#A00000]' : ''} />
-              <span className="hidden sm:inline">{isRefreshing ? 'Refreshing…' : 'Refresh'}</span>
-            </button>
+          {/* Navigation Links */}
+          <nav className="space-y-1">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isSelected = activeTab === item.id;
 
-            <button
-              onClick={handleExportPDF}
-              title="Export Tickets Report to PDF Document"
-              className="hidden sm:flex items-center gap-1.5 text-xs text-[#111111] hover:text-[#A00000] hover:bg-[#FFF5F5] font-bold px-3.5 py-2 rounded-xl border border-[#E5E5E5] hover:border-[#A00000]/30 transition-all duration-200 active:scale-95 bg-white shadow-2xs cursor-pointer"
-            >
-              <FileText size={14} className="text-[#A00000]" />
-              Export PDF
-            </button>
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveTab(item.id);
+                    if (item.id === 'Complaints') setHistoryViewMode('TOTAL');
+                    if (item.id === 'Workers') setHistoryViewMode(null);
+                    if (item.id === 'Reports') handleExportPDF();
+                    setSidebarOpen(false);
+                  }}
+                  className={`
+                    w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-150 cursor-pointer
+                    ${isSelected
+                      ? 'bg-[#FFF5F5] text-[#800000] font-bold shadow-2xs'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-semibold'
+                    }
+                  `}
+                >
+                  <Icon size={16} className={isSelected ? 'text-[#800000]' : 'text-slate-400'} />
+                  <span>{item.label}</span>
+                  {item.id === 'Notifications' && attentionCount > 0 && (
+                    <span className="ml-auto bg-[#800000] text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full">
+                      {attentionCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+        </div>
 
+        {/* Sidebar Footer */}
+        <div className="p-4 border-t border-slate-100 bg-[#F7F9FC]/60">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-[#FFF5F5] text-[#800000] border border-[#800000]/20 flex items-center justify-center font-bold text-xs">
+                A
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-slate-900 truncate">Admin Account</p>
+                <p className="text-[10px] text-slate-500 font-medium truncate">Facilities Admin</p>
+              </div>
+            </div>
             <button
-              onClick={handleExportExcel}
-              title="Export Tickets Data to Excel (.xlsx)"
-              className="hidden sm:flex items-center gap-1.5 text-xs text-[#111111] hover:text-[#A00000] hover:bg-[#FFF5F5] font-bold px-3.5 py-2 rounded-xl border border-[#E5E5E5] hover:border-[#A00000]/30 transition-all duration-200 active:scale-95 bg-white shadow-2xs cursor-pointer"
-            >
-              <FileSpreadsheet size={14} className="text-emerald-600" />
-              Export Excel
-            </button>
-
-            <button
+              type="button"
               onClick={handleLogout}
-              className="flex items-center gap-1.5 text-xs text-[#A00000] hover:bg-[#A00000] hover:text-white border border-[#A00000]/30 font-bold px-3.5 py-2 rounded-xl transition-all duration-200 active:scale-95 bg-white shadow-2xs cursor-pointer"
+              title="Logout"
+              className="text-slate-400 hover:text-[#800000] p-1 transition cursor-pointer"
             >
-              <LogOut size={14} />
-              <span className="hidden sm:inline">Logout</span>
+              <LogOut size={16} />
             </button>
           </div>
         </div>
-      </nav>
+      </aside>
 
-      {/* Main Content */}
-      <div className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-slide-up">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
-              Campus Facilities Control Board
-              <Sparkles size={22} className="text-amber-500 animate-float-gentle hidden sm:inline" />
-            </h1>
-            <p className="text-slate-500 text-xs md:text-sm mt-1 font-normal">
-              Review complaints, assign workers, and click <strong className="font-bold text-slate-800">Solve</strong> to notify users automatically.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-600 bg-white border border-slate-200/80 rounded-2xl px-3.5 py-2 font-bold shadow-sm flex items-center gap-2 hover-card-lift">
-              <Activity size={15} className="text-emerald-500 animate-pulse" />
-              Server Connected (Port 5000)
-            </span>
-          </div>
-        </div>
-
-        {/* Animated & Clickable Stats Bar */}
-        <StatsBar
-          tickets={tickets}
-          activeCategory={historyViewMode}
-          onSelectCategory={(cat) => setHistoryViewMode(cat)}
+      {/* Overlay for mobile sidebar */}
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 z-40 bg-slate-900/30 backdrop-blur-xs xl:hidden"
         />
+      )}
 
-        {historyViewMode ? (
-          /* Dedicated Work & Complaint History View */
-          <WorkHistoryView
+      {/* MAIN CONTENT AREA */}
+      <div className="flex-1 min-w-0 flex flex-col min-h-screen">
+        {/* 2. TOP HEADER */}
+        <header className="bg-white border-b border-slate-200/80 sticky top-0 z-30 shadow-2xs">
+          <div className="max-w-[1440px] mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4">
+            {/* Left Greeting */}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(true)}
+                className="xl:hidden text-slate-600 hover:text-slate-900 p-1"
+              >
+                <Menu size={20} />
+              </button>
+              <div>
+                <h1 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight leading-tight">
+                  Good morning, Admin 👋
+                </h1>
+                <p className="text-xs text-slate-500 font-medium leading-tight mt-0.5">
+                  {attentionCount === 0
+                    ? 'All clear! No complaints currently require attention.'
+                    : `${attentionCount} complaint${attentionCount === 1 ? '' : 's'} need your attention`}
+                </p>
+              </div>
+            </div>
+
+            {/* Right Controls — Single Horizontal Action Row */}
+            <div className="flex items-center justify-end gap-2 sm:gap-2.5 shrink-0 flex-wrap sm:flex-nowrap">
+              {/* 1. Date Badge */}
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700 shadow-2xs">
+                <Calendar size={14} className="text-[#800000] shrink-0" />
+                <span>{currentDateFormatted}</span>
+              </div>
+
+              {/* 2. Refresh Button */}
+              <button
+                type="button"
+                onClick={() => refreshTickets(true)}
+                disabled={isRefreshing}
+                title="Refresh Dashboard"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:text-[#800000] hover:bg-[#FFF5F5] hover:border-[#800000]/30 transition-all cursor-pointer shadow-2xs disabled:opacity-50"
+              >
+                <RefreshCw size={14} className={`shrink-0 ${isRefreshing ? 'animate-spin text-[#800000]' : ''}`} />
+                <span>Refresh</span>
+              </button>
+
+              {/* 3. Export PDF Button */}
+              <button
+                type="button"
+                onClick={handleExportPDF}
+                title="Export PDF Report"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:text-[#800000] hover:bg-[#FFF5F5] hover:border-[#800000]/30 transition-all cursor-pointer shadow-2xs"
+              >
+                <FileText size={14} className="text-rose-600 shrink-0" />
+                <span>PDF</span>
+              </button>
+
+              {/* 4. Export Excel Button */}
+              <button
+                type="button"
+                onClick={handleExportExcel}
+                title="Export Excel Data"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-200 transition-all cursor-pointer shadow-2xs"
+              >
+                <FileSpreadsheet size={14} className="text-emerald-600 shrink-0" />
+                <span>Excel</span>
+              </button>
+
+              {/* 5. Logout Button */}
+              <button
+                type="button"
+                onClick={handleLogout}
+                title="Logout Admin Session"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:text-rose-700 hover:bg-rose-50 hover:border-rose-200 transition-all cursor-pointer shadow-2xs"
+              >
+                <LogOut size={14} className="text-slate-500 shrink-0" />
+                <span>Logout</span>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* WORKSPACE BODY */}
+        <main className="flex-1 max-w-[1440px] w-full mx-auto p-4 sm:p-6 space-y-6">
+          {/* 3. COMPACT STATUS SUMMARY */}
+          <StatRow
             tickets={tickets}
-            initialCategory={historyViewMode}
-            onBackToDashboard={() => setHistoryViewMode(null)}
-            onOpenTimeline={(t) => setTimelineTicket(t)}
-            onRefresh={refreshTickets}
+            activeCategory={historyViewMode}
+            onSelectCategory={(cat) => setHistoryViewMode(prev => prev === cat ? null : cat)}
           />
-        ) : (
-          /* Standard Live Command Center & Control Board */
-          <>
-            {/* Dynamic Progress Timeline Tracker */}
-            {activeTicketForTracker && (
-              <WorkTracker ticket={activeTicketForTracker} />
-            )}
 
-            {/* Full-Width Facilities Maintenance Personnel Roster & Task Dispatch */}
-            <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-7 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.04)] space-y-6 relative overflow-hidden">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-                <div className="space-y-1">
-                  <h2 className="text-sm sm:text-base font-black text-slate-800 uppercase tracking-wider flex items-center gap-2.5">
-                    <div className="p-2 rounded-xl bg-[#FFF5F5] text-[#A00000] border border-[#A00000]/20 shrink-0">
-                      <Wrench size={18} />
-                    </div>
-                    Facilities Maintenance Roster & Task Dispatch
-                  </h2>
-                  <p className="text-xs text-slate-500 font-medium sm:pl-10">
-                    Select an unassigned complaint to dispatch work orders directly to campus maintenance staff.
-                  </p>
-                </div>
-                <span className="text-xs font-black text-[#A00000] bg-[#FFF5F5] border border-[#A00000]/30 px-3.5 py-1.5 rounded-full shrink-0 flex items-center gap-1.5 self-start sm:self-auto shadow-2xs">
-                  <Users size={14} className="text-[#A00000] animate-pulse" />
-                  {dynamicWorkers.length} Maintenance Staff Active
-                </span>
-              </div>
+          {historyViewMode ? (
+            /* Dedicated Work & Complaint History View */
+            <WorkHistoryView
+              tickets={tickets}
+              initialCategory={historyViewMode}
+              onBackToDashboard={() => setHistoryViewMode(null)}
+              onOpenTimeline={(t) => setTimelineTicket(t)}
+              onRefresh={refreshTickets}
+            />
+          ) : (
+            <>
+              {/* 4. NEEDS YOUR ATTENTION (Primary Action Area) */}
+              <PriorityQueue
+                tickets={tickets}
+                onSelectTicket={setSelectedTicket}
+                onAssignWork={(t) => setAssigningTicket(t)}
+                onViewAll={() => setHistoryViewMode('TOTAL')}
+              />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {dynamicWorkers.map(w => {
-                  const assignedTickets = tickets.filter(t => t.assignedWorker === w.name && t.status !== 'Completed' && t.status !== 'Resolved' && t.status !== 'Archived');
-                  const isBusy = assignedTickets.length > 0;
-                  const pendingUnassigned = tickets.filter(t => t.status === 'Unsolved' || !t.assignedWorker);
-
-                  return (
-                    <div
-                      key={w.name}
-                      className="bg-slate-50/70 hover:bg-white border border-slate-200/80 hover:border-[#A00000]/50 hover:shadow-xl rounded-2xl p-5 space-y-4 transition-all duration-300 flex flex-col justify-between group hover:-translate-y-1"
-                    >
-                      <div className="space-y-3">
-                        {/* Worker Info Header */}
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-black text-slate-900 leading-tight truncate">{w.name}</p>
-                          <p className="text-xs text-slate-500 font-medium truncate mt-0.5">{w.role}</p>
-                        </div>
-
-                        {/* Worker Email Row */}
-                        <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white border border-slate-200/70 text-[11px] text-slate-600 font-mono shadow-2xs">
-                          <Mail size={12} className="text-[#A00000] shrink-0" />
-                          <span className="truncate text-[11px] font-semibold">{w.email}</span>
-                        </div>
-
-                        {/* Active Work Load Status & Direct Email "Send" Button */}
-                        <div className="pt-1 flex items-center justify-between gap-2">
-                          <span className={`inline-flex items-center gap-1.5 text-xs font-black px-2.5 py-1 rounded-full border shadow-2xs transition-all duration-300 ${isBusy
-                            ? 'bg-amber-50 text-amber-800 border-amber-200/80 animate-pulse'
-                            : 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
-                            }`}>
-                            <span className={`w-2 h-2 rounded-full ${isBusy ? 'bg-amber-500 animate-ping' : 'bg-emerald-500'}`} />
-                            {isBusy ? `${assignedTickets.length} Task${assignedTickets.length > 1 ? 's' : ''}` : 'Available'}
-                          </span>
-
-                          {/* Direct Send Email Button */}
-                          <button
-                            type="button"
-                            onClick={() => setEmailingWorker(w)}
-                            title={`Send direct instruction email to ${w.name}`}
-                            className="text-xs font-black text-[#A00000] hover:text-white bg-[#FFF5F5] hover:bg-[#A00000] active:scale-95 border border-[#A00000]/30 hover:border-[#A00000] px-3 py-1 rounded-xl transition-all duration-200 flex items-center gap-1.5 shadow-2xs cursor-pointer group/btn shrink-0"
-                          >
-                            <Send size={11} className="group-hover/btn:translate-x-0.5 transition-transform" />
-                            <span>Send</span>
-                          </button>
-                        </div>
-
-                        {isBusy && (
-                          <div className="space-y-1.5 animate-slide-up">
-                            {assignedTickets.slice(0, 2).map(at => (
-                              <div key={at.ticketNo} className="text-xs text-slate-700 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 truncate flex items-center justify-between font-bold shadow-2xs">
-                                <span className="font-black text-[#A00000]">{at.ticketNo}</span>
-                                <span className="truncate ml-2 text-slate-500 text-[11px]">{at.block || at.department}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Quick Dispatch Dropdown */}
-                      <div className="pt-3 border-t border-slate-200/80">
-                        <select
-                          onChange={(e) => {
-                            if (e.target.value) {
-                              handleAssignWorker(e.target.value, w.name);
-                              e.target.value = '';
-                            }
-                          }}
-                          defaultValue=""
-                          className="w-full text-xs font-bold bg-white text-slate-800 border border-slate-300/80 hover:border-[#A00000] rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-[#A00000]/20 transition-all cursor-pointer shadow-2xs"
-                        >
-                          <option value="" disabled>+ Dispatch Ticket to {w.name.split(' ')[0]}…</option>
-                          {pendingUnassigned.length === 0 ? (
-                            <option value="" disabled>No Unassigned Complaints</option>
-                          ) : (
-                            pendingUnassigned.map(t => (
-                              <option key={t.ticketNo} value={t.ticketNo}>
-                                Dispatch {t.ticketNo} ({t.issueCategory || t.block})
-                              </option>
-                            ))
-                          )}
-                        </select>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* 2-Column Grid: Active Dispatches & Recent Activity */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Active Work Order Dispatches Log (Fills lg:col-span-2) */}
-              <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-200/90 p-6 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.04)] space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3.5">
-                  <div>
-                    <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                      <Send size={15} className="text-[#A00000]" /> Active Work Order Dispatches & Staff Allocations
-                    </h3>
-                    <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-                      Real-time tracking of complaints dispatched to maintenance workers.
-                    </p>
-                  </div>
-                  <span className="text-[10px] font-black text-[#A00000] bg-[#FFF5F5] border border-[#A00000]/30 px-3 py-1 rounded-full shrink-0 shadow-2xs">
-                    {tickets.filter(t => t.assignedWorker && t.status !== 'Completed' && t.status !== 'Resolved' && t.status !== 'Archived').length} Active Dispatches
+              {/* 5. SEARCH + FILTERS + EXPORT CONTROLS */}
+              <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
+                  <span className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <Filter size={14} className="text-[#800000]" /> Search & Filter Complaints
                   </span>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {(search || filterStatus !== 'All' || filterType !== 'All' || filterPriority !== 'All' || filterWorker !== 'All' || filterUrgent) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearch('');
+                          setFilterStatus('All');
+                          setFilterType('All');
+                          setFilterPriority('All');
+                          setFilterWorker('All');
+                          setFilterUrgent(false);
+                        }}
+                        className="text-xs text-[#800000] font-bold hover:underline cursor-pointer mr-2"
+                      >
+                        Clear filters
+                      </button>
+                    )}
+
+                    {/* Export PDF Button */}
+                    <button
+                      type="button"
+                      onClick={handleExportPDF}
+                      title="Export PDF Report"
+                      className="flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-[#800000] hover:bg-[#FFF5F5] px-3 py-1.5 rounded-lg border border-slate-200 transition cursor-pointer shadow-2xs"
+                    >
+                      <FileText size={14} className="text-[#800000]" />
+                      <span>Export PDF</span>
+                    </button>
+
+                    {/* Export Excel Button */}
+                    <button
+                      type="button"
+                      onClick={handleExportExcel}
+                      title="Export Excel Data"
+                      className="flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-[#800000] hover:bg-[#FFF5F5] px-3 py-1.5 rounded-lg border border-slate-200 transition cursor-pointer shadow-2xs"
+                    >
+                      <FileSpreadsheet size={14} className="text-emerald-700" />
+                      <span>Export Excel</span>
+                    </button>
+                  </div>
                 </div>
 
-                <div className="divide-y divide-slate-100">
-                  {tickets.filter(t => t.assignedWorker && t.status !== 'Completed' && t.status !== 'Resolved' && t.status !== 'Archived').length === 0 ? (
-                    <div className="py-8 text-center space-y-1.5">
-                      <span className="text-3xl animate-float-gentle inline-block">📭</span>
-                      <p className="text-xs font-bold text-slate-700">No active work dispatches right now</p>
-                      <p className="text-[11px] text-slate-400">Use the dispatch dropdowns in the roster section above to assign complaints.</p>
-                    </div>
-                  ) : (
-                    tickets.filter(t => t.assignedWorker && t.status !== 'Completed' && t.status !== 'Resolved' && t.status !== 'Archived').map(t => {
-                      const workerObj = dynamicWorkers.find(w => w.name === t.assignedWorker);
-                      return (
-                        <div key={t.ticketNo} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/80 rounded-2xl px-3 transition-all duration-200 group">
-                          <div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-black text-xs text-slate-900">{t.ticketNo}</span>
-                              <span className="text-[10px] font-bold text-[#111111] bg-[#F5F5F5] px-2.5 py-0.5 rounded-full border border-[#E5E5E5]">
-                                👤 {t.assignedWorker}
-                              </span>
-                              <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                                Ongoing
-                              </span>
-                            </div>
-                            <p className="text-xs text-slate-600 font-medium truncate mt-0.5">
-                              {t.description || t.issueCategory} · <span className="text-slate-400">{t.block || t.department} (Room {t.roomNo || 'N/A'})</span>
-                            </p>
-                          </div>
 
-                          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                            <button
-                              type="button"
-                              onClick={() => handleSolveTicket(t)}
-                              className="bg-[#A00000] hover:bg-[#800000] active:scale-95 text-white font-bold text-[11px] px-3.5 py-1.5 rounded-xl transition-all duration-200 shadow-xs flex items-center gap-1.5 cursor-pointer"
-                            >
-                              <CheckCircle2 size={13} /> Mark Solved
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2.5">
+                  {/* Search Input */}
+                  <div className="sm:col-span-2 relative">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    <input
+                      type="search"
+                      value={search}
+                      onChange={e => setSearch(e.target.value)}
+                      placeholder="Search by ticket #, name, department, location..."
+                      className="w-full text-xs pl-8 pr-3 py-2 rounded-xl bg-[#F7F9FC] border border-slate-200 text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-[#800000] transition shadow-2xs"
+                    />
+                  </div>
 
-              {/* Recent Activity Log (Fills lg:col-span-1) */}
-              <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.04)] space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3.5">
-                  <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                    <Activity size={15} className="text-[#A00000] animate-pulse" /> Recent Activity Log
-                  </h3>
-                </div>
-                <div className="space-y-2.5">
-                  {activityLog.length === 0 ? (
-                    <p className="text-xs text-slate-400 py-6 text-center">No activity logged yet.</p>
-                  ) : (
-                    activityLog.map(t => (
-                      <div key={t.ticketNo} className="flex items-center justify-between text-xs py-2 px-2.5 rounded-xl hover:bg-slate-50 border-b border-slate-100 last:border-0 transition-colors">
-                        <div className="flex items-center gap-2.5 truncate">
-                          <span className="font-black text-slate-800 shrink-0">{t.ticketNo}</span>
-                          <span className="text-slate-600 font-semibold truncate">{t.name}</span>
-                        </div>
-                        <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full shrink-0 ${(t.status === 'Completed' || t.status === 'Resolved') ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : (t.status === 'Ongoing' || t.status === 'Awaiting User Confirmation' || t.status === 'Reopened') ? 'badge-ongoing' : 'badge-unsolved'
-                          }`}>
-                          {t.status}
-                        </span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Search & Filters */}
-            <div className="bg-white rounded-3xl border border-slate-200/90 p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center">
-              <div className="relative flex-1 min-w-[200px] w-full sm:w-auto">
-                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10" />
-                <input
-                  type="search"
-                  id="admin-search"
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  placeholder="Search by Ticket #, Name, Dept, Block, Description…"
-                  className="input-field !pl-10 text-sm w-full"
-                />
-              </div>
-
-              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap w-full sm:w-auto">
-                <div className="flex-1 min-w-[120px] flex items-center gap-1.5 bg-slate-50 px-2.5 rounded-xl border border-slate-200">
-                  <SlidersHorizontal size={14} className="text-slate-400 shrink-0" />
+                  {/* Status Filter */}
                   <select
                     value={filterStatus}
                     onChange={e => setFilterStatus(e.target.value)}
-                    className="bg-transparent text-xs py-2 w-full font-bold cursor-pointer outline-none border-none"
-                    aria-label="Filter by status"
+                    className="text-xs font-bold bg-[#F7F9FC] border border-slate-200 rounded-xl px-2.5 py-2 text-slate-800 outline-none cursor-pointer shadow-2xs"
                   >
                     <option value="All">All Statuses</option>
                     <option value="Unsolved">Unsolved</option>
-                    <option value="Ongoing">Ongoing</option>
-                    <option value="Completed">Completed</option>
+                    <option value="Ongoing">In Progress</option>
+                    <option value="Awaiting">Awaiting Confirmation</option>
+                    <option value="Completed">Resolved & Closed</option>
                   </select>
-                </div>
 
-                <div className="flex-1 min-w-[120px] flex items-center gap-1.5 bg-slate-50 px-2.5 rounded-xl border border-slate-200">
-                  <Filter size={14} className="text-slate-400 shrink-0" />
+                  {/* Category Filter */}
                   <select
                     value={filterType}
                     onChange={e => setFilterType(e.target.value)}
-                    className="bg-transparent text-xs py-2 w-full font-bold cursor-pointer outline-none border-none"
-                    aria-label="Filter by user type"
+                    className="text-xs font-bold bg-[#F7F9FC] border border-slate-200 rounded-xl px-2.5 py-2 text-slate-800 outline-none cursor-pointer shadow-2xs"
                   >
-                    <option value="All">All Types</option>
-                    <option value="Student">Student</option>
-                    <option value="Staff">Staff</option>
-                    <option value="Unit">Unit</option>
+                    <option value="All">All Categories</option>
+                    <option value="Electrical">Electrical</option>
+                    <option value="Plumbing">Plumbing</option>
+                    <option value="IT / Network">IT / Network</option>
+                    <option value="Civil / Infra">Civil / Infra</option>
+                    <option value="Sanitation">Sanitation</option>
+                  </select>
+
+                  {/* Priority Filter */}
+                  <select
+                    value={filterPriority}
+                    onChange={e => setFilterPriority(e.target.value)}
+                    className="text-xs font-bold bg-[#F7F9FC] border border-slate-200 rounded-xl px-2.5 py-2 text-slate-800 outline-none cursor-pointer shadow-2xs"
+                  >
+                    <option value="All">All Priorities</option>
+                    <option value="Normal">Normal Priority</option>
+                    <option value="High">High Priority</option>
+                    <option value="Critical">Critical Priority</option>
+                  </select>
+
+                  {/* Worker Filter */}
+                  <select
+                    value={filterWorker}
+                    onChange={e => setFilterWorker(e.target.value)}
+                    className="text-xs font-bold bg-[#F7F9FC] border border-slate-200 rounded-xl px-2.5 py-2 text-slate-800 outline-none cursor-pointer shadow-2xs"
+                  >
+                    <option value="All">All Workers</option>
+                    {dynamicWorkers.map(w => (
+                      <option key={w.name} value={w.name}>{w.name}</option>
+                    ))}
                   </select>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => setFilterUrgent(v => !v)}
-                  className={`flex items-center justify-center gap-1.5 text-xs font-black px-4 py-2 rounded-xl border transition-all duration-200 cursor-pointer shadow-2xs active:scale-95 shrink-0 ${filterUrgent
-                    ? 'bg-red-500 text-white border-red-500 shadow-md shadow-red-500/25 animate-pulse'
-                  : 'bg-white text-slate-600 border-slate-200 hover:border-red-400 hover:text-red-500'
-                  }`}
-              >
-                ⚠️ Urgent Only
-              </button>
-
-              {(search || filterStatus !== 'All' || filterType !== 'All' || filterUrgent) && (
-                <button
-                  onClick={() => {
-                    setSearch('');
-                    setFilterStatus('All');
-                    setFilterType('All');
-                    setFilterUrgent(false);
-                  }}
-                  className="text-xs text-slate-500 hover:text-red-600 transition underline font-bold cursor-pointer ml-1"
-                >
-                  Clear filters
-                </button>
-              )}
               </div>
-            </div>
 
-            {/* Modern Kanban Board */}
-            <KanbanBoard
-              tickets={[...allUnsolved, ...allOngoing, ...allCompleted]}
-              onTicketSelect={setSelectedTicket}
-              onSolveTicket={handleSolveTicket}
-              onTicketsChange={refreshTickets}
-            />
-          </>
-        )}
+              {/* 6. COMPLAINT BOARD (Kanban) */}
+              <div className="space-y-2">
+                <KanbanBoard
+                  tickets={[...allUnsolved, ...allOngoing, ...allCompleted]}
+                  onTicketSelect={setSelectedTicket}
+                  onSolveTicket={handleSolveTicket}
+                  onAssignWork={(t) => setAssigningTicket(t)}
+                  onTicketsChange={refreshTickets}
+                />
+              </div>
+
+              {/* 7 & 8. WORKER OVERVIEW & RECENT ACTIVITY GRID */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* 7. Worker Overview (Fills lg:col-span-2) */}
+                <div className="lg:col-span-2">
+                  <WorkerGrid
+                    workers={dynamicWorkers}
+                    tickets={tickets}
+                    onAssignWorker={handleAssignWorker}
+                    onEmailWorker={setEmailingWorker}
+                  />
+                </div>
+
+                {/* 8. Recent Activity (Fills lg:col-span-1) */}
+                <div className="lg:col-span-1">
+                  <ActivityFeed
+                    tickets={tickets}
+                    onSelectTicket={setSelectedTicket}
+                  />
+                </div>
+              </div>
+            </>
+          )}
+        </main>
       </div>
 
-      {/* Ticket Detail Modal */}
+      {/* MODALS */}
       {selectedTicket && (
         <TicketDetailModal
           ticket={selectedTicket}
@@ -875,7 +803,6 @@ export default function AdminDashboard() {
         />
       )}
 
-      {/* Individual Work Order Timeline Modal */}
       {timelineTicket && (
         <WorkTimelineModal
           ticket={timelineTicket}
@@ -883,7 +810,6 @@ export default function AdminDashboard() {
         />
       )}
 
-      {/* Direct Worker Email Modal */}
       {emailingWorker && (
         <WorkerEmailModal
           isOpen={!!emailingWorker}
@@ -891,6 +817,21 @@ export default function AdminDashboard() {
           tickets={tickets}
           onClose={() => setEmailingWorker(null)}
           onEmailSent={(msg) => showToast(msg)}
+        />
+      )}
+
+      {/* 7. ASSIGN WORK MODAL */}
+      {assigningTicket && (
+        <AssignWorkModal
+          isOpen={!!assigningTicket}
+          ticket={assigningTicket}
+          workers={dynamicWorkers}
+          tickets={tickets}
+          onClose={() => setAssigningTicket(null)}
+          onAssign={async (tNo, wName) => {
+            setAssigningTicket(null);
+            await handleAssignWorker(tNo, wName);
+          }}
         />
       )}
     </div>
