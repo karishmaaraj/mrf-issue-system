@@ -561,6 +561,148 @@ async function sendTicketReopenedAlerts(ticket, rejectionReason) {
   }
 }
 
+/**
+ * Sends SMTP email to User when Worker is Assigned
+ */
+async function sendUserWorkerAssignedEmail(ticket) {
+  if (!ticket.email || !ticket.email.includes('@')) return false;
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background-color: #ffffff;">
+      <div style="background-color: #2563eb; color: #ffffff; padding: 20px; text-align: center;">
+        <h2 style="margin: 0; font-size: 18px;">📋 Worker Assigned to Your Complaint</h2>
+        <p style="margin: 4px 0 0 0; font-size: 12px;">Ticket ${ticket.ticketNo}</p>
+      </div>
+      <div style="padding: 24px; color: #334155; line-height: 1.6;">
+        <p>Dear <strong>${ticket.name || 'Complainant'}</strong>,</p>
+        <p>We wanted to let you know that a worker has been assigned to your complaint <strong>Ticket ${ticket.ticketNo}</strong>.</p>
+        <ul>
+          <li><strong>Assigned Worker:</strong> ${ticket.assignedWorker || 'Unassigned'}</li>
+          <li><strong>Category:</strong> ${ticket.issueCategory}</li>
+          <li><strong>Location:</strong> Block ${ticket.block || 'Campus'}, Room ${ticket.roomNo || 'N/A'}</li>
+          <li><strong>Current Status:</strong> Work Assigned / Ongoing</li>
+        </ul>
+        <p>You will receive further updates when work begins or is completed.</p>
+      </div>
+    </div>
+  `;
+  try {
+    await transporter.sendMail({
+      from: `"${process.env.SMTP_FROM_NAME || 'MRF Facilities System'}" <${SMTP_CONFIG.auth.user}>`,
+      to: ticket.email,
+      subject: `Complaint #${ticket.ticketNo} Assigned to a Worker`,
+      html: htmlContent,
+    });
+    console.log(`[SMTP User Assigned Email] Sent for Ticket ${ticket.ticketNo}`);
+    return true;
+  } catch (err) {
+    console.error(`[SMTP User Assigned Email Error]`, err.message);
+    return false;
+  }
+}
+
+/**
+ * Sends SMTP email to User when Worker starts work
+ */
+async function sendUserWorkStartedEmail(ticket) {
+  if (!ticket.email || !ticket.email.includes('@')) return false;
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background-color: #ffffff;">
+      <div style="background-color: #f59e0b; color: #ffffff; padding: 20px; text-align: center;">
+        <h2 style="margin: 0; font-size: 18px;">⏳ Work Started on Your Complaint</h2>
+        <p style="margin: 4px 0 0 0; font-size: 12px;">Ticket ${ticket.ticketNo}</p>
+      </div>
+      <div style="padding: 24px; color: #334155; line-height: 1.6;">
+        <p>Dear <strong>${ticket.name || 'Complainant'}</strong>,</p>
+        <p>Work has started on your complaint <strong>Ticket ${ticket.ticketNo}</strong> by <strong>${ticket.assignedWorker || 'the assigned worker'}</strong>.</p>
+        <p><strong>Current Status:</strong> Ongoing</p>
+        <p>You will receive another notification when the work is completed so that you can verify it.</p>
+      </div>
+    </div>
+  `;
+  try {
+    await transporter.sendMail({
+      from: `"${process.env.SMTP_FROM_NAME || 'MRF Facilities System'}" <${SMTP_CONFIG.auth.user}>`,
+      to: ticket.email,
+      subject: `Work Started on Complaint #${ticket.ticketNo}`,
+      html: htmlContent,
+    });
+    console.log(`[SMTP User Work Started Email] Sent for Ticket ${ticket.ticketNo}`);
+    return true;
+  } catch (err) {
+    console.error(`[SMTP User Work Started Email Error]`, err.message);
+    return false;
+  }
+}
+
+/**
+ * Sends SMTP email to User when Worker cannot complete
+ */
+async function sendUserCannotCompleteEmail(ticket) {
+  if (!ticket.email || !ticket.email.includes('@')) return false;
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background-color: #ffffff;">
+      <div style="background-color: #991b1b; color: #ffffff; padding: 20px; text-align: center;">
+        <h2 style="margin: 0; font-size: 18px;">⚠️ Issue with Your Complaint</h2>
+        <p style="margin: 4px 0 0 0; font-size: 12px;">Ticket ${ticket.ticketNo}</p>
+      </div>
+      <div style="padding: 24px; color: #334155; line-height: 1.6;">
+        <p>Dear <strong>${ticket.name || 'Complainant'}</strong>,</p>
+        <p>We are writing to inform you that the assigned worker (<strong>${ticket.assignedWorker || 'worker'}</strong>) could not complete the work for <strong>Ticket ${ticket.ticketNo}</strong>.</p>
+        <p><strong>Current Status:</strong> Cannot Complete</p>
+        <p>The issue is being handled through the maintenance workflow by the administrative team, who will review and reassign or take further action as needed.</p>
+      </div>
+    </div>
+  `;
+  try {
+    await transporter.sendMail({
+      from: `"${process.env.SMTP_FROM_NAME || 'MRF Facilities System'}" <${SMTP_CONFIG.auth.user}>`,
+      to: ticket.email,
+      subject: `Update on Complaint #${ticket.ticketNo} - Cannot Complete`,
+      html: htmlContent,
+    });
+    console.log(`[SMTP User Cannot Complete Email] Sent for Ticket ${ticket.ticketNo}`);
+    return true;
+  } catch (err) {
+    console.error(`[SMTP User Cannot Complete Email Error]`, err.message);
+    return false;
+  }
+}
+
+/**
+ * Sends SMTP email to User when User Rejects completion
+ */
+async function sendUserReopenedEmail(ticket) {
+  if (!ticket.email || !ticket.email.includes('@')) return false;
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background-color: #ffffff;">
+      <div style="background-color: #dc2626; color: #ffffff; padding: 20px; text-align: center;">
+        <h2 style="margin: 0; font-size: 18px;">🔴 Issue Marked as Not Fixed</h2>
+        <p style="margin: 4px 0 0 0; font-size: 12px;">Ticket ${ticket.ticketNo}</p>
+      </div>
+      <div style="padding: 24px; color: #334155; line-height: 1.6;">
+        <p>Dear <strong>${ticket.name || 'Complainant'}</strong>,</p>
+        <p>Thank you for your feedback on <strong>Ticket ${ticket.ticketNo}</strong>.</p>
+        <p>We have recorded that the issue has been marked as <strong>not fixed</strong>.</p>
+        <p><strong>Current Status:</strong> Reopened</p>
+        <p>The maintenance team has been alerted and will take further action to resolve this issue.</p>
+      </div>
+    </div>
+  `;
+  try {
+    await transporter.sendMail({
+      from: `"${process.env.SMTP_FROM_NAME || 'MRF Facilities System'}" <${SMTP_CONFIG.auth.user}>`,
+      to: ticket.email,
+      subject: `Complaint #${ticket.ticketNo} Marked as Not Fixed - Reopened`,
+      html: htmlContent,
+    });
+    console.log(`[SMTP User Reopened Email] Sent for Ticket ${ticket.ticketNo}`);
+    return true;
+  } catch (err) {
+    console.error(`[SMTP User Reopened Email Error]`, err.message);
+    return false;
+  }
+}
+
 // Ensure tickets.json exists
 if (!fs.existsSync(DATA_FILE)) {
   fs.writeFileSync(DATA_FILE, JSON.stringify({ tickets: [], counter: 0 }, null, 2));
@@ -2558,6 +2700,10 @@ const server = http.createServer(async (req, res) => {
           actor: authWorker.workerName,
           details: `Worker ${authWorker.workerName} commenced repairs on site.`
         });
+        
+        // Notify user that work has started
+        sendUserWorkStartedEmail(ticket);
+        
         saveData(data);
         console.log(`[Worker Portal] Ticket ${ticket.ticketNo} started by ${authWorker.workerName} (${authWorker.workerId})`);
         res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -2759,6 +2905,9 @@ const server = http.createServer(async (req, res) => {
         } catch (mailErr) {
           console.error('[SMTP Escalation Alert Error]', mailErr.message);
         }
+
+        // Notify user that worker cannot complete
+        sendUserCannotCompleteEmail(ticket);
 
         saveData(data);
         console.log(`[Worker Portal] Ticket ${ticket.ticketNo} escalated by ${authWorker.workerName} (${authWorker.workerId}). Reason: ${reason}`);
@@ -2971,6 +3120,7 @@ const server = http.createServer(async (req, res) => {
 
           // Dispatch Worker Assignment Email via SMTP
           sendWorkerAssignmentEmail({ ...currentTicket, ...updates }, updates.assignedWorker);
+          sendUserWorkerAssignedEmail({ ...currentTicket, ...updates });
 
           // Worker WhatsApp Assignment Notification (Isolated & Non-blocking)
           try {
@@ -3936,6 +4086,9 @@ const server = http.createServer(async (req, res) => {
 
         // Send SMTP alerts asynchronously to Admin & Worker
         sendTicketReopenedAlerts(ticket, cleanReason);
+        
+        // Notify user that the issue is marked as reopened
+        sendUserReopenedEmail(ticket);
 
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
         res.end(`
