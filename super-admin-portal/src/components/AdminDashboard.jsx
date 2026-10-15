@@ -48,6 +48,9 @@ export default function AdminDashboard() {
 
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Ref to ensure we only handle the deep-link ?ticket= param once per page load
+  const deepLinkHandledRef = React.useRef(false);
+
   const refreshTickets = useCallback(async (manual = false) => {
     if (manual) setIsRefreshing(true);
     const [fresh, freshCfg] = await Promise.all([
@@ -103,6 +106,44 @@ export default function AdminDashboard() {
       if (channel) channel.close();
     };
   }, [refreshTickets]);
+
+  // ── Admin Portal Deep-Link: ?ticket=%23001 ──────────────────────────────────
+  // Reads the "ticket" URL parameter on authenticated load and auto-opens the
+  // matching ticket in TicketDetailModal. '#' is expected as '%23' in the URL.
+  useEffect(() => {
+    // Only run after auth and once tickets have been fetched
+    if (!authed || tickets.length === 0 || deepLinkHandledRef.current) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const rawParam = params.get('ticket');
+    if (!rawParam) return;
+
+    // Decode: '%23001' → '#001', or '#001' stays '#001'
+    const decoded = decodeURIComponent(rawParam).trim();
+
+    // Normalize: ensure it starts with '#' and pad the number to 3 digits
+    // Handles both '#001' and '001' forms for robustness
+    let normalizedTarget = decoded;
+    if (!normalizedTarget.startsWith('#')) {
+      normalizedTarget = `#${normalizedTarget}`;
+    }
+    // Zero-pad the numeric part to match the internal format (e.g. '#1' → '#001')
+    normalizedTarget = normalizedTarget.replace(/^#(\d+)$/, (_, n) => `#${n.padStart(3, '0')}`);
+
+    const found = tickets.find(t => {
+      const tNorm = (t.ticketNo || '').trim();
+      return tNorm.toLowerCase() === normalizedTarget.toLowerCase();
+    });
+
+    if (found) {
+      deepLinkHandledRef.current = true;
+      setSelectedTicket(found);
+    } else {
+      // Ticket not found — mark handled to avoid infinite loop, show toast
+      deepLinkHandledRef.current = true;
+      showToast(`Ticket "${decoded}" not found. It may not exist or has been archived.`);
+    }
+  }, [authed, tickets]);
 
   const showToast = (message) => {
     setToast(message);

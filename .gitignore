@@ -27,3 +27,16 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local runtime data & local configurations
+tickets.json
+tickets.local.json
+config.local.json
+*.local.json
+config.json.bak
+config.json.tmp
+
+# Backups
+backups_local/
+*.backup
+*.backup.json

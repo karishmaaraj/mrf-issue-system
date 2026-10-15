@@ -1,0 +1,98 @@
+{
+  "counter": 2,
+  "tickets": [
+    {
+      "ticketNo": "MCC-DEMO-001",
+      "name": "Synthetic Student",
+      "userType": "Student",
+      "email": "student.demo@example.edu",
+      "phone": "+91 98400 00001",
+      "department": "Computer Science",
+      "block": "Main Block",
+      "roomNo": "Lab 102",
+      "issueCategory": "Electrical",
+      "description": "Overhead tube light is flickering intermittently.",
+      "priority": "Normal",
+      "isUrgent": false,
+      "status": "Ongoing",
+      "assignedWorker": "Rajan Kumar",
+      "createdAt": "2026-09-01T09:00:00.000Z",
+      "completionToken": "synthetic_completion_token_demo_001",
+      "userVerifyToken": "synthetic_verify_token_demo_001",
+      "timeline": [
+        {
+          "id": "evt-demo-001-created",
+          "type": "CREATED",
+          "title": "Complaint Raised",
+          "timestamp": "2026-09-01T09:00:00.000Z",
+          "actor": "Synthetic Student",
+          "details": "Complaint submitted for Electrical at Main Block (Room Lab 102)."
+        },
+        {
+          "id": "evt-demo-001-assigned",
+          "type": "ASSIGNED",
+          "title": "Worker Assigned (Rajan Kumar)",
+          "timestamp": "2026-09-01T09:30:00.000Z",
+          "actor": "Campus Facilities Admin",
+          "details": "Work order dispatched to Rajan Kumar. Status set to Ongoing."
+        }
+      ],
+      "history": [
+        {
+          "id": "evt-demo-001-created",
+          "type": "CREATED",
+          "title": "Complaint Raised",
+          "timestamp": "2026-09-01T09:00:00.000Z",
+          "actor": "Synthetic Student",
+          "details": "Complaint submitted for Electrical at Main Block (Room Lab 102)."
+        },
+        {
+          "id": "evt-demo-001-assigned",
+          "type": "ASSIGNED",
+          "title": "Worker Assigned (Rajan Kumar)",
+          "timestamp": "2026-09-01T09:30:00.000Z",
+          "actor": "Campus Facilities Admin",
+          "details": "Work order dispatched to Rajan Kumar. Status set to Ongoing."
+        }
+      ]
+    },
+    {
+      "ticketNo": "MCC-DEMO-002",
+      "name": "Synthetic Faculty",
+      "userType": "Faculty",
+      "email": "faculty.demo@example.edu",
+      "phone": "+91 98400 00002",
+      "department": "Chemistry",
+      "block": "Science Block",
+      "roomNo": "Staff Room 204",
+      "issueCategory": "Plumbing",
+      "description": "Water tap in faculty restroom has a slow leak.",
+      "priority": "Low",
+      "isUrgent": false,
+      "status": "Unsolved",
+      "createdAt": "2026-09-02T10:15:00.000Z",
+      "completionToken": "synthetic_completion_token_demo_002",
+      "userVerifyToken": "synthetic_verify_token_demo_002",
+      "timeline": [
+        {
+          "id": "evt-demo-002-created",
+          "type": "CREATED",
+          "title": "Complaint Raised",
+          "timestamp": "2026-09-02T10:15:00.000Z",
+          "actor": "Synthetic Faculty",
+          "details": "Complaint submitted for Plumbing at Science Block (Room Staff Room 204)."
+        }
+      ],
+      "history": [
+        {
+          "id": "evt-demo-002-created",
+          "type": "CREATED",
+          "title": "Complaint Raised",
+          "timestamp": "2026-09-02T10:15:00.000Z",
+          "actor": "Synthetic Faculty",
+          "details": "Complaint submitted for Plumbing at Science Block (Room Staff Room 204)."
+        }
+      ]
+    }
+  ]
+}

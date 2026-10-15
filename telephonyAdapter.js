@@ -11,6 +11,8 @@
  * 4. Deterministic FSM validation remains strictly in backend server routines.
  */
 
+import crypto from 'crypto';
+
 // Canonical DTMF Mapping for MCC FIX HUB Keypad Fallback Menu
 export const CANONICAL_DTMF_MAP = Object.freeze({
   '1': { intent: 'ACCEPT_WORK', description: 'ACCEPT / START WORK' },
@@ -59,6 +61,61 @@ export function formatPhoneNumber(phone) {
   if (digits.startsWith('91') && digits.length === 12) return `+${digits}`;
   if (digits.startsWith('0') && digits.length === 11) return `+91${digits.slice(1)}`;
   return `+${digits}`;
+}
+
+/**
+ * Parses application/x-www-form-urlencoded body strings into JavaScript object.
+ */
+export function parseFormUrlEncoded(rawBody) {
+  if (!rawBody || typeof rawBody !== 'string') return {};
+  try {
+    const params = new URLSearchParams(rawBody);
+    const obj = {};
+    for (const [key, value] of params.entries()) {
+      obj[key] = value;
+    }
+    return obj;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Validates Twilio HMAC-SHA1 webhook signature (X-Twilio-Signature).
+ *
+ * @param {string} url - Full target request URL including query parameters
+ * @param {Object} params - POST body / query parameters object
+ * @param {string} signatureHeader - Value of X-Twilio-Signature header
+ * @param {string} secret - Twilio Auth Token or Webhook Secret
+ * @returns {boolean} True if signature is valid
+ */
+export function verifyTwilioSignature(url, params, signatureHeader, secret) {
+  if (!url || !signatureHeader || !secret) return false;
+  try {
+    let data = url;
+    if (params && typeof params === 'object') {
+      const sortedKeys = Object.keys(params).sort();
+      for (const key of sortedKeys) {
+        if (key.toLowerCase() === 'x-twilio-signature') continue;
+        data += key + (params[key] !== undefined && params[key] !== null ? String(params[key]) : '');
+      }
+    }
+    const expectedBase64 = crypto
+      .createHmac('sha1', secret)
+      .update(Buffer.from(data, 'utf-8'))
+      .digest('base64');
+
+    const sigBuf = Buffer.from(signatureHeader.trim());
+    const expBuf = Buffer.from(expectedBase64.trim());
+
+    if (sigBuf.length !== expBuf.length || sigBuf.length === 0) {
+      return false;
+    }
+
+    return crypto.timingSafeEqual(sigBuf, expBuf);
+  } catch (err) {
+    return false;
+  }
 }
 
 /**
@@ -338,4 +395,63 @@ export function buildHangupResponse(text, language = 'ta-IN', provider = 'generi
  */
 export function buildErrorResponse(errorMsg, provider = 'generic') {
   return buildVoiceResponse({ action: 'ERROR', text: errorMsg, language: 'ta-IN', nextAction: 'HANGUP' }, provider);
+}
+
+/**
+ * Helper: Builds a provider-neutral AUDIO response for delivering media URLs.
+ *
+ * @param {string} mediaUrl - Signed media URL to serve audio file
+ * @param {Object} [options={}] - Options (mimeType, audioFormat, sampleRate)
+ * @param {string} [provider='generic'] - Target telephony provider
+ */
+export function buildAudioResponse(mediaUrl, options = {}, provider = 'generic') {
+  const normalizedProvider = String(provider || 'generic').toLowerCase();
+  const mimeType = options.mimeType || 'audio/wav';
+  const audioFormat = options.audioFormat || 'wav';
+  const sampleRate = options.sampleRate || 16000;
+
+  const responseObj = {
+    action: 'PLAY',
+    mediaUrl: mediaUrl || '',
+    mimeType,
+    audioFormat,
+    sampleRate
+  };
+
+  switch (normalizedProvider) {
+    case 'twilio': {
+      const twiml = `<Response><Play>${mediaUrl}</Play></Response>`;
+      return {
+        success: true,
+        type: 'audio',
+        provider: 'twilio',
+        twiml,
+        internalResponse: responseObj
+      };
+    }
+
+    case 'exotel': {
+      return {
+        success: true,
+        type: 'audio',
+        provider: 'exotel',
+        passthru: {
+          select: 'PLAY',
+          url: mediaUrl,
+          mimeType
+        },
+        internalResponse: responseObj
+      };
+    }
+
+    case 'generic':
+    default: {
+      return {
+        success: true,
+        type: 'audio',
+        provider: 'generic',
+        response: responseObj
+      };
+    }
+  }
 }

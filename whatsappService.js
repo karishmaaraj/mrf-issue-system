@@ -193,5 +193,125 @@ export function verifyWebhookSignature(rawBody, signatureHeader, appSecret) {
     .createHmac('sha256', appSecret)
     .update(rawBody)
     .digest('hex');
-  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+  const sigBuf = Buffer.from(signature, 'hex');
+  const expBuf = Buffer.from(expected,   'hex');
+  // Guard: timingSafeEqual requires equal-length buffers; mismatched length → invalid
+  if (sigBuf.length !== expBuf.length) return false;
+  return crypto.timingSafeEqual(sigBuf, expBuf);
+}
+
+/**
+ * Builds the Admin Portal deep-link for a given ticket number.
+ * The '#' in ticketNo (e.g. '#001') is URL-encoded as '%23'.
+ * @param {string} ticketNo - e.g. '#001'
+ * @returns {string} full deep-link URL
+ */
+function buildAdminDeepLink(ticketNo) {
+  const base = (process.env.ADMIN_PORTAL_BASE_URL || '').trim().replace(/\/+$/, '');
+  if (!base) return '';
+  // Encode '#' as '%23' so the URL parameter is safe
+  const encodedTicket = encodeURIComponent(ticketNo);
+  return `${base}/admin/?ticket=${encodedTicket}`;
+}
+
+/**
+ * Sends a WhatsApp notification to the Admin phone for key lifecycle events.
+ *
+ * Supported eventTypes:
+ *   'NEW_COMPLAINT'    — fired when a new ticket is created
+ *   'WORKER_ASSIGNED'  — fired when a worker is assigned via PATCH
+ *   'REOPENED'         — fired when user rejects resolution (WhatsApp or email flow)
+ *   'RESOLVED'         — fired when user confirms resolution (WhatsApp or email flow)
+ *
+ * Fails gracefully:
+ *   - returns early (no throw) if ADMIN_WHATSAPP_PHONE is not configured
+ *   - delegates all sending to sendWhatsAppTextMessage (which has its own dry-run logic)
+ *   - never exposes secrets, tokens, or PINs
+ *
+ * @param {object} ticket - the ticket object from tickets.json
+ * @param {string} eventType - one of the supported event types above
+ * @returns {Promise<object>} result from sendWhatsAppTextMessage, or { success: false } on early exit
+ */
+export async function sendAdminWhatsAppNotification(ticket, eventType) {
+  const adminPhone = (process.env.ADMIN_WHATSAPP_PHONE || '').trim();
+
+  if (!adminPhone) {
+    console.log(`[Admin WhatsApp] ADMIN_WHATSAPP_PHONE not configured — skipping ${eventType} notification for ${ticket?.ticketNo}.`);
+    return { success: false, skipped: true, reason: 'ADMIN_WHATSAPP_PHONE_NOT_SET' };
+  }
+
+  if (!ticket || !ticket.ticketNo) {
+    console.warn(`[Admin WhatsApp] Invalid ticket supplied for event ${eventType}. Skipping.`);
+    return { success: false, skipped: true, reason: 'INVALID_TICKET' };
+  }
+
+  const deepLink = buildAdminDeepLink(ticket.ticketNo);
+  const portalLine = deepLink
+    ? `\n\n🔗 Open in Admin Portal:\n${deepLink}`
+    : '';
+
+  let messageBody = '';
+
+  switch (eventType) {
+    case 'NEW_COMPLAINT': {
+      const priorityEmoji = ticket.isUrgent || ticket.priority === 'Critical' ? '🔴' : (ticket.priority === 'High' ? '🟠' : '🟡');
+      messageBody =
+        `🚨 NEW COMPLAINT\n\n` +
+        `Ticket: ${ticket.ticketNo}\n` +
+        `Category: ${ticket.issueCategory || 'N/A'}\n` +
+        `Location: Block ${ticket.block || 'Campus'} / Room ${ticket.roomNo || 'N/A'}\n` +
+        `Priority: ${priorityEmoji} ${ticket.priority || 'Normal'}` +
+        portalLine;
+      break;
+    }
+
+    case 'WORKER_ASSIGNED': {
+      const workerName = ticket.assignedWorker || 'Unknown Worker';
+      messageBody =
+        `🎫 ${ticket.ticketNo}\n` +
+        `🟡 WORKER ASSIGNED\n\n` +
+        `Worker: ${workerName}\n` +
+        `Category: ${ticket.issueCategory || 'N/A'}\n` +
+        `Location: Block ${ticket.block || 'Campus'} / Room ${ticket.roomNo || 'N/A'}` +
+        portalLine;
+      break;
+    }
+
+    case 'REOPENED': {
+      const reopenReason = ticket.rejectionReason || ticket.userRejectionReason || '';
+      messageBody =
+        `🎫 ${ticket.ticketNo}\n` +
+        `🔄 REOPENED\n\n` +
+        `The user reported that the issue is not fixed.` +
+        (reopenReason ? `\n\nReason: "${reopenReason}"` : '') +
+        portalLine;
+      break;
+    }
+
+    case 'RESOLVED': {
+      messageBody =
+        `🎫 ${ticket.ticketNo}\n` +
+        `🟢 RESOLVED\n\n` +
+        `The user confirmed that the issue is fixed.` +
+        portalLine;
+      break;
+    }
+
+    default: {
+      console.warn(`[Admin WhatsApp] Unknown eventType "${eventType}". Skipping.`);
+      return { success: false, skipped: true, reason: 'UNKNOWN_EVENT_TYPE' };
+    }
+  }
+
+  try {
+    const result = await sendWhatsAppTextMessage(adminPhone, messageBody);
+    // HTTP 200 from Meta means the message was accepted for delivery, not yet delivered.
+    // Genuine delivery confirmation arrives via a 'statuses' webhook event (status: 'delivered').
+    console.log(`[Admin WhatsApp] ${eventType} notification for ${ticket.ticketNo} → accepted by Meta (simulated=${!!result.simulated}): ${result.success ? 'OK' : result.error}`);
+    return result;
+  } catch (err) {
+    // Non-blocking — never propagate to caller
+    console.error(`[Admin WhatsApp Error] ${eventType} for ${ticket.ticketNo}:`, err.message);
+    return { success: false, error: err.message };
+  }
 }

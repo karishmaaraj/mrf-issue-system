@@ -68,6 +68,12 @@
       "phone": "+91 98401 77889",
       "communicationMode": "VOICE",
       "preferredLanguage": "ta-IN"
+    },
+    {
+      "id": "wrk-001",
+      "name": "Ramesh Plumber",
+      "phone": "+91 98401 00001",
+      "role": "Plumber"
     }
   ],
   "voiceSettings": {
@@ -77,7 +83,11 @@
     "retryDelayMinutes": 5,
     "pinVerificationRequired": false,
     "defaultLanguage": "ta-IN",
-    "supportedLanguages": ["ta-IN", "en-IN", "hi-IN"]
+    "supportedLanguages": [
+      "ta-IN",
+      "en-IN",
+      "hi-IN"
+    ]
   },
   "companies": [
     "DSRI",

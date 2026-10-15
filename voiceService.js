@@ -328,6 +328,24 @@ export function parseVoiceIntent(userInput, currentState = 'ACTIVE_DIALOGUE') {
  * Strict Constraint: Uses ONLY explicit ticket details. Does not invent info.
  */
 export function buildTicketSpokenScript(ticket, language = 'ta-IN') {
+  if (!ticket || typeof ticket !== 'object') {
+    return {
+      intro: 'வணக்கம்! MCC பராமரிப்புப் பிரிவிலிருந்து அழைப்பு.',
+      details: 'complaint விவரங்கள் கிடைக்கவில்லை.',
+      options: '',
+      fullPrompt: 'வணக்கம்! MCC பராமரிப்புப் பிரிவிலிருந்து அழைப்பு. complaint விவரங்கள் கிடைக்கவில்லை.',
+      outOfScopeText: 'தகவல் கிடைக்கவில்லை.',
+      repeatPrompt: 'complaint விவரங்கள் கிடைக்கவில்லை.'
+    };
+  }
+
+  let langStr = 'ta-IN';
+  if (typeof language === 'string') {
+    langStr = language;
+  } else if (language && typeof language === 'object') {
+    langStr = language.preferredLanguage || language.language || 'ta-IN';
+  }
+
   const ticketNo = ticket.ticketNo || '#MCC-ISSUE';
   const block = ticket.block || 'வளாகம் (Main Campus)';
   const roomNo = ticket.roomNo ? `ரூம் எண் ${ticket.roomNo}` : 'குறிப்பிட்ட அறை இல்லை';
@@ -335,7 +353,7 @@ export function buildTicketSpokenScript(ticket, language = 'ta-IN') {
   const description = ticket.description || 'பராமரிப்பு ஆய்வு தேவை (Inspection required)';
   const priority = ticket.priority || 'Normal';
 
-  if (language.startsWith('ta')) {
+  if (langStr.startsWith('ta')) {
     // Spoken Tamil Script
     const priorityText = priority.toLowerCase() === 'high' || priority.toLowerCase() === 'urgent' ? 'அவசர வேலை!' : 'சாதாரண வேலை.';
     const ticketNoSpoken = ticketNo.replace('#MCC-', 'எம் சி சி ');

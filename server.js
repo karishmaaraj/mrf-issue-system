@@ -16,7 +16,8 @@ import {
   getWhatsAppConfig,
   sendWhatsAppTextMessage,
   sendWhatsAppInteractiveButtons,
-  verifyWebhookSignature
+  verifyWebhookSignature,
+  sendAdminWhatsAppNotification
 } from './whatsappService.js';
 import {
   triggerWorkerVoiceCall,
@@ -37,8 +38,20 @@ import {
   buildSayResponse,
   buildHangupResponse,
   buildErrorResponse,
-  sanitizePayload
+  buildAudioResponse,
+  sanitizePayload,
+  parseFormUrlEncoded,
+  verifyTwilioSignature
 } from './telephonyAdapter.js';
+import {
+  getVoiceAudio,
+  verifyMediaUrlSignature,
+  isValidMediaId,
+  storeVoiceAudio,
+  generateSignedMediaUrl
+} from './voiceMediaService.js';
+import { synthesizeSpeech } from './ttsService.js';
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -54,6 +67,7 @@ const HOST = process.env.HOST || '0.0.0.0';
 // In-memory state tracking for WhatsApp user rejection reasons and message deduplication
 const pendingRejectionsMap = new Map(); // key: user formatted phone, value: { ticketNo, timestamp }
 const processedMessageIdsSet = new Set(); // Stores last 2000 processed Meta message IDs
+const processedWebhookEventsMap = new Map(); // Telephony webhook deduplication map (key: callId_event_dtmf)
 
 
 // Configurable base URL for worker email completion links (supports localhost and LAN testing)
@@ -705,7 +719,16 @@ async function sendUserReopenedEmail(ticket) {
 
 // Ensure tickets.json exists
 if (!fs.existsSync(DATA_FILE)) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify({ tickets: [], counter: 0 }, null, 2));
+  const exampleFile = path.join(__dirname, 'tickets.example.json');
+  if (fs.existsSync(exampleFile)) {
+    try {
+      fs.copyFileSync(exampleFile, DATA_FILE);
+    } catch {
+      fs.writeFileSync(DATA_FILE, JSON.stringify({ tickets: [], counter: 0 }, null, 2));
+    }
+  } else {
+    fs.writeFileSync(DATA_FILE, JSON.stringify({ tickets: [], counter: 0 }, null, 2));
+  }
 }
 
 function buildHistoryForTicket(t) {
@@ -911,6 +934,7 @@ function serializeAdminTicket(t) {
 }
 
 const CONFIG_FILE = path.join(__dirname, 'config.json');
+const CONFIG_LOCAL_FILE = path.join(__dirname, 'config.local.json');
 const CONFIG_BAK_FILE = path.join(__dirname, 'config.json.bak');
 const CONFIG_TMP_FILE = path.join(__dirname, 'config.json.tmp');
 
@@ -1391,16 +1415,17 @@ function validateSystemConfigPayload(incoming) {
 }
 
 function readConfig() {
+  const activeConfigFile = fs.existsSync(CONFIG_LOCAL_FILE) ? CONFIG_LOCAL_FILE : CONFIG_FILE;
   try {
-    if (fs.existsSync(CONFIG_FILE)) {
-      const raw = fs.readFileSync(CONFIG_FILE, 'utf-8');
+    if (fs.existsSync(activeConfigFile)) {
+      const raw = fs.readFileSync(activeConfigFile, 'utf-8');
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
         return deepMergeConfig(DEFAULT_CONFIG_DATA, parsed);
       }
     }
   } catch (err) {
-    console.error('[Config] Failed to read main config.json, attempting backup recovery...', err.message);
+    console.error(`[Config] Failed to read ${activeConfigFile}, attempting backup recovery...`, err.message);
   }
 
   try {
@@ -1424,18 +1449,19 @@ function readConfig() {
 }
 
 function saveConfig(cfg) {
+  const activeConfigFile = fs.existsSync(CONFIG_LOCAL_FILE) ? CONFIG_LOCAL_FILE : CONFIG_FILE;
   const jsonStr = JSON.stringify(cfg, null, 2);
   fs.writeFileSync(CONFIG_TMP_FILE, jsonStr, 'utf-8');
 
-  if (fs.existsSync(CONFIG_FILE)) {
+  if (fs.existsSync(activeConfigFile)) {
     try {
-      fs.copyFileSync(CONFIG_FILE, CONFIG_BAK_FILE);
+      fs.copyFileSync(activeConfigFile, CONFIG_BAK_FILE);
     } catch (e) {
       console.warn('[Config] Warning: Failed to create config backup:', e.message);
     }
   }
 
-  fs.renameSync(CONFIG_TMP_FILE, CONFIG_FILE);
+  fs.renameSync(CONFIG_TMP_FILE, activeConfigFile);
 }
 
 
@@ -1923,7 +1949,51 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // POST /api/voice/telephony-webhook & POST /api/voice/webhook -> Telephony Provider Callback Endpoint (HMAC VALIDATED)
+  // GET /api/voice/media/:mediaId -> Serve Temporary TTS Audio (HMAC SIGNED URL)
+  if (req.method === 'GET' && urlParts.startsWith('/api/voice/media/')) {
+    const rawMediaId = urlParts.replace('/api/voice/media/', '').split('?')[0].trim();
+
+    // 1. Validate Media ID format & Path Traversal Prevention
+    if (!isValidMediaId(rawMediaId)) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Invalid or malformed media identifier' }));
+      return;
+    }
+
+    // 2. Validate Signed URL HMAC Signature & Expiration
+    const parsedUrl = new URL(req.url, `http://localhost:${PORT}`);
+    const expires = parsedUrl.searchParams.get('expires');
+    const signature = parsedUrl.searchParams.get('signature');
+
+    const isValidSig = verifyMediaUrlSignature(rawMediaId, expires, signature);
+    if (!isValidSig) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Unauthorized: Invalid or expired media URL signature' }));
+      return;
+    }
+
+    // 3. Fetch Audio Record from In-Memory Store
+    const mediaRecord = getVoiceAudio(rawMediaId);
+    if (!mediaRecord || !mediaRecord.audioBuffer) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Media resource not found or expired' }));
+      return;
+    }
+
+    // 4. Return Audio Binary Buffer with strict Security & Cache Control Headers
+    res.writeHead(200, {
+      'Content-Type': mediaRecord.mimeType || 'audio/wav',
+      'Content-Length': mediaRecord.audioBuffer.length,
+      'Cache-Control': 'private, no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'X-Content-Type-Options': 'nosniff'
+    });
+    res.end(mediaRecord.audioBuffer);
+    return;
+  }
+
+  // POST /api/voice/telephony-webhook & POST /api/voice/webhook -> Telephony Provider Callback Endpoint (HMAC & TWILIO VALIDATED)
   if (req.method === 'POST' && (urlParts === '/api/voice/telephony-webhook' || urlParts === '/api/voice/webhook')) {
     let rawBody = '';
     req.on('data', chunk => {
@@ -1934,32 +2004,71 @@ const server = http.createServer(async (req, res) => {
         req.destroy();
       }
     });
-    req.on('end', () => {
+    req.on('end', async () => {
       try {
         if (rawBody.length > 65536) return;
 
         const voiceConfig = getVoiceConfig();
         const sigHeader = req.headers['x-voice-signature'];
+        const twilioSigHeader = req.headers['x-twilio-signature'];
+
+        // 4. Parse Payload (Support both JSON and urlencoded POST params)
+        let body = {};
+        if (rawBody.trim()) {
+          try {
+            body = JSON.parse(rawBody);
+          } catch (jsonErr) {
+            body = parseFormUrlEncoded(rawBody);
+          }
+        }
+
+        const provider = String(req.headers['x-telephony-provider'] || body.provider || (twilioSigHeader ? 'twilio' : (voiceConfig.telephonyProvider || 'generic'))).toLowerCase();
 
         // 1. HMAC Signature Verification
         if (voiceConfig.webhookSecret) {
-          if (!sigHeader) {
-            console.warn('[Voice Webhook Security] Missing required x-voice-signature header.');
-            res.writeHead(401, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Unauthorized: Missing x-voice-signature header' }));
-            return;
-          }
-          const isValid = verifyVoiceWebhookSignature(rawBody, sigHeader, voiceConfig.webhookSecret);
-          if (!isValid) {
-            console.warn('[Voice Webhook Security] HMAC signature verification failed.');
-            res.writeHead(401, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Unauthorized signature' }));
-            return;
+          if (twilioSigHeader || provider === 'twilio') {
+            if (!twilioSigHeader) {
+              console.warn('[Voice Webhook Security] Missing required x-twilio-signature header.');
+              res.writeHead(401, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Unauthorized: Missing x-twilio-signature header' }));
+              return;
+            }
+            const protocol = req.headers['x-forwarded-proto'] || 'http';
+            const host = req.headers['x-forwarded-host'] || req.headers.host || `localhost:${PORT}`;
+            const localFullUrl = `${protocol}://${host}${urlParts}`;
+
+            let isValid = verifyTwilioSignature(localFullUrl, body, twilioSigHeader, voiceConfig.webhookSecret);
+            if (!isValid && process.env.TELEPHONY_BASE_URL) {
+              const publicBase = process.env.TELEPHONY_BASE_URL.replace(/\/+$/, '');
+              const publicFullUrl = `${publicBase}${urlParts}`;
+              isValid = verifyTwilioSignature(publicFullUrl, body, twilioSigHeader, voiceConfig.webhookSecret);
+            }
+
+            if (!isValid) {
+              console.warn('[Voice Webhook Security] Twilio signature verification failed.');
+              res.writeHead(401, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Unauthorized signature' }));
+              return;
+            }
+          } else if (sigHeader || voiceConfig.webhookSecret) {
+            if (!sigHeader) {
+              console.warn('[Voice Webhook Security] Missing required x-voice-signature header.');
+              res.writeHead(401, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Unauthorized: Missing x-voice-signature header' }));
+              return;
+            }
+            const isValid = verifyVoiceWebhookSignature(rawBody, sigHeader, voiceConfig.webhookSecret);
+            if (!isValid) {
+              console.warn('[Voice Webhook Security] HMAC signature verification failed.');
+              res.writeHead(401, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Unauthorized signature' }));
+              return;
+            }
           }
         }
 
         // 2. Replay Protection / Timestamp Check
-        const timestampHeader = req.headers['x-voice-timestamp'];
+        const timestampHeader = req.headers['x-voice-timestamp'] || body.timestamp;
         if (timestampHeader) {
           const reqTime = parseInt(timestampHeader, 10);
           if (isNaN(reqTime) || Math.abs(Date.now() - reqTime) > 5 * 60 * 1000) {
@@ -1979,20 +2088,6 @@ const server = http.createServer(async (req, res) => {
           return;
         }
 
-        // 4. Parse Payload
-        let body = {};
-        if (rawBody.trim()) {
-          try {
-            body = JSON.parse(rawBody);
-          } catch (jsonErr) {
-            res.writeHead(400, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Invalid JSON payload' }));
-            return;
-          }
-        }
-
-        const provider = req.headers['x-telephony-provider'] || body.provider || voiceConfig.telephonyProvider || 'generic';
-
         // 5. Provider Payload Normalization via Adapter
         const normalized = normalizeCallEvent(body, provider);
         if (!normalized.success) {
@@ -2001,7 +2096,23 @@ const server = http.createServer(async (req, res) => {
           return;
         }
 
-        // 6. Worker Identification & Security Check
+        // 6. Deduplication Check (Idempotency for Retried Webhooks)
+        const dedupeKey = `${normalized.callId || 'no_id'}_${normalized.eventType}_${normalized.dtmfDigit || ''}`;
+        if (processedWebhookEventsMap.has(dedupeKey)) {
+          const cached = processedWebhookEventsMap.get(dedupeKey);
+          if (Date.now() - cached.timestamp < 60000) {
+            if (provider === 'twilio' || req.headers['accept']?.includes('text/xml')) {
+              res.writeHead(200, { 'Content-Type': 'text/xml' });
+              res.end(cached.twiml || '<Response><Hangup/></Response>');
+              return;
+            }
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(cached.jsonPayload));
+            return;
+          }
+        }
+
+        // 7. Worker Identification & Security Check
         const cfg = readConfig();
         const workers = cfg.workers || [];
         const callerPhoneClean = (normalized.callerPhone || '').replace(/[^\d]/g, '');
@@ -2013,24 +2124,81 @@ const server = http.createServer(async (req, res) => {
 
         // Unknown Caller: Return safe response without exposing tickets or mutating state
         if (!workerProfile) {
-          const safeResp = buildHangupResponse('இந்த எண் பதிவு செய்யப்படவில்லை. தயவுசெய்து Admin-ஐ தொடர்பு கொள்ளவும்.', 'ta-IN', provider);
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
+          const safeText = 'இந்த எண் பதிவு செய்யப்படவில்லை. தயவுசெய்து Admin-ஐ தொடர்பு கொள்ளவும்.';
+          const safeResp = buildHangupResponse(safeText, 'ta-IN', provider);
+
+          const unknownPayload = {
             status: 'received',
             callerStatus: 'UNKNOWN_CALLER',
             normalizedCallEvent: normalized,
             providerResponse: safeResp
-          }));
+          };
+
+          processedWebhookEventsMap.set(dedupeKey, {
+            timestamp: Date.now(),
+            twiml: safeResp.twiml || `<Response><Say language="ta-IN">${safeText}</Say><Hangup/></Response>`,
+            jsonPayload: unknownPayload
+          });
+
+          if (provider === 'twilio' || req.headers['accept']?.includes('text/xml')) {
+            res.writeHead(200, { 'Content-Type': 'text/xml' });
+            res.end(safeResp.twiml || `<Response><Say language="ta-IN">${safeText}</Say><Hangup/></Response>`);
+            return;
+          }
+
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(unknownPayload));
           return;
         }
 
-        // Known Caller: Check ticket access if target ticket specified
+        // Known Caller: Check ticket access and find active assigned tickets
         const data = readData();
-        const targetTicketNo = body.ticketNo || null;
+        const ticketsList = data.tickets || [];
+
+        const workerTickets = ticketsList.filter(t => {
+          const assigned = String(t.assignedWorker || '').trim().toLowerCase();
+          const wName = String(workerProfile.name || '').trim().toLowerCase();
+          const wId = String(workerProfile.id || '').trim().toLowerCase();
+          return (assigned === wName || assigned === wId) && t.status !== 'Completed';
+        });
+
+        // Known Worker with 0 active tickets
+        if (workerTickets.length === 0 && !body.ticketNo) {
+          const noTicketsText = `வணக்கம் ${workerProfile.name}! உங்களுக்கு தற்போது நிலுவையில் உள்ள பணிகள் ஏதும் இல்லை.`;
+          const noTicketsResp = buildHangupResponse(noTicketsText, 'ta-IN', provider);
+
+          const noTicketPayload = {
+            status: 'received',
+            callerStatus: 'KNOWN_WORKER',
+            activeTicketCount: 0,
+            workerId: workerProfile.id,
+            normalizedCallEvent: normalized,
+            providerResponse: noTicketsResp
+          };
+
+          processedWebhookEventsMap.set(dedupeKey, {
+            timestamp: Date.now(),
+            twiml: noTicketsResp.twiml || `<Response><Say language="ta-IN">${noTicketsText}</Say><Hangup/></Response>`,
+            jsonPayload: noTicketPayload
+          });
+
+          if (provider === 'twilio' || req.headers['accept']?.includes('text/xml')) {
+            res.writeHead(200, { 'Content-Type': 'text/xml' });
+            res.end(noTicketsResp.twiml || `<Response><Say language="ta-IN">${noTicketsText}</Say><Hangup/></Response>`);
+            return;
+          }
+
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(noTicketPayload));
+          return;
+        }
+
+        // Target Ticket Resolution
+        const targetTicketNo = body.ticketNo || (workerTickets.length > 0 ? workerTickets[0].ticketNo : null);
         let targetTicket = null;
 
         if (targetTicketNo) {
-          targetTicket = (data.tickets || []).find(t => t.ticketNo === targetTicketNo);
+          targetTicket = ticketsList.find(t => t.ticketNo === targetTicketNo);
           if (targetTicket) {
             const sessionBinding = bindCallSession(normalized.callId, workerProfile.id, targetTicket.ticketNo);
             const accessCheck = validateCallSessionAccess(sessionBinding, workerProfile, targetTicket);
@@ -2047,19 +2215,129 @@ const server = http.createServer(async (req, res) => {
         }
 
         const sessionBinding = bindCallSession(normalized.callId, workerProfile.id, targetTicket ? targetTicket.ticketNo : null);
-        const providerResp = normalized.eventType === 'DTMF'
-          ? buildSayResponse(`Input ${normalized.dtmfDigit} processed cleanly by telephony adapter stub.`, 'ta-IN', provider)
-          : buildDtmfGatherResponse(`வணக்கம் ${workerProfile.name}! MCC பராமரிப்பு சேவை.`, 'ta-IN', provider);
 
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
+        let spokenFeedback = '';
+
+        if (normalized.eventType === 'DTMF') {
+          const digit = normalized.dtmfDigit;
+          if (digit === '1') {
+            if (targetTicket) {
+              targetTicket.status = 'In Progress';
+              targetTicket.timeline = targetTicket.timeline || [];
+              targetTicket.timeline.push({
+                id: `evt-${targetTicket.ticketNo}-voice-act-${Date.now()}`,
+                timestamp: new Date().toISOString(),
+                type: 'voice_action',
+                actor: workerProfile.name,
+                details: `Ticket status updated to "In Progress" via Telephony DTMF 1 input.`
+              });
+              writeData(data);
+            }
+            spokenFeedback = 'பணி ஏற்றுக்கொள்ளப்பட்டது. நன்றி அண்ணா.';
+          } else if (digit === '2') {
+            spokenFeedback = 'பணி நிறைவு செய்ய இயலவில்லை என பதிவு செய்யப்பட்டது.';
+          } else if (digit === '3') {
+            const scriptObj = buildTicketSpokenScript(targetTicket, workerProfile);
+            spokenFeedback = typeof scriptObj === 'object' ? (scriptObj.fullPrompt || scriptObj.intro || '') : String(scriptObj);
+          } else if (digit === '4') {
+            if (targetTicket) {
+              targetTicket.status = 'Pending Completion Confirmation';
+              targetTicket.completionToken = generateToken();
+              targetTicket.timeline = targetTicket.timeline || [];
+              targetTicket.timeline.push({
+                id: `evt-${targetTicket.ticketNo}-voice-act-${Date.now()}`,
+                timestamp: new Date().toISOString(),
+                type: 'voice_action',
+                actor: workerProfile.name,
+                details: `Work reported complete via Telephony DTMF 4. Pending user confirmation.`
+              });
+              writeData(data);
+            }
+            spokenFeedback = 'பணி முடிந்தது என பதிவு செய்யப்பட்டது. சரிபார்ப்பு அனுப்பப்பட்டது.';
+          } else if (digit === '5') {
+            spokenFeedback = generateGroundedVoiceResponse('QUERY_LOCATION', buildAuthorizedTicketDTO(targetTicket), 'ta-IN');
+          } else if (digit === '0') {
+            spokenFeedback = 'நிர்வாகிக்கு தகவல் தெரிவிக்கப்பட்டது. தயவுசெய்து காத்திருக்கவும்.';
+          } else {
+            spokenFeedback = `Input ${digit} processed cleanly.`;
+          }
+        } else {
+          if (targetTicket) {
+            const scriptObj = buildTicketSpokenScript(targetTicket, workerProfile);
+            spokenFeedback = typeof scriptObj === 'object' ? (scriptObj.fullPrompt || scriptObj.intro || '') : String(scriptObj);
+          } else {
+            spokenFeedback = `வணக்கம் ${workerProfile.name}! MCC பராமரிப்பு சேவை.`;
+          }
+        }
+
+        let audioMediaResponse = null;
+        let ttsAudioUrl = null;
+
+        if (body.synthesizeAudio === true || body.enableTts === true || provider === 'twilio') {
+          const ttsRes = await synthesizeSpeech(spokenFeedback, { provider });
+          if (ttsRes && ttsRes.success && ttsRes.audioBuffer) {
+            const stored = storeVoiceAudio(ttsRes.audioBuffer, {
+              mimeType: ttsRes.mimeType,
+              audioFormat: ttsRes.audioFormat,
+              sampleRate: ttsRes.sampleRate
+            });
+            if (stored.success && stored.mediaId) {
+              const protocol = req.headers['x-forwarded-proto'] || 'http';
+              const host = req.headers.host || `localhost:${PORT}`;
+              const baseUrl = (process.env.TELEPHONY_BASE_URL || `${protocol}://${host}`).replace(/\/+$/, '');
+              ttsAudioUrl = generateSignedMediaUrl(stored.mediaId, baseUrl);
+              audioMediaResponse = buildAudioResponse(ttsAudioUrl, ttsRes, provider);
+            }
+          }
+        }
+
+        let providerResp = null;
+
+        if (provider === 'twilio') {
+          let twiml = '<Response>';
+          if (ttsAudioUrl) {
+            twiml += `<Play>${ttsAudioUrl}</Play>`;
+          } else {
+            twiml += `<Say language="ta-IN">${spokenFeedback}</Say>`;
+          }
+          if (normalized.eventType !== 'DTMF' || normalized.dtmfDigit === '3' || normalized.dtmfDigit === '5') {
+            twiml += `<Gather numDigits="1" timeout="5"></Gather>`;
+          } else {
+            twiml += `<Hangup/>`;
+          }
+          twiml += '</Response>';
+          providerResp = { success: true, provider: 'twilio', twiml };
+        } else {
+          providerResp = normalized.eventType === 'DTMF'
+            ? buildSayResponse(spokenFeedback, 'ta-IN', provider)
+            : buildDtmfGatherResponse(spokenFeedback, 'ta-IN', provider);
+        }
+
+        const jsonPayload = {
           status: 'received',
           callerStatus: 'KNOWN_WORKER',
           workerId: workerProfile.id,
+          activeTicketCount: workerTickets.length,
           normalizedCallEvent: normalized,
           sessionBinding,
-          providerResponse: providerResp
-        }));
+          providerResponse: providerResp,
+          audioMediaResponse
+        };
+
+        processedWebhookEventsMap.set(dedupeKey, {
+          timestamp: Date.now(),
+          twiml: providerResp.twiml || `<Response><Say language="ta-IN">${spokenFeedback}</Say></Response>`,
+          jsonPayload
+        });
+
+        if (provider === 'twilio' || req.headers['accept']?.includes('text/xml')) {
+          res.writeHead(200, { 'Content-Type': 'text/xml' });
+          res.end(providerResp.twiml || `<Response><Say language="ta-IN">${spokenFeedback}</Say></Response>`);
+          return;
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(jsonPayload));
       } catch (err) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: err.message }));
@@ -2067,6 +2345,8 @@ const server = http.createServer(async (req, res) => {
     });
     return;
   }
+
+
 
   // GET /api/whatsapp/webhook -> Meta WhatsApp Cloud API verification challenge
   if (req.method === 'GET' && urlParts === '/api/whatsapp/webhook') {
@@ -2116,6 +2396,34 @@ const server = http.createServer(async (req, res) => {
         // Immediately respond 200 OK to Meta to avoid retries
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ status: 'received' }));
+
+        // ── Delivery-status events (sent / delivered / read / failed) ──────────────
+        // These arrive in value.statuses[]. Process them independently of value.messages
+        // so that status-only payloads are never silently discarded.
+        if (value && Array.isArray(value.statuses) && value.statuses.length > 0) {
+          for (const statusEntry of value.statuses) {
+            const wamid   = statusEntry.id     || '(unknown)';
+            const status  = statusEntry.status || '(unknown)';
+            const tsEpoch = statusEntry.timestamp;
+
+            if (status === 'failed') {
+              // Log failure details; deliberately omit phone numbers and tokens
+              const errCode = statusEntry.errors?.[0]?.code    || 'N/A';
+              const errMsg  = statusEntry.errors?.[0]?.message || 'No error message';
+              const errTitle= statusEntry.errors?.[0]?.title   || '';
+              console.warn(
+                `[WhatsApp Delivery] wamid=${wamid} status=FAILED ts=${tsEpoch} ` +
+                `errorCode=${errCode} errorTitle="${errTitle}" errorMessage="${errMsg}"`
+              );
+            } else {
+              // sent | delivered | read
+              console.log(
+                `[WhatsApp Delivery] wamid=${wamid} status=${status} ts=${tsEpoch}`
+              );
+            }
+          }
+        }
+        // ────────────────────────────────────────────────────────────────────────────
 
         if (!value || !Array.isArray(value.messages) || value.messages.length === 0) {
           return;
@@ -2187,6 +2495,11 @@ const server = http.createServer(async (req, res) => {
             saveData(data);
             console.log(`[WhatsApp Workflow] Ticket ${targetTicket.ticketNo} CONFIRMED & RESOLVED by user (${userPhoneFormatted}).`);
 
+            // Admin WhatsApp RESOLVED notification (non-blocking)
+            sendAdminWhatsAppNotification(targetTicket, 'RESOLVED').catch(e => {
+              console.error('[Admin WhatsApp RESOLVED Error]', e.message);
+            });
+
             await sendWhatsAppTextMessage(
               userPhoneFormatted,
               `✅ Thank you ${targetTicket.name || ''}! Ticket ${targetTicket.ticketNo} has been confirmed fixed and is now RESOLVED.\n\nWe appreciate your feedback in keeping MCC campus facilities running smoothly!`
@@ -2242,6 +2555,11 @@ const server = http.createServer(async (req, res) => {
 
               saveData(data);
               console.log(`[WhatsApp Workflow] Ticket ${targetTicket.ticketNo} REOPENED with reason: "${userText}"`);
+
+              // Admin WhatsApp REOPENED notification (non-blocking)
+              sendAdminWhatsAppNotification(targetTicket, 'REOPENED').catch(e => {
+                console.error('[Admin WhatsApp REOPENED Error]', e.message);
+              });
 
               await sendWhatsAppTextMessage(
                 userPhoneFormatted,
@@ -3013,6 +3331,11 @@ const server = http.createServer(async (req, res) => {
           console.error('[SMTP Notification Error]', err);
         });
 
+        // Send Admin WhatsApp notification (non-blocking, fails gracefully)
+        sendAdminWhatsAppNotification(newTicket, 'NEW_COMPLAINT').catch(err => {
+          console.error('[Admin WhatsApp NEW_COMPLAINT Error]', err.message);
+        });
+
         res.writeHead(201, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(serializePublicTicket(newTicket)));
       } catch (err) {
@@ -3137,6 +3460,11 @@ const server = http.createServer(async (req, res) => {
           } catch (waErr) {
             console.error('[WhatsApp Worker Assignment Error]', waErr.message);
           }
+
+          // Admin WhatsApp WORKER_ASSIGNED notification (non-blocking)
+          sendAdminWhatsAppNotification({ ...currentTicket, ...updates }, 'WORKER_ASSIGNED').catch(e => {
+            console.error('[Admin WhatsApp WORKER_ASSIGNED Error]', e.message);
+          });
 
           // AI Voice Worker Call Dispatch (Isolated & Non-blocking)
           try {
@@ -3901,6 +4229,11 @@ const server = http.createServer(async (req, res) => {
       // Send confirmation email
       sendUserConfirmationSuccessEmail(ticket);
 
+      // Admin WhatsApp RESOLVED notification (non-blocking)
+      sendAdminWhatsAppNotification(ticket, 'RESOLVED').catch(e => {
+        console.error('[Admin WhatsApp RESOLVED Error]', e.message);
+      });
+
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end(`
         <!DOCTYPE html>
@@ -4086,7 +4419,12 @@ const server = http.createServer(async (req, res) => {
 
         // Send SMTP alerts asynchronously to Admin & Worker
         sendTicketReopenedAlerts(ticket, cleanReason);
-        
+
+        // Admin WhatsApp REOPENED notification (non-blocking)
+        sendAdminWhatsAppNotification(ticket, 'REOPENED').catch(e => {
+          console.error('[Admin WhatsApp REOPENED Error]', e.message);
+        });
+
         // Notify user that the issue is marked as reopened
         sendUserReopenedEmail(ticket);
 
