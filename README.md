@@ -118,5 +118,43 @@ npm run dev
 
 ---
 
+## 📱 Meta WhatsApp Cloud API & Webhook Setup
+
+The MRF Issue Portal includes real-time two-way WhatsApp Cloud API integration for automated admin alerts, worker dispatches, and interactive complaint resolution.
+
+### 1. Webhook Configuration in Meta Developer Console
+
+In your [Meta Developer Dashboard](https://developers.facebook.com/) under **WhatsApp > Configuration**:
+
+1. **Callback URL**:
+   ```text
+   https://<your-public-domain>/api/whatsapp/webhook
+   ```
+   > **Note:** Meta requires a valid, publicly reachable **HTTPS** endpoint. For local development or testing, expose the local server (Port 5000) using a secure tunnel:
+   > ```bash
+   > ngrok http 5000
+   > ```
+   > Then use the generated HTTPS URL: `https://<unique-id>.ngrok-free.dev/api/whatsapp/webhook`.
+
+2. **Verify Token**:
+   - Must match the `WHATSAPP_VERIFY_TOKEN` defined in your `.env` (default placeholder: `mrf_whatsapp_verify_token_2026`).
+
+3. **Webhook Field Subscriptions**:
+   - Under **Webhook fields**, click **Manage** and subscribe to **`messages`**.
+   - Subscribing to `messages` enables delivery of inbound text messages, interactive button replies (`Confirm Fixed` / `Not Fixed`), and delivery status receipts (`sent`, `delivered`, `read`, `failed`).
+
+### 2. Webhook Security & Signature Verification
+
+- **HMAC-SHA256 Signature Header**: Meta signs all incoming webhook POST requests with an `X-Hub-Signature-256` header.
+- **Configuring App Secret**: Retrieve your **App Secret** from *Meta Developer Dashboard > App settings > Basic > App secret* and set:
+  ```env
+  WHATSAPP_APP_SECRET=your_meta_app_secret_here
+  ```
+- **Security Enforcement**:
+  - When `WHATSAPP_APP_SECRET` is configured, all incoming POST requests are verified against `X-Hub-Signature-256` using timing-safe comparison (`crypto.timingSafeEqual`). Requests with missing or invalid signatures are rejected with `HTTP 401 Unauthorized`.
+  - In production (`NODE_ENV=production`), unconfigured or placeholder secrets (`YOUR_WHATSAPP_APP_SECRET`) are strictly rejected to prevent unauthorized webhook execution.
+
+---
+
 ## 📄 License
 This project is open source and available under the [MIT License](LICENSE).

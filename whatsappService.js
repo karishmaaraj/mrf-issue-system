@@ -42,7 +42,12 @@ export function getWhatsAppConfig() {
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || '';
   const businessAccountId = process.env.WHATSAPP_BUSINESS_ACCOUNT_ID || '';
   const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN || 'mrf_whatsapp_verify_token_2026';
-  const appSecret = process.env.WHATSAPP_APP_SECRET || '';
+  const rawAppSecret = (process.env.WHATSAPP_APP_SECRET || '').trim();
+
+  // Guard against treating the placeholder as an active secret
+  const isAppSecretPlaceholder = rawAppSecret === 'YOUR_WHATSAPP_APP_SECRET';
+  const hasAppSecret = Boolean(rawAppSecret && !isAppSecretPlaceholder);
+  const appSecret = hasAppSecret ? rawAppSecret : '';
 
   const isConfigured = Boolean(
     enabled &&
@@ -60,6 +65,8 @@ export function getWhatsAppConfig() {
     businessAccountId,
     verifyToken,
     appSecret,
+    hasAppSecret,
+    isAppSecretPlaceholder,
     graphUrl: `https://graph.facebook.com/v20.0/${phoneNumberId}/messages`
   };
 }

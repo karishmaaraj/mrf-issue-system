@@ -1,4 +1,4 @@
-﻿/**
+/**
  * test_whatsapp_status.js — WhatsApp Delivery-Status Webhook Test Suite
  *
  * Covers:
@@ -63,7 +63,7 @@ function buildMetaPayload({ statuses, messages } = {}) {
 // ── Replicates server.js POST /api/whatsapp/webhook handler (isolated) ────────
 const processedMessageIdsSet = new Set();
 
-function createTestServer(appSecretOverride = '') {
+function createTestServer(appSecretOverride = null, isProdOverride = null) {
   return http.createServer((req, res) => {
     const urlParts = req.url.split('?')[0];
 
@@ -90,11 +90,32 @@ function createTestServer(appSecretOverride = '') {
       req.on('end', () => {
         try {
           const sigHeader = req.headers['x-hub-signature-256'];
-          const secret    = appSecretOverride;
-          if (secret && sigHeader) {
+
+          // Determine secret and production flag (with optional test overrides)
+          const rawSecret = appSecretOverride !== null ? appSecretOverride : (process.env.WHATSAPP_APP_SECRET || '').trim();
+          const isPlaceholder = rawSecret === 'YOUR_WHATSAPP_APP_SECRET';
+          const hasSecret = Boolean(rawSecret && !isPlaceholder);
+          const secret = hasSecret ? rawSecret : '';
+          const isProd = isProdOverride !== null ? isProdOverride : (process.env.NODE_ENV === 'production');
+
+          // Production guard: Never silently bypass signature verification in production
+          if (isProd && !hasSecret) {
+            res.writeHead(401, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Webhook signature verification required in production' }));
+            return;
+          }
+
+          // When a real secret is configured, strictly require and validate X-Hub-Signature-256
+          if (hasSecret) {
+            if (!sigHeader) {
+              res.writeHead(401, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Missing X-Hub-Signature-256 header' }));
+              return;
+            }
             const ok = verifyWebhookSignature(rawBody, sigHeader, secret);
             if (!ok) {
-              res.writeHead(401); res.end(JSON.stringify({ error: 'Unauthorized signature' }));
+              res.writeHead(401, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Unauthorized signature' }));
               return;
             }
           }
@@ -301,18 +322,56 @@ async function runTests() {
     assert(r.statusCode === 200, 'Returns HTTP 200 for empty payload');
   }
 
-  // 8. HMAC rejection
-  _origLog('\n-- Test 8: HMAC signature rejection');
+  // 8. HMAC signature verification & production guard tests
+  _origLog('\n-- Test 8: HMAC signature verification, missing header, placeholder, and production guard');
   {
-    const securedServer = createTestServer('TEST_SECRET_FOR_TESTS_ONLY');
+    const testSecret = 'TEST_SECRET_FOR_TESTS_ONLY';
+    const securedServer = createTestServer(testSecret, false);
     await new Promise(r => securedServer.listen(0, TEST_HOST, r));
-    const body   = buildMetaPayload({ statuses: [{ id: 'x', status: 'sent', timestamp: '0' }] });
-    const r1 = await postWebhook(securedServer, body, { 'x-hub-signature-256': 'sha256=badhash' });
-    assert(r1.statusCode === 401, 'Rejects bad HMAC (HTTP 401)');
-    const goodSig = hmacSha256('TEST_SECRET_FOR_TESTS_ONLY', body);
-    const r2 = await postWebhook(securedServer, body, { 'x-hub-signature-256': goodSig });
-    assert(r2.statusCode === 200, 'Accepts valid HMAC (HTTP 200)');
+    const body = buildMetaPayload({ statuses: [{ id: 'x', status: 'sent', timestamp: '0' }] });
+
+    // 8a: Missing header when secret configured -> HTTP 401
+    const rMissing = await postWebhook(securedServer, body);
+    assert(rMissing.statusCode === 401, 'Rejects missing signature header when secret is configured (HTTP 401)');
+
+    // 8b: Invalid signature -> HTTP 401
+    const rBad = await postWebhook(securedServer, body, { 'x-hub-signature-256': 'sha256=badhash' });
+    assert(rBad.statusCode === 401, 'Rejects invalid/tampered signature header (HTTP 401)');
+
+    // 8c: Valid signature -> HTTP 200
+    const goodSig = hmacSha256(testSecret, body);
+    const rGood = await postWebhook(securedServer, body, { 'x-hub-signature-256': goodSig });
+    assert(rGood.statusCode === 200, 'Accepts valid HMAC signature header (HTTP 200)');
+
     await new Promise(r => securedServer.close(r));
+
+    // 8d: Placeholder secret behavior in non-production
+    const placeholderServer = createTestServer('YOUR_WHATSAPP_APP_SECRET', false);
+    await new Promise(r => placeholderServer.listen(0, TEST_HOST, r));
+    const rPlaceholder = await postWebhook(placeholderServer, body);
+    assert(rPlaceholder.statusCode === 200, 'Placeholder secret is not treated as active key in development (HTTP 200)');
+    await new Promise(r => placeholderServer.close(r));
+
+    // 8e: Production guard without secret -> HTTP 401
+    const prodNoSecretServer = createTestServer('', true);
+    await new Promise(r => prodNoSecretServer.listen(0, TEST_HOST, r));
+    const rProdNoSecret = await postWebhook(prodNoSecretServer, body);
+    assert(rProdNoSecret.statusCode === 401, 'Production guard rejects unconfigured secret (HTTP 401)');
+    await new Promise(r => prodNoSecretServer.close(r));
+
+    // 8f: Production guard with placeholder secret -> HTTP 401
+    const prodPlaceholderServer = createTestServer('YOUR_WHATSAPP_APP_SECRET', true);
+    await new Promise(r => prodPlaceholderServer.listen(0, TEST_HOST, r));
+    const rProdPlaceholder = await postWebhook(prodPlaceholderServer, body);
+    assert(rProdPlaceholder.statusCode === 401, 'Production guard rejects placeholder secret (HTTP 401)');
+    await new Promise(r => prodPlaceholderServer.close(r));
+
+    // 8g: Production guard with real secret and valid signature -> HTTP 200
+    const prodSecuredServer = createTestServer(testSecret, true);
+    await new Promise(r => prodSecuredServer.listen(0, TEST_HOST, r));
+    const rProdValid = await postWebhook(prodSecuredServer, body, { 'x-hub-signature-256': goodSig });
+    assert(rProdValid.statusCode === 200, 'Production accepts valid signature with real secret (HTTP 200)');
+    await new Promise(r => prodSecuredServer.close(r));
   }
 
   // 9. Idempotency

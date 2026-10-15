@@ -2375,10 +2375,26 @@ const server = http.createServer(async (req, res) => {
     req.on('end', async () => {
       try {
         const waConfig = getWhatsAppConfig();
-
-        // Optional HMAC signature check if appSecret is configured
         const sigHeader = req.headers['x-hub-signature-256'];
-        if (waConfig.appSecret && sigHeader) {
+        const isProduction = process.env.NODE_ENV === 'production';
+
+        // Production guard: Never silently bypass signature verification in production
+        if (isProduction && !waConfig.hasAppSecret) {
+          console.error('[WhatsApp Webhook Security] WHATSAPP_APP_SECRET is missing, empty, or a placeholder in production. Webhook rejected.');
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Webhook signature verification required in production' }));
+          return;
+        }
+
+        // When a real secret is configured, strictly require and validate X-Hub-Signature-256
+        if (waConfig.hasAppSecret) {
+          if (!sigHeader) {
+            console.warn('[WhatsApp Webhook Security] Missing X-Hub-Signature-256 header when WHATSAPP_APP_SECRET is configured.');
+            res.writeHead(401, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Missing X-Hub-Signature-256 header' }));
+            return;
+          }
+
           const isValid = verifyWebhookSignature(rawBody, sigHeader, waConfig.appSecret);
           if (!isValid) {
             console.warn('[WhatsApp Webhook Security] HMAC signature verification failed.');
